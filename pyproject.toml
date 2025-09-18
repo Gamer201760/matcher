@@ -1,7 +1,7 @@
 [project]
 name = "matcher"
 version = "0.1.0"
-description = "Add your description here"
+description = "users & group recomendation service"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = []
