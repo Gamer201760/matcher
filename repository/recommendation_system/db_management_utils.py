@@ -635,6 +635,241 @@ def get_group_info(session, group_id):
     }
 
 
+def get_user_form(session, user_id):
+    """
+    Get user form data including parameters.
+    
+    Args:
+        session: Neo4j session
+        user_id: User ID
+        
+    Returns:
+        dict: User form data with id, name, and parameters, or None if not found
+    """
+    user_query = """
+        MATCH (u:User {id: $user_id})
+        RETURN u.id as id, u.name as name
+    """
+    result = session.run(user_query, user_id=user_id)
+    record = result.single()
+    
+    if not record:
+        return None
+    
+    params = get_user_parameters(session, user_id)
+    
+    return {
+        'id': record['id'],
+        'name': record['name'],
+        **params
+    }
+
+
+def delete_user_form(session, user_id):
+    """
+    Delete a user and all associated data (parameters, group, relationships).
+    
+    Args:
+        session: Neo4j session
+        user_id: User ID to delete
+    """
+    # Delete user's parameters
+    delete_params_query = """
+        MATCH (u:User {id: $user_id})-[:HAS_PARAMETER]->(p:Parameter)
+        DETACH DELETE p
+    """
+    session.run(delete_params_query, user_id=user_id)
+    
+    # Delete user's group
+    delete_group_query = """
+        MATCH (u:User {id: $user_id})-[:MEMBER_OF]->(g:Group)
+        DETACH DELETE g
+    """
+    session.run(delete_group_query, user_id=user_id)
+    
+    # Delete user
+    delete_user_query = """
+        MATCH (u:User {id: $user_id})
+        DETACH DELETE u
+    """
+    session.run(delete_user_query, user_id=user_id)
+    logger.info(f"✓ Deleted user {user_id} and all associated data")
+
+
+def send_join_request(session, user_id, group_id):
+    """
+    Create a join request from a user to a group.
+    
+    Args:
+        session: Neo4j session
+        user_id: User ID sending the request
+        group_id: Target group ID
+    """
+    request_query = """
+        MATCH (u:User {id: $user_id})
+        MATCH (g:Group {id: $group_id})
+        MERGE (u)-[r:JOIN_REQUEST]->(g)
+        SET r.timestamp = datetime()
+        RETURN r
+    """
+    session.run(request_query, user_id=user_id, group_id=group_id)
+    logger.info(f"✓ User {user_id} sent join request to group {group_id}")
+
+
+def approve_join_request(session, group_member_user_id, user_id, max_roommates, caps=None, use_weights=False, weights=None):
+    """
+    Approve a user's join request and add them to the group.
+    
+    Args:
+        session: Neo4j session
+        group_member_user_id: User who is approving (must be in the target group)
+        user_id: User being approved
+        max_roommates: Maximum members allowed before group becomes inactive
+        caps: Normalization caps
+        use_weights: Whether to use weighted vectors
+        weights: Parameter weights
+        
+    Returns:
+        bool: True if successful, False otherwise
+        
+    Raises:
+        ValueError: If approver is not in a group or no request exists
+    """
+    # Get the approver's group
+    group_query = """
+        MATCH (approver:User {id: $group_member_user_id})-[:MEMBER_OF]->(g:Group)
+        RETURN g.id as group_id
+    """
+    result = session.run(group_query, group_member_user_id=group_member_user_id)
+    record = result.single()
+    
+    if not record:
+        raise ValueError(f"User {group_member_user_id} is not in any group")
+    
+    target_group_id = record['group_id']
+    
+    # Check if join request exists
+    check_request_query = """
+        MATCH (u:User {id: $user_id})-[r:JOIN_REQUEST]->(g:Group {id: $group_id})
+        RETURN r
+    """
+    request_result = session.run(check_request_query, user_id=user_id, group_id=target_group_id)
+    
+    if not request_result.single():
+        raise ValueError(f"No join request found from user {user_id} to group {target_group_id}")
+    
+    # Add user to group
+    success = add_user_to_group(session, user_id, target_group_id, caps, use_weights, weights)
+    
+    if not success:
+        return False
+    
+    # Delete the join request
+    delete_request_query = """
+        MATCH (u:User {id: $user_id})-[r:JOIN_REQUEST]->(g:Group {id: $group_id})
+        DELETE r
+    """
+    session.run(delete_request_query, user_id=user_id, group_id=target_group_id)
+    
+    # Check if group is full and mark as inactive if needed
+    group_info = get_group_info(session, target_group_id)
+    if group_info and group_info['member_count'] >= max_roommates:
+        inactive_query = """
+            MATCH (g:Group {id: $group_id})
+            SET g.active = false
+        """
+        session.run(inactive_query, group_id=target_group_id)
+        logger.info(f"✓ Group {target_group_id} marked as inactive (reached max capacity)")
+    
+    logger.info(f"✓ User {user_id} approved and added to group {target_group_id}")
+    return True
+
+
+def get_group_with_status(session, group_id):
+    """
+    Get group information including active status and members.
+    
+    Args:
+        session: Neo4j session
+        group_id: Group ID
+        
+    Returns:
+        dict: Group data with id, roommates, active, and member_ids
+        None: If group not found
+    """
+    group_info = get_group_info(session, group_id)
+    
+    if not group_info:
+        return None
+    
+    # Get active status
+    active_query = """
+        MATCH (g:Group {id: $group_id})
+        RETURN coalesce(g.active, true) as active
+    """
+    result = session.run(active_query, group_id=group_id)
+    record = result.single()
+    active = record['active'] if record else True
+    
+    roommates_count = group_info['parameters'].get('roommates', group_info['member_count'])
+    member_ids = [member['id'] for member in group_info['members']]
+    
+    return {
+        'id': group_info['id'],
+        'roommates': int(roommates_count),
+        'active': active,
+        'member_ids': member_ids
+    }
+
+
+def find_similar_users(session, user_id, top_k, caps=None, use_weights=False, weights=None):
+    """
+    Find similar users based on vector similarity.
+    
+    Args:
+        session: Neo4j session
+        user_id: Query user ID
+        top_k: Number of similar users to return
+        caps: Normalization caps
+        use_weights: Whether to use weighted vectors
+        weights: Parameter weights
+        
+    Returns:
+        list: List of dicts with user_id and score
+    """
+    weights = weights or group_parameter_weights
+    
+    # Get user parameters and create query vector
+    user_params = get_user_parameters(session, user_id)
+    group_values = {p: user_params.get(p, 0) for p in PARAMETERS}
+    
+    if use_weights:
+        query_vec = create_group_vector_with_weights(group_values, PARAMETERS, weights, caps)
+    else:
+        query_vec = create_user_vector(group_values, PARAMETERS, caps)
+    
+    # Find similar groups
+    exclude_group_id = f"g_{user_id}"
+    similar_groups = find_similar(session, query_vec, top_k=top_k, exclude_id=exclude_group_id)
+    
+    # Extract user IDs from group results
+    results = []
+    for group in similar_groups:
+        group_id = group['id']
+        group_info = get_group_info(session, group_id)
+        
+        if group_info and group_info['members']:
+            # For multi-member groups, return the first member as representative
+            # or you could return all members
+            member_id = group_info['members'][0]['id']
+            results.append({
+                'user_id': member_id,
+                'score': group['score']
+            })
+    
+    return results
+
+
 def get_user_parameters(session, user_id):
     """Fetch user parameter values from Parameter nodes with safe defaults."""
     query = """
