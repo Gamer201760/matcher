@@ -4,10 +4,13 @@ version = "0.1.0"
 description = "users & group recomendation service"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "grpcio>=1.75.1",
+]
 
 [dependency-groups]
 dev = [
+    "grpcio-tools>=1.75.1",
     "mypy>=1.18.2",
     "pytest>=8.4.2",
     "ruff>=0.13.3",
