@@ -12,8 +12,10 @@ dependencies = [
 dev = [
     "grpcio-tools>=1.75.1",
     "mypy>=1.18.2",
+    "mypy-protobuf>=3.6.0",
     "pytest>=8.4.2",
     "ruff>=0.13.3",
+    "types-grpcio>=1.0.0.20251001",
 ]
 
 
@@ -49,6 +51,7 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
+    "gen",
 ]
 
 [tool.ruff.lint]

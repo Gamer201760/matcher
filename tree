@@ -1,0 +1,56 @@
+.
+├── Makefile
+├── README.md
+├── adapter
+│   ├── __init__.py
+│   └── grpc
+│       ├── __init__.py
+│       ├── mapper.py
+│       └── server.py
+├── entity
+│   ├── __init__.py
+│   ├── errors.py
+│   ├── form.py
+│   ├── group.py
+│   └── point.py
+├── gen
+│   ├── __init__.py
+│   ├── auth
+│   │   ├── auth_pb2.py
+│   │   ├── auth_pb2.pyi
+│   │   └── auth_pb2_grpc.py
+│   ├── form
+│   │   ├── form_pb2.py
+│   │   ├── form_pb2.pyi
+│   │   └── form_pb2_grpc.py
+│   ├── group
+│   │   ├── group_pb2.py
+│   │   ├── group_pb2.pyi
+│   │   └── group_pb2_grpc.py
+│   └── user
+│       ├── user_pb2.py
+│       ├── user_pb2.pyi
+│       └── user_pb2_grpc.py
+├── main.py
+├── proto
+│   ├── auth
+│   │   └── auth.proto
+│   ├── form
+│   │   └── form.proto
+│   ├── group
+│   │   └── group.proto
+│   └── user
+│       └── user.proto
+├── pyproject.toml
+├── repository
+│   ├── __init__.py
+│   └── user_repository.py
+├── tree
+├── usecase
+│   ├── __init__.py
+│   ├── form_query.py
+│   ├── group_query.py
+│   └── interface.py
+└── uv.lock
+
+16 directories, 38 files
