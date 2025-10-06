@@ -18,7 +18,6 @@ dev = [
     "types-grpcio>=1.0.0.20251001",
 ]
 
-
 [tool.pytest.ini_options]
 log_cli = true
 log_cli_level = "INFO"
@@ -54,10 +53,12 @@ exclude = [
     "gen",
 ]
 
+
 [tool.ruff.lint]
 select = ["F", "N", "I", "E", "W", "PL"]
 ignore = ["W191", "E501", "PLR2004", "PLR0913"]
-
+[tool.ruff.lint.extend-per-file-ignores]
+"adapter/grpc/**/*.py" = ["N802"]
 
 [tool.ruff.format]
 exclude = ["list"]

@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import auth_pb2 as auth__pb2
+from gen.auth import auth_pb2 as auth_dot_auth__pb2
 
 GRPC_GENERATED_VERSION = '1.75.1'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in auth_pb2_grpc.py depends on'
+        + f' but the generated code in auth/auth_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,48 +36,48 @@ class AuthStub(object):
         """
         self.Register = channel.unary_unary(
                 '/auth.Auth/Register',
-                request_serializer=auth__pb2.RegisterRequest.SerializeToString,
-                response_deserializer=auth__pb2.RegisterResponse.FromString,
+                request_serializer=auth_dot_auth__pb2.RegisterRequest.SerializeToString,
+                response_deserializer=auth_dot_auth__pb2.RegisterResponse.FromString,
                 _registered_method=True)
         self.Login = channel.unary_unary(
                 '/auth.Auth/Login',
-                request_serializer=auth__pb2.LoginRequest.SerializeToString,
-                response_deserializer=auth__pb2.LoginResponse.FromString,
+                request_serializer=auth_dot_auth__pb2.LoginRequest.SerializeToString,
+                response_deserializer=auth_dot_auth__pb2.LoginResponse.FromString,
                 _registered_method=True)
         self.Logout = channel.unary_unary(
                 '/auth.Auth/Logout',
-                request_serializer=auth__pb2.LogoutRequest.SerializeToString,
-                response_deserializer=auth__pb2.LogoutResponse.FromString,
+                request_serializer=auth_dot_auth__pb2.LogoutRequest.SerializeToString,
+                response_deserializer=auth_dot_auth__pb2.LogoutResponse.FromString,
                 _registered_method=True)
         self.VerifyPhoneNumber = channel.unary_unary(
                 '/auth.Auth/VerifyPhoneNumber',
-                request_serializer=auth__pb2.VerifyPhoneNumberRequest.SerializeToString,
-                response_deserializer=auth__pb2.VerifyPhoneNumberResponse.FromString,
+                request_serializer=auth_dot_auth__pb2.VerifyPhoneNumberRequest.SerializeToString,
+                response_deserializer=auth_dot_auth__pb2.VerifyPhoneNumberResponse.FromString,
                 _registered_method=True)
         self.RefreshToken = channel.unary_unary(
                 '/auth.Auth/RefreshToken',
-                request_serializer=auth__pb2.RefreshTokenRequest.SerializeToString,
-                response_deserializer=auth__pb2.RefreshTokenResponse.FromString,
+                request_serializer=auth_dot_auth__pb2.RefreshTokenRequest.SerializeToString,
+                response_deserializer=auth_dot_auth__pb2.RefreshTokenResponse.FromString,
                 _registered_method=True)
         self.GoogleLoginURL = channel.unary_unary(
                 '/auth.Auth/GoogleLoginURL',
-                request_serializer=auth__pb2.GoogleLoginURLRequest.SerializeToString,
-                response_deserializer=auth__pb2.GoogleLoginURLResponse.FromString,
+                request_serializer=auth_dot_auth__pb2.GoogleLoginURLRequest.SerializeToString,
+                response_deserializer=auth_dot_auth__pb2.GoogleLoginURLResponse.FromString,
                 _registered_method=True)
         self.GoogleAuthorize = channel.unary_unary(
                 '/auth.Auth/GoogleAuthorize',
-                request_serializer=auth__pb2.GoogleAuthorizeRequest.SerializeToString,
-                response_deserializer=auth__pb2.GoogleAuthorizeResponse.FromString,
+                request_serializer=auth_dot_auth__pb2.GoogleAuthorizeRequest.SerializeToString,
+                response_deserializer=auth_dot_auth__pb2.GoogleAuthorizeResponse.FromString,
                 _registered_method=True)
         self.YandexLoginURL = channel.unary_unary(
                 '/auth.Auth/YandexLoginURL',
-                request_serializer=auth__pb2.YandexLoginURLRequest.SerializeToString,
-                response_deserializer=auth__pb2.YandexLoginURLResponse.FromString,
+                request_serializer=auth_dot_auth__pb2.YandexLoginURLRequest.SerializeToString,
+                response_deserializer=auth_dot_auth__pb2.YandexLoginURLResponse.FromString,
                 _registered_method=True)
         self.YandexAuthorize = channel.unary_unary(
                 '/auth.Auth/YandexAuthorize',
-                request_serializer=auth__pb2.YandexAuthorizeRequest.SerializeToString,
-                response_deserializer=auth__pb2.YandexAuthorizeResponse.FromString,
+                request_serializer=auth_dot_auth__pb2.YandexAuthorizeRequest.SerializeToString,
+                response_deserializer=auth_dot_auth__pb2.YandexAuthorizeResponse.FromString,
                 _registered_method=True)
 
 
@@ -143,48 +143,48 @@ def add_AuthServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Register': grpc.unary_unary_rpc_method_handler(
                     servicer.Register,
-                    request_deserializer=auth__pb2.RegisterRequest.FromString,
-                    response_serializer=auth__pb2.RegisterResponse.SerializeToString,
+                    request_deserializer=auth_dot_auth__pb2.RegisterRequest.FromString,
+                    response_serializer=auth_dot_auth__pb2.RegisterResponse.SerializeToString,
             ),
             'Login': grpc.unary_unary_rpc_method_handler(
                     servicer.Login,
-                    request_deserializer=auth__pb2.LoginRequest.FromString,
-                    response_serializer=auth__pb2.LoginResponse.SerializeToString,
+                    request_deserializer=auth_dot_auth__pb2.LoginRequest.FromString,
+                    response_serializer=auth_dot_auth__pb2.LoginResponse.SerializeToString,
             ),
             'Logout': grpc.unary_unary_rpc_method_handler(
                     servicer.Logout,
-                    request_deserializer=auth__pb2.LogoutRequest.FromString,
-                    response_serializer=auth__pb2.LogoutResponse.SerializeToString,
+                    request_deserializer=auth_dot_auth__pb2.LogoutRequest.FromString,
+                    response_serializer=auth_dot_auth__pb2.LogoutResponse.SerializeToString,
             ),
             'VerifyPhoneNumber': grpc.unary_unary_rpc_method_handler(
                     servicer.VerifyPhoneNumber,
-                    request_deserializer=auth__pb2.VerifyPhoneNumberRequest.FromString,
-                    response_serializer=auth__pb2.VerifyPhoneNumberResponse.SerializeToString,
+                    request_deserializer=auth_dot_auth__pb2.VerifyPhoneNumberRequest.FromString,
+                    response_serializer=auth_dot_auth__pb2.VerifyPhoneNumberResponse.SerializeToString,
             ),
             'RefreshToken': grpc.unary_unary_rpc_method_handler(
                     servicer.RefreshToken,
-                    request_deserializer=auth__pb2.RefreshTokenRequest.FromString,
-                    response_serializer=auth__pb2.RefreshTokenResponse.SerializeToString,
+                    request_deserializer=auth_dot_auth__pb2.RefreshTokenRequest.FromString,
+                    response_serializer=auth_dot_auth__pb2.RefreshTokenResponse.SerializeToString,
             ),
             'GoogleLoginURL': grpc.unary_unary_rpc_method_handler(
                     servicer.GoogleLoginURL,
-                    request_deserializer=auth__pb2.GoogleLoginURLRequest.FromString,
-                    response_serializer=auth__pb2.GoogleLoginURLResponse.SerializeToString,
+                    request_deserializer=auth_dot_auth__pb2.GoogleLoginURLRequest.FromString,
+                    response_serializer=auth_dot_auth__pb2.GoogleLoginURLResponse.SerializeToString,
             ),
             'GoogleAuthorize': grpc.unary_unary_rpc_method_handler(
                     servicer.GoogleAuthorize,
-                    request_deserializer=auth__pb2.GoogleAuthorizeRequest.FromString,
-                    response_serializer=auth__pb2.GoogleAuthorizeResponse.SerializeToString,
+                    request_deserializer=auth_dot_auth__pb2.GoogleAuthorizeRequest.FromString,
+                    response_serializer=auth_dot_auth__pb2.GoogleAuthorizeResponse.SerializeToString,
             ),
             'YandexLoginURL': grpc.unary_unary_rpc_method_handler(
                     servicer.YandexLoginURL,
-                    request_deserializer=auth__pb2.YandexLoginURLRequest.FromString,
-                    response_serializer=auth__pb2.YandexLoginURLResponse.SerializeToString,
+                    request_deserializer=auth_dot_auth__pb2.YandexLoginURLRequest.FromString,
+                    response_serializer=auth_dot_auth__pb2.YandexLoginURLResponse.SerializeToString,
             ),
             'YandexAuthorize': grpc.unary_unary_rpc_method_handler(
                     servicer.YandexAuthorize,
-                    request_deserializer=auth__pb2.YandexAuthorizeRequest.FromString,
-                    response_serializer=auth__pb2.YandexAuthorizeResponse.SerializeToString,
+                    request_deserializer=auth_dot_auth__pb2.YandexAuthorizeRequest.FromString,
+                    response_serializer=auth_dot_auth__pb2.YandexAuthorizeResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -212,8 +212,8 @@ class Auth(object):
             request,
             target,
             '/auth.Auth/Register',
-            auth__pb2.RegisterRequest.SerializeToString,
-            auth__pb2.RegisterResponse.FromString,
+            auth_dot_auth__pb2.RegisterRequest.SerializeToString,
+            auth_dot_auth__pb2.RegisterResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -239,8 +239,8 @@ class Auth(object):
             request,
             target,
             '/auth.Auth/Login',
-            auth__pb2.LoginRequest.SerializeToString,
-            auth__pb2.LoginResponse.FromString,
+            auth_dot_auth__pb2.LoginRequest.SerializeToString,
+            auth_dot_auth__pb2.LoginResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -266,8 +266,8 @@ class Auth(object):
             request,
             target,
             '/auth.Auth/Logout',
-            auth__pb2.LogoutRequest.SerializeToString,
-            auth__pb2.LogoutResponse.FromString,
+            auth_dot_auth__pb2.LogoutRequest.SerializeToString,
+            auth_dot_auth__pb2.LogoutResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -293,8 +293,8 @@ class Auth(object):
             request,
             target,
             '/auth.Auth/VerifyPhoneNumber',
-            auth__pb2.VerifyPhoneNumberRequest.SerializeToString,
-            auth__pb2.VerifyPhoneNumberResponse.FromString,
+            auth_dot_auth__pb2.VerifyPhoneNumberRequest.SerializeToString,
+            auth_dot_auth__pb2.VerifyPhoneNumberResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -320,8 +320,8 @@ class Auth(object):
             request,
             target,
             '/auth.Auth/RefreshToken',
-            auth__pb2.RefreshTokenRequest.SerializeToString,
-            auth__pb2.RefreshTokenResponse.FromString,
+            auth_dot_auth__pb2.RefreshTokenRequest.SerializeToString,
+            auth_dot_auth__pb2.RefreshTokenResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -347,8 +347,8 @@ class Auth(object):
             request,
             target,
             '/auth.Auth/GoogleLoginURL',
-            auth__pb2.GoogleLoginURLRequest.SerializeToString,
-            auth__pb2.GoogleLoginURLResponse.FromString,
+            auth_dot_auth__pb2.GoogleLoginURLRequest.SerializeToString,
+            auth_dot_auth__pb2.GoogleLoginURLResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -374,8 +374,8 @@ class Auth(object):
             request,
             target,
             '/auth.Auth/GoogleAuthorize',
-            auth__pb2.GoogleAuthorizeRequest.SerializeToString,
-            auth__pb2.GoogleAuthorizeResponse.FromString,
+            auth_dot_auth__pb2.GoogleAuthorizeRequest.SerializeToString,
+            auth_dot_auth__pb2.GoogleAuthorizeResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -401,8 +401,8 @@ class Auth(object):
             request,
             target,
             '/auth.Auth/YandexLoginURL',
-            auth__pb2.YandexLoginURLRequest.SerializeToString,
-            auth__pb2.YandexLoginURLResponse.FromString,
+            auth_dot_auth__pb2.YandexLoginURLRequest.SerializeToString,
+            auth_dot_auth__pb2.YandexLoginURLResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -428,8 +428,8 @@ class Auth(object):
             request,
             target,
             '/auth.Auth/YandexAuthorize',
-            auth__pb2.YandexAuthorizeRequest.SerializeToString,
-            auth__pb2.YandexAuthorizeResponse.FromString,
+            auth_dot_auth__pb2.YandexAuthorizeRequest.SerializeToString,
+            auth_dot_auth__pb2.YandexAuthorizeResponse.FromString,
             options,
             channel_credentials,
             insecure,

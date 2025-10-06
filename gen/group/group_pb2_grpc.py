@@ -4,7 +4,7 @@ import grpc
 import warnings
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-import group_pb2 as group__pb2
+from gen.group import group_pb2 as group_dot_group__pb2
 
 GRPC_GENERATED_VERSION = '1.75.1'
 GRPC_VERSION = grpc.__version__
@@ -19,7 +19,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in group_pb2_grpc.py depends on'
+        + f' but the generated code in group/group_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -38,28 +38,28 @@ class GroupServiceStub(object):
         """
         self.CreateGroup = channel.unary_unary(
                 '/group.GroupService/CreateGroup',
-                request_serializer=group__pb2.CreateGroupRequest.SerializeToString,
+                request_serializer=group_dot_group__pb2.CreateGroupRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.GetGroup = channel.unary_unary(
                 '/group.GroupService/GetGroup',
-                request_serializer=group__pb2.GetGroupRequest.SerializeToString,
-                response_deserializer=group__pb2.Group.FromString,
+                request_serializer=group_dot_group__pb2.GetGroupRequest.SerializeToString,
+                response_deserializer=group_dot_group__pb2.Group.FromString,
                 _registered_method=True)
         self.UpdateGroup = channel.unary_unary(
                 '/group.GroupService/UpdateGroup',
-                request_serializer=group__pb2.UpdateGroupRequest.SerializeToString,
+                request_serializer=group_dot_group__pb2.UpdateGroupRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.DeleteGroup = channel.unary_unary(
                 '/group.GroupService/DeleteGroup',
-                request_serializer=group__pb2.DeleteGroupRequest.SerializeToString,
+                request_serializer=group_dot_group__pb2.DeleteGroupRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.ListGroups = channel.unary_unary(
                 '/group.GroupService/ListGroups',
-                request_serializer=group__pb2.ListGroupsRequest.SerializeToString,
-                response_deserializer=group__pb2.ListGroupsResponse.FromString,
+                request_serializer=group_dot_group__pb2.ListGroupsRequest.SerializeToString,
+                response_deserializer=group_dot_group__pb2.ListGroupsResponse.FromString,
                 _registered_method=True)
 
 
@@ -102,28 +102,28 @@ def add_GroupServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreateGroup': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateGroup,
-                    request_deserializer=group__pb2.CreateGroupRequest.FromString,
+                    request_deserializer=group_dot_group__pb2.CreateGroupRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'GetGroup': grpc.unary_unary_rpc_method_handler(
                     servicer.GetGroup,
-                    request_deserializer=group__pb2.GetGroupRequest.FromString,
-                    response_serializer=group__pb2.Group.SerializeToString,
+                    request_deserializer=group_dot_group__pb2.GetGroupRequest.FromString,
+                    response_serializer=group_dot_group__pb2.Group.SerializeToString,
             ),
             'UpdateGroup': grpc.unary_unary_rpc_method_handler(
                     servicer.UpdateGroup,
-                    request_deserializer=group__pb2.UpdateGroupRequest.FromString,
+                    request_deserializer=group_dot_group__pb2.UpdateGroupRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'DeleteGroup': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteGroup,
-                    request_deserializer=group__pb2.DeleteGroupRequest.FromString,
+                    request_deserializer=group_dot_group__pb2.DeleteGroupRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'ListGroups': grpc.unary_unary_rpc_method_handler(
                     servicer.ListGroups,
-                    request_deserializer=group__pb2.ListGroupsRequest.FromString,
-                    response_serializer=group__pb2.ListGroupsResponse.SerializeToString,
+                    request_deserializer=group_dot_group__pb2.ListGroupsRequest.FromString,
+                    response_serializer=group_dot_group__pb2.ListGroupsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -152,7 +152,7 @@ class GroupService(object):
             request,
             target,
             '/group.GroupService/CreateGroup',
-            group__pb2.CreateGroupRequest.SerializeToString,
+            group_dot_group__pb2.CreateGroupRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
@@ -179,8 +179,8 @@ class GroupService(object):
             request,
             target,
             '/group.GroupService/GetGroup',
-            group__pb2.GetGroupRequest.SerializeToString,
-            group__pb2.Group.FromString,
+            group_dot_group__pb2.GetGroupRequest.SerializeToString,
+            group_dot_group__pb2.Group.FromString,
             options,
             channel_credentials,
             insecure,
@@ -206,7 +206,7 @@ class GroupService(object):
             request,
             target,
             '/group.GroupService/UpdateGroup',
-            group__pb2.UpdateGroupRequest.SerializeToString,
+            group_dot_group__pb2.UpdateGroupRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
@@ -233,7 +233,7 @@ class GroupService(object):
             request,
             target,
             '/group.GroupService/DeleteGroup',
-            group__pb2.DeleteGroupRequest.SerializeToString,
+            group_dot_group__pb2.DeleteGroupRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
@@ -260,8 +260,8 @@ class GroupService(object):
             request,
             target,
             '/group.GroupService/ListGroups',
-            group__pb2.ListGroupsRequest.SerializeToString,
-            group__pb2.ListGroupsResponse.FromString,
+            group_dot_group__pb2.ListGroupsRequest.SerializeToString,
+            group_dot_group__pb2.ListGroupsResponse.FromString,
             options,
             channel_credentials,
             insecure,

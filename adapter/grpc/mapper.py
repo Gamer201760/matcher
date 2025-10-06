@@ -1,12 +1,11 @@
 from typing import Dict
 from uuid import UUID
 
-# --- Предполагается, что эти импорты ведут к вашим доменным моделям
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from entity.form import Form, Sex, UserType
 from entity.point import Point
-from gen import form_pb2
+from gen.form import form_pb2
 
 domain_sex_to_proto: Dict[Sex, form_pb2.Sex.ValueType] = {
     Sex.FEMALE: form_pb2.Sex.FEMALE,

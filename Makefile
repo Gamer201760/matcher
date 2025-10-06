@@ -1,4 +1,4 @@
-.PHONY: test lint typecheck run pre-commit proto-gen
+.PHONY: test lint typecheck run pre-commit proto-gen fix-grpc-autogen
 PROTO_DIR := proto
 GEN_DIR := gen
 PROTO_FILES := $(shell find $(PROTO_DIR) -name '*.proto')
@@ -23,22 +23,21 @@ lint:
 typecheck:
 	uv run mypy .
 
+fix-grpc-autogen:
+	./fix_grpc_autogen.sh $(GEN_DIR) $(GEN_DIR)
+
 pre-commit: lint typecheck test
 
-proto-gen:
+proto-gen: 	
 	@echo "🧹 Cleaning up old generated files..."
 	@rm -rf $(GEN_DIR)
 	@mkdir -p $(GEN_DIR)
 	@touch $(GEN_DIR)/__init__.py
-	@echo "📝 Generating protobuf files..."
-	@for proto in $(PROTO_FILES); do \
-		echo "  Processing $$proto..."; \
-		proto_dir=$$(dirname $$proto | sed "s|^$(PROTO_DIR)/||"); \
-		uv run python -m grpc_tools.protoc \
-			-I=$(PROTO_DIR)/$$proto_dir \
-			--python_out=$(GEN_DIR) \
-			--grpc_python_out=$(GEN_DIR) \
-			--mypy_out=$(GEN_DIR) \
-			$$(basename $$proto); \
-	done
-	@echo "✅ Proto generation complete!"
+	uv run python -m grpc_tools.protoc \
+		-I=$(PROTO_DIR) \
+		--python_out=$(GEN_DIR) \
+		--grpc_python_out=$(GEN_DIR) \
+		--mypy_out=$(GEN_DIR) \
+		 $(PROTO_FILES) \
+
+	$(MAKE) fix-grpc-autogen

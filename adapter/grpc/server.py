@@ -5,11 +5,12 @@ from google.protobuf import empty_pb2
 
 from adapter.grpc import mapper
 from entity.errors import EntityAlreadyExistsError, NotFoundError
-from gen import form_pb2, form_pb2_grpc
+from gen.form import form_pb2
+from gen.form.form_pb2_grpc import FormServiceStub
 from usecase.form_query import FormQuery
 
 
-class FormServiceAdapter(form_pb2_grpc.FormServiceServicer):
+class FormServiceAdapter(FormServiceStub):
     """
     Адаптер, который связывает gRPC-интерфейс с бизнес-логикой (FormQuery).
     """
