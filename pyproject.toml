@@ -4,4 +4,63 @@ version = "0.1.0"
 description = "users & group recomendation service"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "grpcio>=1.75.1",
+]
+
+[dependency-groups]
+dev = [
+    "grpcio-tools>=1.75.1",
+    "mypy>=1.18.2",
+    "mypy-protobuf>=3.6.0",
+    "pytest>=8.4.2",
+    "ruff>=0.13.3",
+    "types-grpcio>=1.0.0.20251001",
+]
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    "gen",
+]
+
+
+[tool.ruff.lint]
+select = ["F", "N", "I", "E", "W", "PL"]
+ignore = ["W191", "E501", "PLR2004", "PLR0913"]
+[tool.ruff.lint.extend-per-file-ignores]
+"adapter/grpc/**/*.py" = ["N802"]
+
+[tool.ruff.format]
+exclude = ["list"]
+quote-style = "single"
+
