@@ -12,8 +12,8 @@ class GroupMembers:
 @dataclass
 class Group:
     id: UUID
-    name: str
-    max_users: int
+    owner_id: UUID
+    max_users: int  # С учётом владельца группы
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
