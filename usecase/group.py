@@ -4,14 +4,14 @@ from uuid import UUID
 from interface import (
     GroupRecomendationRepository,
     GroupRepository,
-    NotificationService,
+    GroupRequestRepository,
 )
 
-from entity.errors import DomainError
+from entity.errors import DomainError, NotFoundError
 from entity.group import Group
 
 
-class FindGroupsUseCase:
+class FindGroupService:
     def __init__(
         self,
         group_repo: GroupRepository,
@@ -32,72 +32,54 @@ class FindGroupsUseCase:
         return recommended_groups
 
 
-class GroupInteractionUseCase:
+class GroupService:
     def __init__(
         self,
         group_repo: GroupRepository,
-        notifier: NotificationService,
+        request_repo: GroupRequestRepository,
     ):
         self._group_repo = group_repo
-        self._notifier = notifier
+        self._request_repo = request_repo
 
-    def send_join_request(self, requester_user_id: UUID, target_group_id: UUID):
+    def send_join_request(self, user_id: UUID, group_id: UUID):
         """Пользователь отправляет запрос на вступление в группу."""
-        target_group = self._group_repo.get(target_group_id)
+        group = self._group_repo.get(group_id)
 
-        # Проверяем, есть ли в группе свободное место
-        if self._group_repo.count_members(target_group_id) == target_group.max_users:
+        if self._group_repo.count_members(group_id) == group.max_users:
             raise DomainError('В этой группу уже максимум человек')
 
-        # Уведомляем владельца группы
-        self._notifier.notify_owner_of_new_request(
-            group_id=target_group.id,
-            user_id=requester_user_id,
-        )
+        self._request_repo.create(group_id, user_id)
 
-    def accept_join_request(
-        self, owner_user_id: UUID, requester_user_id: UUID, group_id: UUID
-    ):
+    def accept_join_request(self, owner_id: UUID, request_id: UUID):
         """
         Владелец группы ПРИНИМАЕТ запрос на вступление.
         При этом старая группа принятого пользователя удаляется.
         """
-        target_group = self._group_repo.get(group_id)
-        # 1. Проверка прав: является ли пользователь владельцем группы
-        if target_group.owner_id != owner_user_id:
-            raise DomainError('Только владелец группы может принимать участников.')
+        try:
+            group = self._group_repo.get_by_owner_id(owner_id)
+        except NotFoundError:
+            self.reject_join_request(owner_id, request_id)
+            raise DomainError(
+                'Только владелец может принимать запросы на вступление в группу'
+            )
 
-        # 2. Проверка наличия места
-        count_members = self._group_repo.count_members(group_id)
-        if count_members >= target_group.max_users:
-            # Если место уже заняли, автоматически отклоняем
-            self.reject_join_request(owner_user_id, requester_user_id, group_id)
+        request = self._request_repo.get(request_id)
+
+        if self._group_repo.count_members(group.id) >= group.max_users:
             raise DomainError('Не удалось добавить пользователя: группа уже заполнена.')
 
-        # Начало транзакции
-        # 3. Удаление старой группы пользователя
-        # Находим старую группу пользователя, чтобы её удалить.
-        # Мы ожидаем, что пользователь-одиночка является владельцем своей группы.
-        self._group_repo.delete_by_owner_id(requester_user_id)
-        # 4. Добавление пользователя в новую группу
-        self._group_repo.add_user(user_id=requester_user_id, group_id=group_id)
-        # 5. Уведомление пользователя об успехе
-        self._notifier.notify_user_of_decision(
-            user_id=requester_user_id, group_id=group_id, accepted=True
-        )
-        # Конец транзакции
+        self._group_repo.delete_by_owner_id(request.user_id)
+        self._group_repo.add_user(request.user_id, group_id=group.id)
+        self._request_repo.delete(request_id)
 
-    def reject_join_request(
-        self, owner_user_id: UUID, requester_user_id: UUID, group_id: UUID
-    ):
+    def reject_join_request(self, owner_id: UUID, request_id: UUID):
         """Владелец группы ОТКЛОНЯЕТ запрос на вступление."""
-        target_group = self._group_repo.get(group_id)
-
-        # 1. Проверка прав: является ли пользователь владельцем группы
-        if target_group.owner_id != owner_user_id:
-            raise DomainError('Только владелец группы может отклонять запросы.')
-
-        # 2. Уведомление пользователя об отказе
-        self._notifier.notify_user_of_decision(
-            user_id=requester_user_id, group_id=group_id, accepted=False
-        )
+        try:
+            group = self._group_repo.get_by_owner_id(owner_id)
+            request = self._request_repo.get(request_id)
+            if group.id == request.group_id:
+                self._request_repo.delete(request_id)
+            else:
+                raise DomainError('Этот запрос на вступленние не в вашу группу')
+        except NotFoundError:
+            raise DomainError('Только владелец группы может отклонять запросы')

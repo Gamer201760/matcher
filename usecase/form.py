@@ -2,13 +2,13 @@ from uuid import UUID, uuid4
 
 from interface import FormRepository, GroupRepository
 
+from entity.errors import DomainError, NotFoundError
 from entity.form import Form
 from entity.group import Group
+from entity.parameters import Parameters
 
-# ... (Код FindGroupsUseCase и GroupInteractionUseCase остается без изменений) ...
 
-
-class FormUseCase:
+class FormService:
     """
     Use Case для управления анкетой пользователя (CRUD).
     Предполагает, что репозитории берут на себя ответственность
@@ -19,7 +19,7 @@ class FormUseCase:
         self._form_repo = form_repo
         self._group_repo = group_repo
 
-    def create_form(self, form: Form) -> None:
+    def create(self, user_id: UUID, parameters: Parameters) -> None:
         """
         Создает новую анкету и связанную с ней персональную группу для пользователя.
 
@@ -30,21 +30,27 @@ class FormUseCase:
         :param form: Объект анкеты с данными.
         :raises EntityAlreadyExistsError: Если у пользователя уже есть анкета.
         """
-        # 1. Создаем анкету. Ответственность за проверку уникальности лежит на репозитории.
-        self._form_repo.create(form)
-
-        # 2. Создаем персональную группу для этого пользователя.
-        new_group = Group(
-            id=uuid4(),  # ID будет присвоен реализацией репозитория.
-            max_users=form.roommates_count + 1,
-            owner_id=form.user_id,
+        self._form_repo.create(
+            Form(
+                id=uuid4(),
+                user_id=user_id,
+                parameters=parameters,
+            )
         )
-        new_group_id = self._group_repo.create(new_group)
 
-        # 3. Добавляем самого пользователя в его только что созданную группу.
-        self._group_repo.add_user(user_id=form.user_id, group_id=new_group_id)
+        group_id = self._group_repo.create(
+            Group(
+                id=uuid4(),
+                max_users=parameters.roommates_count + 1,
+                owner_id=user_id,
+                parameters=parameters,
+            )
+        )
 
-    def get_form_by_user(self, user_id: UUID) -> Form:
+        self._group_repo.add_user(user_id=user_id, group_id=group_id)
+        self._group_repo.calculate_params(group_id)
+
+    def get_by_user(self, user_id: UUID) -> Form:
         """
         Получает анкету по ID пользователя.
 
@@ -54,7 +60,7 @@ class FormUseCase:
         """
         return self._form_repo.get_by_user_id(user_id)
 
-    def update_form(self, user_id: UUID, updated_form_data: Form) -> None:
+    def update(self, user_id: UUID, parameters: Parameters) -> None:
         """
         Обновляет анкету пользователя и, при необходимости, его группу.
 
@@ -63,23 +69,43 @@ class FormUseCase:
           сущности не найдены, т.к. нельзя обновить то, чего не существует.
 
         :param user_id: ID пользователя, чья анкета обновляется.
-        :param updated_form_data: Объект Form с новыми данными.
+        :param parameters: Объект Parameters с новыми данными.
         :raises NotFoundError: Если анкета или группа пользователя не найдены.
         """
-        self._form_repo.update_by_user_id(user_id, updated_form_data)
+        try:
+            # TODO: начало транзакции
+            self._form_repo.update_parameters_by_user_id(user_id, parameters)
+            group = self._group_repo.get_by_owner_id(user_id)
+            if self._group_repo.count_members(group.id) == 1:
+                self._group_repo.update_parameters(group.id, parameters)
+                self._group_repo.calculate_params(group.id)
+            # TODO: конец транзакции
 
-    def delete_form(self, user_id: UUID) -> None:
+        except NotFoundError:
+            raise DomainError(
+                'Вы не можете обновить анкету, пока состоите в группе, где больше одного участника'
+            )
+
+    def delete(self, user_id: UUID) -> None:
         """
         Удаляет анкету пользователя и его персональную группу.
 
-        Контракт:
-        - Репозитории `delete_by_owner_id` и `delete_by_user_id` должны быть
-          идемпотентными, т.е. не вызывать ошибку, если сущность не найдена.
-
         :param user_id: ID пользователя для удаления.
         """
-        # 1. Удаляем группу. Репозиторий не должен вызывать ошибку, если группы нет.
-        self._group_repo.delete_by_owner_id(user_id)
 
-        # 2. Удаляем анкету. Репозиторий не должен вызывать ошибку, если анкеты нет.
+        # TODO: начало транзакции
+        group = self._group_repo.get_by_user_id(user_id)
+        members = self._group_repo.list_members(group.id)
+        if len(members) == 0:
+            raise DomainError('Количество участников группы равно 0')
+
+        if len(members) > 1:
+            self._group_repo.rm_user(user_id, group.id)
+            if group.owner_id == user_id:
+                self._group_repo.change_owner(group.id, members[-1].user_id)
+            self._group_repo.calculate_params(group.id)
+
         self._form_repo.delete_by_user_id(user_id)
+        if len(members) == 1 and group.owner_id == user_id:
+            self._group_repo.delete_by_owner_id(user_id)
+        # TODO: конец транзакции
