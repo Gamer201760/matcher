@@ -6,7 +6,7 @@ from user_vector_utils import (
     create_user_vector,
     create_group_vector_with_weights,
     group_parameter_weights,
-    cosine_distance,
+    euclidean_distance,
 )
 from logging_utils import (
     setup_logger,
@@ -88,7 +88,7 @@ def ensure_constraints_and_index(session, dims):
                 FOR (u:User) ON (u.embedding)
                 OPTIONS {indexConfig: {
                     `vector.dimensions`: $dims,
-                    `vector.similarity_function`: 'cosine'
+                    `vector.similarity_function`: 'euclidean'
                 }}
             """
             log_neo4j_query(logger, index_create_query, {"dims": dims})
@@ -115,7 +115,7 @@ def ensure_constraints_and_index(session, dims):
                 FOR (g:Group) ON (g.embedding)
                 OPTIONS {indexConfig: {
                     `vector.dimensions`: $dims,
-                    `vector.similarity_function`: 'cosine'
+                    `vector.similarity_function`: 'euclidean'
                 }}
             """
             log_neo4j_query(logger, gindex_create_query, {"dims": dims})
@@ -284,8 +284,8 @@ def find_similar_local(users, query_user, caps=None, use_weights=False, weights=
         else:
             uvec = create_user_vector(values, PARAMETERS, caps)
         
-        # cosine_distance returns distance; convert to similarity
-        distance = cosine_distance(qvec, uvec)
+        # euclidean_distance returns distance; convert to similarity
+        distance = euclidean_distance(qvec, uvec)
         sim = 1.0 - distance
         
         logger.debug(f"Similarity between {query_group_id} and {gid}: {sim:.4f} (distance: {distance:.4f})")
@@ -910,160 +910,6 @@ def get_group_member_parameters(session, group_id, exclude_user_id=None):
     return [r.data() for r in result]
 
 
-def simulate_group_formation(session, max_iterations=10, max_roommates_per_group=4,
-                           caps=None, use_weights=False, weights=None, verbose=True):
-    """
-    Simulate group formation by randomly selecting users and trying to form groups.
-
-    Args:
-        session: Neo4j session
-        max_iterations: Maximum number of simulation steps
-        max_roommates_per_group: Maximum members per group before stopping
-        caps: Normalization caps for vector creation
-        use_weights: Whether to use weighted vectors
-        weights: Parameter weights for group vector creation
-        verbose: Whether to log detailed information
-
-    Returns:
-        dict: Simulation results and statistics
-    """
-    import random
-
-    caps = caps or {'budget': 200000, 'months': 36}
-    weights = weights or group_parameter_weights
-
-    logger.info(f"🏃 Starting group formation simulation (max {max_iterations} iterations)")
-    logger.info(f"Max roommates per group: {max_roommates_per_group}")
-
-    simulation_stats = {
-        'iterations': 0,
-        'successful_joins': 0,
-        'failed_joins': 0,
-        'groups_created': 0,
-        'groups_deleted': 0,
-        'group_changes': []
-    }
-
-    # Get all single-member groups (potential candidates for joining)
-    single_groups_query = """
-        MATCH (g:Group)
-        WHERE COUNT {(g)<-[:MEMBER_OF]-()} = 1
-        RETURN g.id as group_id
-        ORDER BY g.id
-    """
-    single_groups_result = session.run(single_groups_query)
-    available_groups = [record['group_id'] for record in single_groups_result]
-
-    if verbose:
-        logger.info(f"Found {len(available_groups)} single-member groups available for joining")
-
-    for iteration in range(max_iterations):
-        if not available_groups:
-            if verbose:
-                logger.info(f"❌ No more single-member groups available at iteration {iteration}")
-            break
-
-        # Randomly select a user to try to find a group
-        selected_group_id = random.choice(available_groups)
-        available_groups.remove(selected_group_id)
-
-        # Get the user's recommendations (excluding their own group)
-        user_id = selected_group_id[2:]  # Remove 'g_' prefix
-
-        # Create query vector for this user (from Parameter nodes)
-        user_record = get_user_parameters(session, user_id)
-        group_values = {p: user_record[p] for p in PARAMETERS}
-        if use_weights:
-            query_vec = create_group_vector_with_weights(group_values, PARAMETERS, weights, caps)
-        else:
-            query_vec = create_user_vector(group_values, PARAMETERS, caps)
-
-        # Find similar groups
-        recommendations = find_similar(session, query_vec, top_k=5, exclude_id=selected_group_id)
-
-        if verbose:
-            logger.info(f"📊 Iteration {iteration + 1}: User {user_id} (Group {selected_group_id})")
-            logger.info(f"   Looking for groups from top {len(recommendations)} recommendations")
-
-        # Try to join the best recommendation if it's not full
-        joined = False
-        for rec in recommendations:
-            rec_group_id = rec['id']
-
-            # Check if target group has space
-            group_info = get_group_info(session, rec_group_id)
-            if not group_info:
-                continue
-
-            if group_info['member_count'] < max_roommates_per_group:
-                # Try to join this group
-                success = add_user_to_group(session, user_id, rec_group_id, caps, use_weights, weights)
-
-                if success:
-                    # Log the group change
-                    old_group = selected_group_id
-                    new_group = rec_group_id
-                    new_group_info = get_group_info(session, new_group)
-
-                    group_change = {
-                        'iteration': iteration + 1,
-                        'user_id': user_id,
-                        'old_group': old_group,
-                        'new_group': new_group,
-                        'old_parameters': {p: user_record[p] for p in PARAMETERS},
-                        'new_parameters': new_group_info['parameters'] if new_group_info else {},
-                        'group_size': new_group_info['member_count'] if new_group_info else 0
-                    }
-                    simulation_stats['group_changes'].append(group_change)
-
-                    simulation_stats['successful_joins'] += 1
-                    joined = True
-
-                    if verbose:
-                        logger.info(f"   ✅ Joined group {new_group} (size: {group_change['group_size']})")
-                        logger.info(f"      Old group parameters: {group_change['old_parameters']}")
-                        logger.info(f"      New group parameters: {group_change['new_parameters']}")
-
-                    break
-                else:
-                    simulation_stats['failed_joins'] += 1
-                    if verbose:
-                        logger.warning(f"   ❌ Failed to join group {rec_group_id}")
-            else:
-                if verbose:
-                    logger.debug(f"   Skipping full group {rec_group_id} (size: {group_info['member_count']})")
-
-        if not joined:
-            if verbose:
-                logger.info(f"   ⚠️  No suitable group found for user {user_id}")
-
-        simulation_stats['iterations'] += 1
-
-        # Update available groups list (remove any that became full)
-        current_single_groups_query = """
-            MATCH (g:Group)
-            WHERE COUNT {(g)<-[:MEMBER_OF]-()} = 1
-            RETURN g.id as group_id
-        """
-        current_result = session.run(current_single_groups_query)
-        available_groups = [record['group_id'] for record in current_result]
-
-    # Final statistics
-    final_groups_query = "MATCH (g:Group) RETURN count(g) as total_groups"
-    final_result = session.run(final_groups_query)
-    final_count = final_result.single()['total_groups']
-
-    simulation_stats['final_groups'] = final_count
-
-    if verbose:
-        logger.info("📈 Simulation completed:")
-        logger.info(f"   Iterations: {simulation_stats['iterations']}")
-        logger.info(f"   Successful joins: {simulation_stats['successful_joins']}")
-        logger.info(f"   Failed joins: {simulation_stats['failed_joins']}")
-        logger.info(f"   Final group count: {final_count}")
-        logger.info(f"   Group changes logged: {len(simulation_stats['group_changes'])}")
-
-    return simulation_stats
 
 
 def check_neo4j_connection():
@@ -1088,51 +934,6 @@ def check_neo4j_connection():
     return False
 
 
-def sample_users():
-    """Generate a diverse set of test users for recommendation testing."""
-    users = [
-        {'id': 'u1',  'name': 'Alice (Budget Student)',      'rooms': 1, 'roommates': 1, 'budget':  8000, 'months': 12},
-        {'id': 'u2',  'name': 'Bob (Shared Apartment)',       'rooms': 2, 'roommates': 2, 'budget': 12000, 'months':  6},
-        {'id': 'u3',  'name': 'Charlie (Luxury Seeker)',      'rooms': 4, 'roommates': 2, 'budget': 60000, 'months': 12},
-        {'id': 'u4',  'name': 'Dave (Professional)',          'rooms': 2, 'roommates': 1, 'budget': 15000, 'months':  9},
-        {'id': 'u5',  'name': 'Eve (Solo Living)',            'rooms': 1, 'roommates': 0, 'budget': 11000, 'months': 24},
-        {'id': 'u6',  'name': 'Frank (Budget Conscious)',     'rooms': 1, 'roommates': 1, 'budget':  9000, 'months': 12},
-        {'id': 'u7',  'name': 'Grace (Short Term)',           'rooms': 2, 'roommates': 1, 'budget': 14000, 'months':  3},
-        {'id': 'u8',  'name': 'Henry (Family Space)',         'rooms': 3, 'roommates': 3, 'budget': 25000, 'months': 18},
-        {'id': 'u9',  'name': 'Irene (Long Term Saver)',      'rooms': 1, 'roommates': 0, 'budget':  7000, 'months': 36},
-        {'id': 'u10', 'name': 'Jack (Flexible)',              'rooms': 2, 'roommates': 2, 'budget': 13000, 'months':  9},
-        {'id': 'u11', 'name': 'Kate (High Budget Solo)',      'rooms': 2, 'roommates': 0, 'budget': 25000, 'months': 12},
-        {'id': 'u12', 'name': 'Liam (Short Stay)',            'rooms': 1, 'roommates': 1, 'budget':  9000, 'months':  3},
-        {'id': 'u13', 'name': 'Mia (Big Group Seeker)',       'rooms': 4, 'roommates': 5, 'budget': 30000, 'months': 12},
-        {'id': 'u14', 'name': 'Noah (Family Style)',          'rooms': 3, 'roommates': 3, 'budget': 28000, 'months': 18},
-        {'id': 'u15', 'name': 'Olivia (Remote Worker)',       'rooms': 2, 'roommates': 1, 'budget': 16000, 'months': 12},
-        {'id': 'u16', 'name': 'Paul (Frugal)',                'rooms': 1, 'roommates': 2, 'budget':  6000, 'months':  6},
-        {'id': 'u17', 'name': 'Quinn (Premium Long Term)',    'rooms': 3, 'roommates': 2, 'budget': 45000, 'months': 24},
-        {'id': 'u18', 'name': 'Rose (Minimalist)',            'rooms': 1, 'roommates': 0, 'budget':  5000, 'months':  6},
-        {'id': 'u19', 'name': 'Sam (Social Butterfly)',       'rooms': 2, 'roommates': 4, 'budget': 14000, 'months': 12},
-        {'id': 'u20', 'name': 'Tina (Midrange Short)',        'rooms': 2, 'roommates': 1, 'budget': 12000, 'months':  4},
-        {'id': 'u21', 'name': 'Uma (Spacious)',               'rooms': 3, 'roommates': 1, 'budget': 22000, 'months': 12},
-        {'id': 'u22', 'name': 'Victor (Large Group)',         'rooms': 4, 'roommates': 4, 'budget': 35000, 'months': 10},
-        {'id': 'u23', 'name': 'Wendy (Two Roommates)',        'rooms': 2, 'roommates': 2, 'budget': 15000, 'months':  8},
-        {'id': 'u24', 'name': 'Xavier (High End)',            'rooms': 4, 'roommates': 1, 'budget': 60000, 'months': 18},
-        {'id': 'u25', 'name': 'Yara (Economical Long)',       'rooms': 1, 'roommates': 2, 'budget':  8000, 'months': 24},
-        {'id': 'u26', 'name': 'Zack (Max Roommates)',         'rooms': 3, 'roommates': 5, 'budget': 20000, 'months': 12},
-        {'id': 'u27', 'name': 'Anna (Starter)',               'rooms': 1, 'roommates': 1, 'budget':  7000, 'months':  6},
-        {'id': 'u28', 'name': 'Ben (Work Travel)',            'rooms': 1, 'roommates': 3, 'budget': 10000, 'months':  5},
-        {'id': 'u29', 'name': 'Cara (Calm)',                  'rooms': 2, 'roommates': 0, 'budget': 11000, 'months': 12},
-        {'id': 'u30', 'name': 'Dan (Music)',                  'rooms': 2, 'roommates': 3, 'budget': 13000, 'months': 11},
-        {'id': 'u31', 'name': 'Ella (Graduate)',              'rooms': 1, 'roommates': 2, 'budget':  9000, 'months': 10},
-        {'id': 'u32', 'name': 'Finn (Long Lease)',            'rooms': 2, 'roommates': 1, 'budget': 12500, 'months': 24},
-        {'id': 'u33', 'name': 'Gia (Family Sized)',           'rooms': 4, 'roommates': 3, 'budget': 40000, 'months': 24},
-        {'id': 'u34', 'name': 'Hugo (Big Budget Group)',      'rooms': 3, 'roommates': 4, 'budget': 50000, 'months': 12},
-        {'id': 'u35', 'name': 'Ivy (Compact Duo)',            'rooms': 1, 'roommates': 1, 'budget':  8500, 'months':  9},
-    ]
-    
-    logger.debug(f"Generated {len(users)} test users with diverse preferences")
-    for user in users:
-        logger.debug(f"User {user['id']}: {user['name']} - {user['rooms']}R, {user['roommates']}RM, ₽{user['budget']}, {user['months']}M")
-    
-    return users
 
 def build_test_db_and_find_recommendations(
     top_k=3,
@@ -1275,6 +1076,8 @@ def build_test_db_and_find_recommendations(
         return {}
 
 if __name__ == '__main__':
+    from simulation import sample_users, simulate_group_formation
+    
     logger.info("🎯 Neo4j Roommate Recommendation System Test Suite")
     logger.info("=" * 60)
 

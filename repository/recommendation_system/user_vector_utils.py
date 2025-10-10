@@ -49,13 +49,16 @@ available_parameters = {
     'months': normalize_months
 }
 
+multiplier = 10
+
 # Default weights applied to GROUP parameter vectors
 group_parameter_weights = {
-    'rooms': 1,
-    'roommates': 1,
-    'budget': 0.35,
-    'months': 0.15
+    'rooms': 1 * multiplier,
+    'roommates': 1 * multiplier,
+    'budget': 0.35 * multiplier,
+    'months': 0.15 * multiplier
 }
+
 
 def create_user_vector(user:dict, parameters:list, caps:dict=None):
     """Create an unweighted normalized vector in the order of `parameters`."""
@@ -93,16 +96,40 @@ def create_group_vector_with_weights(values:dict, parameters:list, weights:dict,
     return weighted_vector
 
 
-def cosine_distance(vec1:list, vec2:list) -> float:
-    """Compute cosine distance = 1 - cosine similarity for two equal-length vectors."""
+# Commented out - using Euclidean distance instead
+# def cosine_distance(vec1:list, vec2:list) -> float:
+#     """Compute cosine distance = 1 - cosine similarity for two equal-length vectors."""
+#     if not vec1 or not vec2 or len(vec1) != len(vec2):
+#         return 1.0
+#     dot = sum(a*b for a, b in zip(vec1, vec2))
+#     norm1 = sqrt(sum(a*a for a in vec1))
+#     norm2 = sqrt(sum(b*b for b in vec2))
+#     if norm1 == 0.0 or norm2 == 0.0:
+#         return 1.0
+#     return 1.0 - (dot / (norm1 * norm2))
+
+
+def euclidean_distance(vec1:list, vec2:list) -> float:
+    """Compute Euclidean distance between two equal-length vectors.
+    
+    Returns normalized distance in [0, 1] range where:
+    - 0 = identical vectors
+    - 1 = maximum distance
+    """
     if not vec1 or not vec2 or len(vec1) != len(vec2):
         return 1.0
-    dot = sum(a*b for a, b in zip(vec1, vec2))
-    norm1 = sqrt(sum(a*a for a in vec1))
-    norm2 = sqrt(sum(b*b for b in vec2))
-    if norm1 == 0.0 or norm2 == 0.0:
-        return 1.0
-    return 1.0 - (dot / (norm1 * norm2))
+    
+    # Calculate Euclidean distance (L2 norm)
+    squared_diff = sum((a - b) ** 2 for a, b in zip(vec1, vec2))
+    distance = sqrt(squared_diff)
+    
+    # Normalize to [0, 1] range
+    # Max possible distance for normalized vectors is sqrt(2) for opposing unit vectors
+    # We'll use sqrt(len(vec1)) as a conservative max for normalized [0,1] vectors
+    max_distance = sqrt(len(vec1))
+    normalized_distance = min(1.0, distance / max_distance)
+    
+    return normalized_distance
 
 
 if __name__ == "__main__":
@@ -129,9 +156,9 @@ if __name__ == "__main__":
     vec_a = create_group_vector_with_weights(group_a, parameters, weights, caps)
     vec_b = create_group_vector_with_weights(group_b, parameters, weights, caps)
 
-    dist_weighted = cosine_distance(vec_a, vec_b)
+    dist_weighted = euclidean_distance(vec_a, vec_b)
 
     print(f"Group A weighted vector: {vec_a}")
     print(f"Group B weighted vector: {vec_b}")
-    print(f"Cosine distance (group, weighted): {dist_weighted}")
+    print(f"Euclidean distance (group, weighted): {dist_weighted}")
     print(f"Similarity score (group, weighted): {round((1 - dist_weighted)*100, 2)}%")
