@@ -21,7 +21,8 @@ dotenv.load_dotenv()
 # Setup logger
 logger = setup_logger("roommate_db", "INFO")
 
-PARAMETERS = ['rooms', 'roommates', 'budget', 'months']
+# Import parameters from config
+from config import PARAMETERS, VECTOR_DIMENSIONS, SIMILARITY_FUNCTION
 
 def get_driver(uri=None, user=None, password=None):
     uri = uri or os.getenv('NEO4J_URI')  # prefer IPv4 localhost
@@ -83,13 +84,13 @@ def ensure_constraints_and_index(session, dims):
         
         if result.peek() is None:
             # Create vector index for User.embedding using new syntax
-            index_create_query = """
+            index_create_query = f"""
                 CREATE VECTOR INDEX user_vec_index IF NOT EXISTS
                 FOR (u:User) ON (u.embedding)
-                OPTIONS {indexConfig: {
+                OPTIONS {{indexConfig: {{
                     `vector.dimensions`: $dims,
-                    `vector.similarity_function`: 'euclidean'
-                }}
+                    `vector.similarity_function`: '{SIMILARITY_FUNCTION}'
+                }}}}
             """
             log_neo4j_query(logger, index_create_query, {"dims": dims})
             session.run(index_create_query, dims=dims)
@@ -110,13 +111,13 @@ def ensure_constraints_and_index(session, dims):
         gresult = session.run(gindex_check_query)
 
         if gresult.peek() is None:
-            gindex_create_query = """
+            gindex_create_query = f"""
                 CREATE VECTOR INDEX group_vec_index IF NOT EXISTS
                 FOR (g:Group) ON (g.embedding)
-                OPTIONS {indexConfig: {
+                OPTIONS {{indexConfig: {{
                     `vector.dimensions`: $dims,
-                    `vector.similarity_function`: 'euclidean'
-                }}
+                    `vector.similarity_function`: '{SIMILARITY_FUNCTION}'
+                }}}}
             """
             log_neo4j_query(logger, gindex_create_query, {"dims": dims})
             session.run(gindex_create_query, dims=dims)

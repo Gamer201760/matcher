@@ -6,6 +6,7 @@ Create normalized preference vectors for users and groups and compare them with 
 - Supports optional weighting of vector components for GROUPS.
 """
 from math import sqrt
+from config import GROUP_PARAMETER_WEIGHTS, WEIGHT_MULTIPLIER, DEFAULT_CAPS
 
 
 def _clamp(value, min_value, max_value):
@@ -17,28 +18,32 @@ def _clamp(value, min_value, max_value):
     return value
 
 
-def normalize_rooms(x, cap=10):
+def normalize_rooms(x, cap=None):
     """Normalize desired rooms to [0, 1] by capping at cap and dividing by cap."""
+    cap = cap or DEFAULT_CAPS['rooms']
     x = _clamp(x, 0, cap)
     return x / cap
 
     
-def normalize_roommates(x, cap=10):
+def normalize_roommates(x, cap=None):
     """Normalize desired roommates to [0, 1] by capping at cap and dividing by cap."""
+    cap = cap or DEFAULT_CAPS['roommates']
     x = _clamp(x, 0, cap)
     return x / cap
 
 
-def normalize_budget(x, cap=200000):
+def normalize_budget(x, cap=None):
     """Normalize budget to [0, 1] by clamping to [0, cap] and dividing by cap."""
+    cap = cap or DEFAULT_CAPS['budget']
     if cap <= 0:
         return 0.0
     x = _clamp(x, 0, cap)
     return x / float(cap)
 
 
-def normalize_months(x, cap=36):
+def normalize_months(x, cap=None):
     """Normalize months to [0, 1] by clamping to [1, cap] and dividing by cap."""
+    cap = cap or DEFAULT_CAPS['months']
     x = _clamp(x, 1, cap)
     return x / float(cap)
 
@@ -49,15 +54,9 @@ available_parameters = {
     'months': normalize_months
 }
 
-multiplier = 10
-
-# Default weights applied to GROUP parameter vectors
-group_parameter_weights = {
-    'rooms': 1 * multiplier,
-    'roommates': 1 * multiplier,
-    'budget': 0.35 * multiplier,
-    'months': 0.15 * multiplier
-}
+# Weights imported from config.py
+# group_parameter_weights is now GROUP_PARAMETER_WEIGHTS from config
+group_parameter_weights = GROUP_PARAMETER_WEIGHTS
 
 
 def create_user_vector(user:dict, parameters:list, caps:dict=None):
