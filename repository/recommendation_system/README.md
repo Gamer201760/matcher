@@ -6,6 +6,7 @@
 - [Обзор системы](#обзор-системы)
 - [Архитектура](#архитектура)
 - [Файлы системы](#файлы-системы)
+- [Конфигурация](#конфигурация)
 - [Функции по файлам](#функции-по-файлам)
 - [Результаты тестирования](#результаты-тестирования)
 - [Известные проблемы](#известные-проблемы)
@@ -14,6 +15,7 @@
 - [System Overview](#system-overview)
 - [Architecture](#architecture)
 - [System Files](#system-files)
+- [Configuration](#configuration)
 - [Functions by File](#functions-by-file)
 - [Testing Results](#testing-results)
 - [Known Issues](#known-issues)
@@ -30,17 +32,19 @@
 
 1. **Регистрация пользователя** → Создаётся профиль с параметрами (комнаты, соседи, бюджет, срок)
 2. **Векторизация** → Параметры нормализуются в 4-мерный вектор [0,1]
-3. **Взвешивание** → Применяются веса (комнаты: 1.0, соседи: 1.0, бюджет: 0.35, срок: 0.15)
+3. **Взвешивание** → Применяются веса (комнаты: 1.0, соседи: 1.0, бюджет: 0.35, срок: 0.15) × множитель (10)
 4. **Векторный поиск** → Neo4j находит похожие группы через Евклидово расстояние
 5. **Формирование групп** → Пользователи объединяются, параметры группы усредняются
 6. **Управление** → Запросы на вступление, одобрение, выход из групп
 
 ### Ключевые параметры
 
-- **rooms** (комнаты): 1-4, нормализация cap=10, вес=1.0
-- **roommates** (соседи): 0-5, нормализация cap=10, вес=1.0  
-- **budget** (бюджет): ₽5,000-60,000, нормализация cap=200,000, вес=0.35
-- **months** (месяцы): 3-36, нормализация cap=36, вес=0.15
+- **rooms** (комнаты): 1-4, нормализация cap=10, базовый вес=1.0 → финальный вес=10.0
+- **roommates** (соседи): 0-5, нормализация cap=10, базовый вес=1.0 → финальный вес=10.0
+- **budget** (бюджет): ₽5,000-60,000, нормализация cap=200,000, базовый вес=0.35 → финальный вес=3.5
+- **months** (месяцы): 3-36, нормализация cap=36, базовый вес=0.15 → финальный вес=1.5
+
+**Множитель весов**: 10 (настраивается в `config.py` → `WEIGHT_MULTIPLIER`)
 
 ## Архитектура
 
@@ -72,22 +76,82 @@
 
 ## Файлы системы
 
-### 1. **service.py** - API Сервис
+### 1. **config.py** - Конфигурация системы
+Центральный файл конфигурации со всеми константами: параметры, веса, множитель, настройки БД и симуляции.
+
+### 2. **service.py** - API Сервис
 Высокоуровневый API для работы с системой. Предоставляет методы создания профилей, поиска похожих пользователей, управления группами.
 
-### 2. **db_management_utils.py** - Управление БД
+### 3. **db_management_utils.py** - Управление БД
 Основная логика работы с Neo4j: CRUD операции, векторный поиск, управление группами, симуляция формирования групп.
 
-### 3. **user_vector_utils.py** - Векторная математика
+### 4. **user_vector_utils.py** - Векторная математика
 Нормализация параметров, создание векторов с весами, вычисление Евклидова расстояния.
 
-### 4. **logging_utils.py** - Логирование
+### 5. **logging_utils.py** - Логирование
 Структурированное логирование запросов Neo4j, векторных операций, результатов поиска, статистики БД.
 
-### 5. **simulation.py** - Интерактивная симуляция
+### 6. **simulation.py** - Интерактивная симуляция
 Инструмент для тестирования: генерация пользователей, интерактивная регистрация, поиск групп, вступление/выход.
 
+## Конфигурация
+
+Все константы системы хранятся в `config.py` для удобной настройки:
+
+### Параметры базы данных
+- **PARAMETERS**: `['rooms', 'roommates', 'budget', 'months']` - параметры для сопоставления
+- **VECTOR_DIMENSIONS**: `4` - размерность векторов
+- **SIMILARITY_FUNCTION**: `'euclidean'` - функция схожести (cosine/euclidean)
+
+### Нормализация
+- **DEFAULT_CAPS**: Границы нормализации для всех параметров
+  - `rooms`: 10 - максимум комнат
+  - `roommates`: 10 - максимум соседей
+  - `budget`: 200,000 ₽ - максимальный бюджет
+  - `months`: 36 месяцев - максимальный срок
+
+### Веса и множитель
+- **WEIGHT_MULTIPLIER**: `10` - множитель для усиления чувствительности
+- **BASE_WEIGHTS**: Базовые веса (до множителя)
+  - `rooms`: 1.0
+  - `roommates`: 1.0
+  - `budget`: 0.35
+  - `months`: 0.15
+- **GROUP_PARAMETER_WEIGHTS**: Финальные веса (базовые × множитель)
+  - `rooms`: 10.0
+  - `roommates`: 10.0
+  - `budget`: 3.5
+  - `months`: 1.5
+
+### Настройки поиска
+- **DEFAULT_TOP_K**: `5` - количество рекомендаций по умолчанию
+- **DEFAULT_MAX_ROOMMATES**: `4` - максимум участников в группе
+- **AUTO_DEACTIVATE_FULL_GROUPS**: `True` - автодеактивация заполненных групп
+
+### Настройки симуляции
+- **DEFAULT_FAKE_USER_COUNT**: `20` - количество тестовых пользователей
+- **FAKE_USER_BUDGET_RANGE**: `(5000, 60000)` - диапазон бюджета
+- **FAKE_USER_MONTHS_OPTIONS**: `[3, 6, 9, 12, 18, 24, 36]` - варианты срока
+
+### Логирование
+- **DEFAULT_LOG_LEVEL**: `'INFO'` - уровень логирования по умолчанию
+- **MODULE_LOG_LEVELS**: Уровни для конкретных модулей
+
 ## Функции по файлам
+
+### config.py
+
+#### Константы
+**Назначение**: Центральное хранилище всех настроек системы  
+**Использование**: Импортируется всеми модулями для консистентности
+
+**Основные константы**:
+- `PARAMETERS` - список параметров для векторизации
+- `WEIGHT_MULTIPLIER` - множитель весов (влияет на чувствительность)
+- `GROUP_PARAMETER_WEIGHTS` - финальные веса параметров
+- `SIMILARITY_FUNCTION` - используемая метрика ('euclidean' или 'cosine')
+- `DEFAULT_CAPS` - границы нормализации параметров
+- Настройки симуляции и логирования
 
 ### service.py
 
@@ -394,17 +458,19 @@ The Roommate Recommendation System is a Neo4j-based vector search engine for mat
 
 1. **User Registration** → Profile created with parameters (rooms, roommates, budget, duration)
 2. **Vectorization** → Parameters normalized to 4D vector [0,1]
-3. **Weighting** → Weights applied (rooms: 1.0, roommates: 1.0, budget: 0.35, duration: 0.15)
+3. **Weighting** → Weights applied (rooms: 1.0, roommates: 1.0, budget: 0.35, duration: 0.15) × multiplier (10)
 4. **Vector Search** → Neo4j finds similar groups via Euclidean distance
 5. **Group Formation** → Users join groups, group parameters averaged
 6. **Management** → Join requests, approvals, leaving groups
 
 ### Key Parameters
 
-- **rooms**: 1-4, normalization cap=10, weight=1.0
-- **roommates**: 0-5, normalization cap=10, weight=1.0
-- **budget**: ₽5,000-60,000, normalization cap=200,000, weight=0.35
-- **months**: 3-36, normalization cap=36, weight=0.15
+- **rooms**: 1-4, normalization cap=10, base weight=1.0 → final weight=10.0
+- **roommates**: 0-5, normalization cap=10, base weight=1.0 → final weight=10.0
+- **budget**: ₽5,000-60,000, normalization cap=200,000, base weight=0.35 → final weight=3.5
+- **months**: 3-36, normalization cap=36, base weight=0.15 → final weight=1.5
+
+**Weight Multiplier**: 10 (configurable in `config.py` → `WEIGHT_MULTIPLIER`)
 
 ## Architecture
 
@@ -436,22 +502,82 @@ The Roommate Recommendation System is a Neo4j-based vector search engine for mat
 
 ## System Files
 
-### 1. **service.py** - API Service
+### 1. **config.py** - System Configuration
+Central configuration file with all constants: parameters, weights, multiplier, database and simulation settings.
+
+### 2. **service.py** - API Service
 High-level API for system interaction. Provides methods for profile creation, finding similar users, managing groups.
 
-### 2. **db_management_utils.py** - Database Management
+### 3. **db_management_utils.py** - Database Management
 Core Neo4j logic: CRUD operations, vector search, group management, group formation simulation.
 
-### 3. **user_vector_utils.py** - Vector Mathematics
+### 4. **user_vector_utils.py** - Vector Mathematics
 Parameter normalization, weighted vector creation, Euclidean distance calculation.
 
-### 4. **logging_utils.py** - Logging
+### 5. **logging_utils.py** - Logging
 Structured logging for Neo4j queries, vector operations, search results, database statistics.
 
-### 5. **simulation.py** - Interactive Simulation
+### 6. **simulation.py** - Interactive Simulation
 Testing tool: user generation, interactive registration, group search, joining/leaving.
 
+## Configuration
+
+All system constants are stored in `config.py` for easy customization:
+
+### Database Parameters
+- **PARAMETERS**: `['rooms', 'roommates', 'budget', 'months']` - parameters for matching
+- **VECTOR_DIMENSIONS**: `4` - vector dimensionality
+- **SIMILARITY_FUNCTION**: `'euclidean'` - similarity metric (cosine/euclidean)
+
+### Normalization
+- **DEFAULT_CAPS**: Normalization boundaries for all parameters
+  - `rooms`: 10 - maximum rooms
+  - `roommates`: 10 - maximum roommates
+  - `budget`: 200,000 ₽ - maximum budget
+  - `months`: 36 months - maximum duration
+
+### Weights and Multiplier
+- **WEIGHT_MULTIPLIER**: `10` - multiplier for increased sensitivity
+- **BASE_WEIGHTS**: Base weights (before multiplier)
+  - `rooms`: 1.0
+  - `roommates`: 1.0
+  - `budget`: 0.35
+  - `months`: 0.15
+- **GROUP_PARAMETER_WEIGHTS**: Final weights (base × multiplier)
+  - `rooms`: 10.0
+  - `roommates`: 10.0
+  - `budget`: 3.5
+  - `months`: 1.5
+
+### Search Settings
+- **DEFAULT_TOP_K**: `5` - default number of recommendations
+- **DEFAULT_MAX_ROOMMATES**: `4` - maximum group members
+- **AUTO_DEACTIVATE_FULL_GROUPS**: `True` - auto-deactivate full groups
+
+### Simulation Settings
+- **DEFAULT_FAKE_USER_COUNT**: `20` - number of test users
+- **FAKE_USER_BUDGET_RANGE**: `(5000, 60000)` - budget range
+- **FAKE_USER_MONTHS_OPTIONS**: `[3, 6, 9, 12, 18, 24, 36]` - duration options
+
+### Logging
+- **DEFAULT_LOG_LEVEL**: `'INFO'` - default log level
+- **MODULE_LOG_LEVELS**: Module-specific log levels
+
 ## Functions by File
+
+### config.py
+
+#### Constants
+**Purpose**: Central storage for all system settings  
+**Usage**: Imported by all modules for consistency
+
+**Main Constants**:
+- `PARAMETERS` - list of parameters for vectorization
+- `WEIGHT_MULTIPLIER` - weight multiplier (affects sensitivity)
+- `GROUP_PARAMETER_WEIGHTS` - final parameter weights
+- `SIMILARITY_FUNCTION` - similarity metric used ('euclidean' or 'cosine')
+- `DEFAULT_CAPS` - parameter normalization boundaries
+- Simulation and logging settings
 
 ### service.py
 
