@@ -55,22 +55,22 @@
          │
 ┌────────▼────────────────────────────────────┐
 │     db_management_utils.py                  │  ← Логика БД
-│  • Управление пользователями/группами      │
-│  • Векторный поиск                         │
-│  • Neo4j запросы                           │
+│  • Управление пользователями/группами       │
+│  • Векторный поиск                          │
+│  • Neo4j запросы                            │
 └────────┬────────────────────────────────────┘
          │
 ┌────────▼────────────────────────────────────┐
 │     user_vector_utils.py                    │  ← Векторная математика
-│  • Нормализация параметров                 │
-│  • Создание векторов                       │
-│  • Евклидово расстояние                    │
+│  • Нормализация параметров                  │
+│  • Создание векторов                        │
+│  • Евклидово расстояние                     │
 └─────────────────────────────────────────────┘
          │
 ┌────────▼────────────────────────────────────┐
 │         Neo4j Database                      │
-│  Узлы: User, Group, Parameter              │
-│  Индексы: Векторный (Euclidean)            │
+│  Узлы: User, Group, Parameter               │
+│  Индексы: Векторный (Euclidean)             │
 └─────────────────────────────────────────────┘
 ```
 
@@ -362,9 +362,15 @@
   - Назначение: Автоматическая симуляция формирования групп
   - Использование: Тестирование алгоритма подбора
 
-- **`run_interactive_simulation(fake_user_count)`**
+- **`run_interactive_simulation(fake_user_count, prefilled_user)`**
   - Назначение: Запуск полной интерактивной симуляции
   - Использование: Главная функция для тестирования
+  - **Параметры**:
+    - `fake_user_count`: Количество генерируемых пользователей (по умолчанию 20)
+    - `prefilled_user`: Опциональный словарь с предзаполненными данными пользователя
+  - **Режимы**:
+    - Без параметров: Запрос выбора (предзаполненные/ручной ввод)
+    - С `prefilled_user`: Автоматическое использование предзаполненных данных
 
 ### logging_utils.py
 
@@ -495,8 +501,8 @@ The Roommate Recommendation System is a Neo4j-based vector search engine for mat
          │
 ┌────────▼────────────────────────────────────┐
 │         Neo4j Database                      │
-│  Nodes: User, Group, Parameter             │
-│  Indexes: Vector (Euclidean)               │
+│  Nodes: User, Group, Parameter              │
+│  Indexes: Vector (Euclidean)                │
 └─────────────────────────────────────────────┘
 ```
 
@@ -788,9 +794,15 @@ All system constants are stored in `config.py` for easy customization:
   - Purpose: Automatic group formation simulation
   - Usage: Test matching algorithm
 
-- **`run_interactive_simulation(fake_user_count)`**
+- **`run_interactive_simulation(fake_user_count, prefilled_user)`**
   - Purpose: Run full interactive simulation
   - Usage: Main function for testing
+  - **Parameters**:
+    - `fake_user_count`: Number of users to generate (default 20)
+    - `prefilled_user`: Optional dict with prefilled user data
+  - **Modes**:
+    - Without parameters: Prompts choice (prefilled/manual input)
+    - With `prefilled_user`: Automatically uses prefilled data
 
 ### logging_utils.py
 
@@ -899,6 +911,25 @@ NEO4J_PASSWORD=your_password
 2. **Run simulation**:
    ```bash
    python simulation.py
+   ```
+   
+   Or with prefilled data:
+   ```python
+   from simulation import run_interactive_simulation
+   
+   # Use default test data (prompted)
+   run_interactive_simulation(fake_user_count=20)
+   
+   # Use custom prefilled data
+   custom_user = {
+       'id': 'my_user',
+       'name': 'My Name',
+       'rooms': 3,
+       'roommates': 2,
+       'budget': 20000,
+       'months': 12
+   }
+   run_interactive_simulation(fake_user_count=20, prefilled_user=custom_user)
    ```
 
 3. **Use API**:
