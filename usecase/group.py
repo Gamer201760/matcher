@@ -1,14 +1,14 @@
 from typing import List
 from uuid import UUID
 
-from interface import (
+from entity.errors import DomainError, NotFoundError
+from entity.group import Group
+
+from .interface import (
     GroupRecomendationRepository,
     GroupRepository,
     GroupRequestRepository,
 )
-
-from entity.errors import DomainError, NotFoundError
-from entity.group import Group
 
 
 class FindGroupService:

@@ -1,86 +1,169 @@
 from uuid import UUID
 
 import grpc
-from google.protobuf import empty_pb2
+from google.protobuf.empty_pb2 import Empty
 
-from adapter.grpc import mapper
-from entity.errors import EntityAlreadyExistsError, NotFoundError
-from gen.form import form_pb2
-from gen.form.form_pb2_grpc import FormServiceStub
-from usecase.form_query import FormQuery
+import gen.matcher.matcher_pb2 as pb2
+import gen.matcher.matcher_pb2_grpc as pb2_grpc
+from entity.errors import DomainError, NotFoundError
+from usecase.form import FormService
+from usecase.group import (
+    FindGroupService,
+    GroupService,
+)
+from usecase.group_query import GroupQuery
+
+from .mapper import from_proto_parameters, to_proto_form, to_proto_group
 
 
-class FormServiceAdapter(FormServiceStub):
-    """
-    Адаптер, который связывает gRPC-интерфейс с бизнес-логикой (FormQuery).
-    """
+class FormServicer(pb2_grpc.FormServiceServicer):
+    def __init__(self, service: FormService):
+        self.service = service
 
-    def __init__(self, query_service: FormQuery):
-        self.query_service = query_service
-
-    def CreateForm(self, request: form_pb2.CreateFormRequest, context):
-        try:
-            domain_form = mapper.proto_to_domain(request.form)
-            self.query_service.create_form(domain_form)
-            return empty_pb2.Empty()
-        except EntityAlreadyExistsError as e:
-            context.set_code(grpc.StatusCode.ALREADY_EXISTS)
-            context.set_details(str(e))
-            return empty_pb2.Empty()
-        except Exception as e:
-            # Общая обработка непредвиденных ошибок
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f'An internal error occurred: {e}')
-            return empty_pb2.Empty()
-
-    def GetForm(self, request: form_pb2.GetFormRequest, context):
+    def CreateForm(self, request, context):
         try:
             user_id = UUID(request.user_id)
-            domain_form = self.query_service.get_form(user_id)
-            return mapper.domain_to_proto(domain_form)
+            parameters = from_proto_parameters(request.parameters)
+            self.service.create(user_id, parameters)
+            return Empty()
         except NotFoundError as e:
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details(str(e))
-            # При ошибке возвращаем пустой объект, как того требует сигнатура RPC
-            return form_pb2.Form()
-        except ValueError:
-            # Если передан невалидный UUID
-            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            context.set_details(f"Invalid user_id format: '{request.user_id}'")
-            return form_pb2.Form()
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except DomainError as e:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f'An internal error occurred: {e}')
-            return form_pb2.Form()
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
 
-    def UpdateForm(self, request: form_pb2.UpdateFormRequest, context):
-        try:
-            domain_form = mapper.proto_to_domain(request.form)
-            self.query_service.update_form(domain_form)
-            return empty_pb2.Empty()
-        except NotFoundError as e:
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details(str(e))
-            return empty_pb2.Empty()
-        except Exception as e:
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f'An internal error occurred: {e}')
-            return empty_pb2.Empty()
-
-    def DeleteForm(self, request: form_pb2.DeleteFormRequest, context):
+    def GetFormByUser(self, request, context):
         try:
             user_id = UUID(request.user_id)
-            self.query_service.delete_form(user_id)
-            return empty_pb2.Empty()
+            form = self.service.get_by_user(user_id)
+            return to_proto_form(form)
         except NotFoundError as e:
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details(str(e))
-            return empty_pb2.Empty()
-        except ValueError:
-            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            context.set_details(f"Invalid user_id format: '{request.user_id}'")
-            return empty_pb2.Empty()
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
         except Exception as e:
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f'An internal error occurred: {e}')
-            return empty_pb2.Empty()
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+    def UpdateForm(self, request, context):
+        try:
+            user_id = UUID(request.user_id)
+            parameters = from_proto_parameters(request.parameters)
+            self.service.update(user_id, parameters)
+            return Empty()
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except DomainError as e:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+    def DeleteForm(self, request, context):
+        try:
+            user_id = UUID(request.user_id)
+            self.service.delete(user_id)
+            return Empty()
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except DomainError as e:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+
+class GroupQueryServicer(pb2_grpc.GroupQueryServiceServicer):
+    def __init__(self, query: GroupQuery):
+        self.query = query
+
+    def GetGroup(self, request, context):
+        try:
+            group_id = UUID(request.group_id)
+            group = self.query.get(group_id)
+            return to_proto_group(group)
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+    def DeleteGroup(self, request, context):
+        try:
+            owner_id = UUID(request.owner_id)
+            self.query.delete(owner_id)
+            return Empty()
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except DomainError as e:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+    def ListGroupMembers(self, request, context):
+        try:
+            group_id = UUID(request.group_id)
+            members = self.query.list_members(group_id)
+            return pb2.ListGroupMembersResponse(
+                members=[to_proto_form(m) for m in members]
+            )
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+
+class FindGroupServicer(pb2_grpc.FindGroupServiceServicer):
+    def __init__(self, service: FindGroupService):
+        self.service = service
+
+    def FindGroups(self, request, context):
+        try:
+            user_id = UUID(request.user_id)
+            groups = self.service.execute(user_id)
+            return pb2.FindGroupsResponse(groups=[to_proto_group(g) for g in groups])
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except DomainError as e:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+
+class GroupServicer(pb2_grpc.GroupServiceServicer):
+    def __init__(self, service: GroupService):
+        self.service = service
+
+    def SendJoinRequest(self, request, context):
+        try:
+            user_id = UUID(request.user_id)
+            group_id = UUID(request.group_id)
+            self.service.send_join_request(user_id, group_id)
+            return Empty()
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except DomainError as e:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+    def AcceptJoinRequest(self, request, context):
+        try:
+            owner_id = UUID(request.owner_id)
+            request_id = UUID(request.request_id)
+            self.service.accept_join_request(owner_id, request_id)
+            return Empty()
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except DomainError as e:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+    def RejectJoinRequest(self, request, context):
+        try:
+            owner_id = UUID(request.owner_id)
+            request_id = UUID(request.request_id)
+            self.service.reject_join_request(owner_id, request_id)
+            return Empty()
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except DomainError as e:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')

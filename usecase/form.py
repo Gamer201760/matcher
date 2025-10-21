@@ -1,11 +1,11 @@
 from uuid import UUID, uuid4
 
-from interface import FormRepository, GroupRepository
-
 from entity.errors import DomainError, NotFoundError
 from entity.form import Form
 from entity.group import Group
 from entity.parameters import Parameters
+
+from .interface import FormRepository, GroupRepository
 
 
 class FormService:
