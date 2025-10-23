@@ -22,7 +22,7 @@ from repository.recommendation_system.user_vector_utils import create_user_vecto
 
 def action_get_recommendations(session, current_user_id: str, caps: dict, use_weights: bool, weights: dict):
     """
-    Flow: Get and display recommendations for current user.
+    Flow: Get and display recommendations for current user with auto-retry on index errors.
     
     Args:
         session: Neo4j session
@@ -50,11 +50,31 @@ def action_get_recommendations(session, current_user_id: str, caps: dict, use_we
         exclude_id = f"g_{current_user_id}"
         recommendations = find_similar(session, query_vec, top_k=10, exclude_id=exclude_id)
         
-        # Display recommendations
-        display_recommendations(recommendations, session)
+        # Display recommendations with current user info
+        display_recommendations(recommendations, session, current_user=user_params)
         
     except Exception as e:
-        display_error(f"Failed to get recommendations: {e}")
+        # Auto-rebuild indexes if vector index error
+        if "vector schema index" in str(e).lower() or "group_vec_index" in str(e).lower():
+            display_warning("Vector index missing. Rebuilding indexes...")
+            try:
+                from repository.recommendation_system.db import ensure_constraints_and_index
+                ensure_constraints_and_index(session, dims=len(PARAMETERS))
+                display_info("Retrying...")
+                # Retry the operation
+                user_params = get_user_parameters(session, current_user_id)
+                group_values = {p: user_params.get(p, 0) for p in PARAMETERS}
+                if use_weights:
+                    query_vec = create_group_vector_with_weights(group_values, PARAMETERS, weights, caps)
+                else:
+                    query_vec = create_user_vector(group_values, PARAMETERS, caps)
+                exclude_id = f"g_{current_user_id}"
+                recommendations = find_similar(session, query_vec, top_k=10, exclude_id=exclude_id)
+                display_recommendations(recommendations, session, current_user=user_params)
+            except Exception as retry_error:
+                display_error(f"Failed after index rebuild: {retry_error}")
+        else:
+            display_error(f"Failed to get recommendations: {e}")
 
 
 def action_join_group(session, current_user_id: str, caps: dict, use_weights: bool, weights: dict):
@@ -94,41 +114,95 @@ def action_join_group(session, current_user_id: str, caps: dict, use_weights: bo
         # Display recommendations
         display_recommendations(recommendations, session)
         
-        # Let user choose
-        choices = [f"{i+1}. {rec['id']} ({rec.get('score', 0)*100:.1f}% match)" 
-                   for i, rec in enumerate(recommendations)]
-        choices.append("Cancel")
-        
-        choice = questionary.select(
-            "Which group would you like to join?",
-            choices=choices
-        ).ask()
-        
-        if choice == "Cancel" or not choice:
-            display_info("Join cancelled.")
+        # Loop to allow going back to recommendations
+        while True:
+            # Let user choose
+            choices = [f"{i+1}. {rec['id']} ({rec.get('score', 0)*100:.1f}% match)" 
+                       for i, rec in enumerate(recommendations)]
+            choices.append("Cancel")
+            
+            choice = questionary.select(
+                "Which group would you like to join?",
+                choices=choices
+            ).ask()
+            
+            if choice == "Cancel" or not choice:
+                display_info("Join cancelled.")
+                return
+            
+            # Extract group index
+            choice_idx = int(choice.split('.')[0]) - 1
+            target_group = recommendations[choice_idx]
+            target_group_id = target_group['id']
+            
+            # Show detailed member info before joining
+            from repository.recommendation_system.db import get_group_member_parameters
+            from repository.recommendation_system.config import round_for_display
+            
+            member_params = get_group_member_parameters(session, target_group_id)
+            
+            if not member_params:
+                display_error("Could not fetch group member information.")
+                continue
+            
+            # Display members table with full parameters
+            table = Table(title=f"Members of {target_group_id}", show_header=True, header_style="bold cyan")
+            table.add_column("Name", style="yellow")
+            table.add_column("ID", style="dim")
+            table.add_column("Rooms", justify="center")
+            table.add_column("Roommates", justify="center")
+            table.add_column("Budget", justify="right")
+            table.add_column("Months", justify="center")
+            
+            for member in member_params:
+                disp_rooms = round_for_display(member.get('rooms', 0))
+                disp_roommates = round_for_display(member.get('roommates', 0))
+                disp_budget = round_for_display(member.get('budget', 0), is_budget=True)
+                disp_months = round_for_display(member.get('months', 0))
+                
+                table.add_row(
+                    member.get('name', 'Unknown'),
+                    member.get('id', 'N/A'),
+                    str(int(disp_rooms)),
+                    str(int(disp_roommates)),
+                    f"₽{disp_budget:,.0f}",
+                    str(int(disp_months))
+                )
+            
+            console.print("\n", table, "\n")
+            
+            # Confirm join or go back
+            confirm = questionary.select(
+                "What would you like to do?",
+                choices=[
+                    "Join this group",
+                    "Go back to recommendations"
+                ]
+            ).ask()
+            
+            if confirm == "Go back to recommendations":
+                # Show recommendations again (already calculated, no recalculation)
+                display_recommendations(recommendations, session)
+                continue
+            
+            # Join group
+            success = add_user_to_group(
+                session,
+                current_user_id,
+                target_group_id,
+                caps=caps,
+                use_weights=use_weights,
+                weights=weights
+            )
+            
+            if success:
+                display_success(f"Successfully joined group {target_group_id}!")
+                # Show updated group info
+                display_group_details(session, target_group_id)
+            else:
+                display_error(f"Failed to join group {target_group_id}.")
+            
             return
-        
-        # Extract group index
-        choice_idx = int(choice.split('.')[0]) - 1
-        target_group = recommendations[choice_idx]
-        target_group_id = target_group['id']
-        
-        # Join group
-        success = add_user_to_group(
-            session,
-            current_user_id,
-            target_group_id,
-            caps=caps,
-            use_weights=use_weights,
-            weights=weights
-        )
-        
-        if success:
-            display_success(f"Successfully joined group {target_group_id}!")
-            # Show updated group info
-            display_group_details(session, target_group_id)
-        else:
-            display_error(f"Failed to join group {target_group_id}.")
             
     except Exception as e:
         display_error(f"Failed to join group: {e}")
@@ -361,7 +435,7 @@ def action_clean_database(session):
 
 def action_create_new_user(session, caps: dict, use_weights: bool, weights: dict) -> Optional[str]:
     """
-    Flow: Create a new user interactively.
+    Flow: Create a new user interactively (manual entry).
     
     Args:
         session: Neo4j session
@@ -383,6 +457,46 @@ def action_create_new_user(session, caps: dict, use_weights: bool, weights: dict
         display_success(f"User {user_data['id']} created successfully!")
         return user_data['id']
         
+    except Exception as e:
+        display_error(f"Failed to create user: {e}")
+        return None
+
+
+def action_create_new_user_main(session, caps: dict, use_weights: bool, weights: dict) -> Optional[str]:
+    """
+    Main menu version with manual/random choice.
+    
+    Args:
+        session: Neo4j session
+        caps: Normalization caps
+        use_weights: Whether to use weighted vectors
+        weights: Parameter weights
+        
+    Returns:
+        str: New user ID or None
+    """
+    try:
+        choice = questionary.select(
+            "How would you like to create the user?",
+            choices=[
+                "Manual (set all parameters)",
+                "Randomized (auto-generate parameters)",
+                "Cancel"
+            ]
+        ).ask()
+        
+        if choice == "Cancel" or not choice:
+            return None
+        
+        if "Manual" in choice:
+            return action_create_new_user(session, caps, use_weights, weights)
+        else:
+            # Generate random user
+            users = generate_fake_users(1)
+            user_data = users[0]
+            upsert_users(session, [user_data], caps=caps, use_weights=use_weights, weights=weights)
+            display_success(f"User {user_data['id']} created with random parameters!")
+            return user_data['id']
     except Exception as e:
         display_error(f"Failed to create user: {e}")
         return None

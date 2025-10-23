@@ -19,22 +19,31 @@ def generate_fake_users(count: int) -> List[Dict]:
         list: List of user dictionaries with random preferences
     """
     names = [
+        # Original names
         'Alex', 'Bailey', 'Cameron', 'Dakota', 'Eden', 'Finley', 'Gray', 'Harper',
         'Iris', 'Jordan', 'Kennedy', 'Logan', 'Morgan', 'Nico', 'Oakley', 'Parker',
         'Quinn', 'Riley', 'Sage', 'Taylor', 'Uma', 'Val', 'Winter', 'Xen', 'Yuki',
-        'Zara', 'Andy', 'Blake', 'Casey', 'Drew', 'Ellis', 'Frankie', 'Gene', 'Hayden'
+        'Zara', 'Andy', 'Blake', 'Casey', 'Drew', 'Ellis', 'Frankie', 'Gene', 'Hayden',
+        # New names (40 more)
+        'Avery', 'Brooklyn', 'Charlie', 'Devin', 'Emerson', 'Finley', 'Grey',
+        'Harley', 'Indigo', 'Jamie', 'Kai', 'Lane', 'Maven', 'Nova', 'Ocean',
+        'Phoenix', 'River', 'Skylar', 'True', 'Azure', 'Blu', 'Cedar', 'Delta',
+        'Echo', 'Fox', 'Haven', 'Jett', 'Kit', 'Lake', 'Marley', 'North',
+        'Onyx', 'Poet', 'Quest', 'Raven', 'Story', 'Timber', 'Unity', 'Wren',
+        'Ever', 'Zion', 'Arrow', 'Bear', 'Cloud', 'Dawn', 'Ember', 'Frost'
     ]
     
     users = []
     for i in range(count):
-        user_id = f'sim_u{i+1}'
-        name = random.choice(names) if i < len(names) else f'User{i+1}'
+        user_id = f'gen_u{i+1}'
+        name = random.choice(names) if i < len(names) else names[i % len(names)]
         
+        # Ensure no 0 values - all parameters must be > 0
         users.append({
             'id': user_id,
-            'name': name,
+            'name': f'{name} {i+1}' if count > len(names) else name,
             'rooms': random.randint(1, 4),
-            'roommates': random.randint(0, 5),
+            'roommates': random.randint(1, 5),  # At least 1
             'budget': random.randint(5000, 60000),
             'months': random.choice([3, 6, 9, 12, 18, 24, 36])
         })
@@ -204,4 +213,49 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
                 use_weights=use_weights,
                 weights=weights
             )
+
+
+def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, weights: dict, group_probability: float = 0.4):
+    """
+    Automatically group generated users with some probability.
+    
+    Args:
+        session: Neo4j session
+        users: List of user dictionaries
+        caps: Normalization caps
+        use_weights: Whether to use weighted vectors
+        weights: Parameter weights
+        group_probability: Chance of creating a group (default 0.4)
+    """
+    from repository.recommendation_system.db import add_user_to_group
+    
+    # Sort users by similarity (simple heuristic)
+    sorted_users = sorted(users, key=lambda u: (u['rooms'], u['budget']))
+    
+    i = 0
+    while i < len(sorted_users):
+        # Random chance to create a group
+        if random.random() < group_probability and i + 1 < len(sorted_users):
+            # Create group with 2-4 members
+            group_size = min(random.randint(2, 4), len(sorted_users) - i)
+            owner = sorted_users[i]
+            members = sorted_users[i+1:i+group_size]
+            
+            target_group_id = f"g_{owner['id']}"
+            for member in members:
+                try:
+                    add_user_to_group(
+                        session,
+                        member['id'],
+                        target_group_id,
+                        caps=caps,
+                        use_weights=use_weights,
+                        weights=weights
+                    )
+                except Exception:
+                    pass  # Skip if grouping fails
+            
+            i += group_size
+        else:
+            i += 1
 
