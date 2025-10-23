@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'repository', 'recommendation_system')))
 
 from repository.recommendation_system.service import RecommendationService, Form, Group
-from repository.recommendation_system.db_management_utils import (
+from repository.recommendation_system.db import (
     check_neo4j_connection,
     clear_users,
     get_driver,
