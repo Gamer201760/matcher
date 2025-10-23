@@ -11,7 +11,7 @@
 - [Результаты тестирования](#результаты-тестирования)
 - [Известные проблемы](#известные-проблемы)
 
-### [🇬🇧 English Version](#english-version)
+### [🇺🇸 English Version](#english-version)
 - [System Overview](#system-overview)
 - [Architecture](#architecture)
 - [System Files](#system-files)
@@ -31,59 +31,72 @@
 ### Принцип работы
 
 1. **Регистрация пользователя** → Создаётся профиль с параметрами (комнаты, соседи, бюджет, срок)
+   - Каждому пользователю автоматически создаётся одно-пользовательская группа `g_{user_id}`
 2. **Векторизация** → Параметры нормализуются в 4-мерный вектор [0,1]
-3. **Взвешивание** → Применяются веса (комнаты: 1.0, соседи: 1.0, бюджет: 0.35, срок: 0.15) × множитель (10)
-4. **Векторный поиск** → Neo4j находит похожие группы через Евклидово расстояние
-5. **Формирование групп** → Пользователи объединяются, параметры группы усредняются
-6. **Управление** → Запросы на вступление, одобрение, выход из групп
+3. **Взвешивание** → Применяются веса (комнаты: 8.0, соседи: 8.0, бюджет: 2.8, месяцы: 1.2)
+4. **Векторный поиск** → Neo4j использует векторный индекс `group_vec_index` для поиска похожих групп
+   - Метрика: Евклидово расстояние
+   - Запрос: `db.index.vector.queryNodes('group_vec_index', top_k, query_vector)`
+5. **Формирование групп** → При вступлении параметры группы пересчитываются как среднее всех участников
+6. **Управление** → Выход из группы → создание новой одно-пользовательской группы
 
 ### Ключевые параметры
 
-- **rooms** (комнаты): 1-4, нормализация cap=10, базовый вес=1.0 → финальный вес=10.0
-- **roommates** (соседи): 0-5, нормализация cap=10, базовый вес=1.0 → финальный вес=10.0
-- **budget** (бюджет): ₽5,000-60,000, нормализация cap=200,000, базовый вес=0.35 → финальный вес=3.5
-- **months** (месяцы): 3-36, нормализация cap=36, базовый вес=0.15 → финальный вес=1.5
+- **rooms** (комнаты): 1-4, нормализация cap=10, базовый вес=1.0 → финальный вес=8.0
+- **roommates** (соседи): 1-5, нормализация cap=10, базовый вес=1.0 → финальный вес=8.0
+- **budget** (бюджет): ₽5,000-60,000, нормализация cap=200,000, базовый вес=0.35 → финальный вес=2.8
+- **months** (месяцы): 3-36, нормализация cap=36, базовый вес=0.15 → финальный вес=1.2
 
-**Множитель весов**: 10 (настраивается в `config.py` → `WEIGHT_MULTIPLIER`)
+**Множитель весов**: 8 (настраивается в `config.py` → `WEIGHT_MULTIPLIER`)
 
 ## Архитектура
 
 ```
-┌─────────────────┐
-│   service.py    │  ← API слой (RecommendationService)
-└────────┬────────┘
-         │
-┌────────▼────────────────────────────────────┐
-│     db_management_utils.py                  │  ← Логика БД
-│  • Управление пользователями/группами       │
-│  • Векторный поиск                          │
-│  • Neo4j запросы                            │
-└────────┬────────────────────────────────────┘
-         │
-┌────────▼────────────────────────────────────┐
-│     user_vector_utils.py                    │  ← Векторная математика
-│  • Нормализация параметров                  │
-│  • Создание векторов                        │
-│  • Евклидово расстояние                     │
-└─────────────────────────────────────────────┘
-         │
-┌────────▼────────────────────────────────────┐
-│         Neo4j Database                      │
-│  Узлы: User, Group, Parameter               │
-│  Индексы: Векторный (Euclidean)             │
-└─────────────────────────────────────────────┘
+┌─────────────────┐      ┌─────────────────┐
+│   service.py    │      │      cli/       │  ← Интерфейсы
+│  (API слой)     │      │ (Интерактивный) │
+└────────┬────────┘      └────────┬────────┘
+         │                        │
+         └────────────┬───────────┘
+                      │
+     ┌────────────────▼────────────────────────┐
+     │            db/ (пакет)                  │  ← Логика БД
+     │  connection.py  - Драйвер, индексы      │
+     │  user_ops.py    - Операции с юзерами    │
+     │  group_ops.py   - Операции с группами   │
+     │  request_ops.py - Запросы на вступление │
+     │  similarity_ops.py - Векторный поиск    │
+     └────────┬────────────────────────────────┘
+              │
+     ┌────────▼────────────────────────────────┐
+     │     user_vector_utils.py                │  ← Векторная математика
+     │  • Нормализация параметров              │
+     │  • Создание векторов                    │
+     │  • Евклидово расстояние                 │
+     └─────────────────────────────────────────┘
+              │
+     ┌────────▼────────────────────────────────┐
+     │         Neo4j Database                  │
+     │  Узлы: User, Group, Parameter           │
+     │  Индексы: group_vec_index (Euclidean)   │
+     └─────────────────────────────────────────┘
 ```
 
 ## Файлы системы
 
 ### 1. **config.py** - Конфигурация системы
-Центральный файл конфигурации со всеми константами: параметры, веса, множитель, настройки БД и симуляции.
+Центральный файл конфигурации со всеми константами: параметры, веса (множитель 8x), настройки БД и CLI.
 
 ### 2. **service.py** - API Сервис
-Высокоуровневый API для работы с системой. Предоставляет методы создания профилей, поиска похожих пользователей, управления группами.
+Класс `RecommendationService` для программного доступа. Предоставляет методы создания профилей, поиска похожих пользователей, управления группами.
 
-### 3. **db_management_utils.py** - Управление БД
-Основная логика работы с Neo4j: CRUD операции, векторный поиск, управление группами, симуляция формирования групп.
+### 3. **db/** - Пакет операций с базой данных
+Рефакторинг `db_management_utils.py` в модульную структуру:
+- **connection.py** - Драйвер Neo4j, создание индексов и constraints
+- **user_ops.py** - CRUD операции с пользователями и формами
+- **group_ops.py** - Управление группами, добавление/удаление участников, пересчет параметров
+- **request_ops.py** - Обработка запросов на вступление в группы
+- **similarity_ops.py** - Векторный поиск похожих групп через `find_similar()`
 
 ### 4. **user_vector_utils.py** - Векторная математика
 Нормализация параметров, создание векторов с весами, вычисление Евклидова расстояния.
@@ -91,8 +104,13 @@
 ### 5. **logging_utils.py** - Логирование
 Структурированное логирование запросов Neo4j, векторных операций, результатов поиска, статистики БД.
 
-### 6. **simulation.py** - Интерактивная симуляция
-Инструмент для тестирования: генерация пользователей, интерактивная регистрация, поиск групп, вступление/выход.
+### 6. **cli/** - Интерактивный интерфейс командной строки
+Модульный CLI с `questionary` и `rich`:
+- **main.py** - Точка входа, инициализация Neo4j
+- **menus.py** - Главное меню, навигация, выбор пользователя
+- **actions.py** - Обработчики действий (рекомендации, вступление, выход)
+- **displays.py** - Форматирование вывода (таблицы, деревья, панели)
+- **utils.py** - Генерация пользователей, вспомогательные функции
 
 ## Конфигурация
 
@@ -111,27 +129,33 @@
   - `months`: 36 месяцев - максимальный срок
 
 ### Веса и множитель
-- **WEIGHT_MULTIPLIER**: `10` - множитель для усиления чувствительности
+- **WEIGHT_MULTIPLIER**: `8` - множитель для усиления чувствительности
 - **BASE_WEIGHTS**: Базовые веса (до множителя)
   - `rooms`: 1.0
   - `roommates`: 1.0
   - `budget`: 0.35
   - `months`: 0.15
 - **GROUP_PARAMETER_WEIGHTS**: Финальные веса (базовые × множитель)
-  - `rooms`: 10.0
-  - `roommates`: 10.0
-  - `budget`: 3.5
-  - `months`: 1.5
+  - `rooms`: 8.0
+  - `roommates`: 8.0
+  - `budget`: 2.8
+  - `months`: 1.2
 
 ### Настройки поиска
 - **DEFAULT_TOP_K**: `5` - количество рекомендаций по умолчанию
 - **DEFAULT_MAX_ROOMMATES**: `4` - максимум участников в группе
 - **AUTO_DEACTIVATE_FULL_GROUPS**: `True` - автодеактивация заполненных групп
 
-### Настройки симуляции
-- **DEFAULT_FAKE_USER_COUNT**: `20` - количество тестовых пользователей
+### Настройки CLI и генерации пользователей
+- **DEFAULT_SAMPLE_USER_COUNT**: `35` - количество sample пользователей при запуске
 - **FAKE_USER_BUDGET_RANGE**: `(5000, 60000)` - диапазон бюджета
 - **FAKE_USER_MONTHS_OPTIONS**: `[3, 6, 9, 12, 18, 24, 36]` - варианты срока
+- **FAKE_USER_ROOMS_RANGE**: `(1, 4)` - диапазон количества комнат
+- **FAKE_USER_ROOMMATES_RANGE**: `(1, 5)` - диапазон количества соседей
+- **AUTO_GROUP_PROBABILITY**: `0.4` - вероятность автоматической группировки
+- **DISPLAY_ROUNDING_MODE**: `'ceil'` - режим округления для отображения (ceil/floor/round/None)
+- **DEFAULT_TREE_MAX_GROUPS**: `50` - максимум групп в древовидном отображении
+- **DEFAULT_RECOMMENDATION_COUNT**: `10` - количество рекомендаций по умолчанию
 
 ### Логирование
 - **DEFAULT_LOG_LEVEL**: `'INFO'` - уровень логирования по умолчанию
@@ -200,86 +224,105 @@
   - Назначение: Получение информации о группе
   - Использование: Просмотр состава и статуса группы
 
-### db_management_utils.py
+### db/ - Пакет операций с базой данных
 
-#### Основные функции
+#### db/connection.py - Инфраструктура БД
 
 - **`get_driver(uri, user, password)`**
   - Назначение: Создание драйвера Neo4j
-  - Использование: Подключение к БД при каждой операции
+  - Использование: Подключение к БД, читает из переменных окружения
 
 - **`ensure_constraints_and_index(session, dims)`**
-  - Назначение: Создание ограничений и векторных индексов
+  - Назначение: Создание ограничений UNIQUE для User/Group и векторного индекса `group_vec_index`
   - Использование: Инициализация схемы БД при первом запуске
 
+- **`clean_db()`**
+  - Назначение: Полная очистка БД с интерактивным подтверждением
+  - Использование: Сброс БД в начальное состояние
+
+- **`check_neo4j_connection()`**
+  - Назначение: Проверка подключения к Neo4j
+  - Использование: Диагностика при старте CLI
+
+#### db/user_ops.py - Операции с пользователями
+
 - **`clear_users(session)`**
-  - Назначение: Очистка всех пользователей и групп
+  - Назначение: Удаление всех пользователей и групп
   - Использование: Подготовка БД перед тестами
 
 - **`upsert_users(session, users, caps, use_weights, weights)`**
-  - Назначение: Создание/обновление пользователей и групп
-  - Использование: Сохранение пользователей в БД
-
-- **`find_similar(session, vector, top_k, exclude_id)`**
-  - Назначение: Векторный поиск похожих групп через Neo4j
-  - Использование: Получение рекомендаций (основной метод)
-
-- **`find_similar_local(users, query_user, caps, use_weights, weights, top_k)`**
-  - Назначение: Локальный поиск похожих групп
-  - Использование: Fallback при недоступности Neo4j
-
-- **`add_user_to_group(session, user_id, target_group_id, caps, use_weights, weights)`**
-  - Назначение: Добавление пользователя в группу
-  - Использование: Объединение пользователей при одобрении запроса
-
-- **`remove_user_from_group(session, user_id, caps, use_weights, weights)`**
-  - Назначение: Удаление пользователя из группы
-  - Использование: Выход из группы
-  - ⚠️ **ПРОБЛЕМА**: Ошибка параметров в Cypher запросе
-
-- **`get_group_info(session, group_id)`**
-  - Назначение: Получение полной информации о группе
-  - Использование: Отображение деталей группы
+  - Назначение: Создание/обновление пользователей с автоматическим созданием групп `g_{user_id}`
+  - Использование: Массовое сохранение пользователей в БД
+  - Механизм: Создает узлы User, Parameter и Group для каждого пользователя
 
 - **`get_user_form(session, user_id)`**
   - Назначение: Получение данных формы пользователя
   - Использование: API метод get_form
 
 - **`delete_user_form(session, user_id)`**
-  - Назначение: Удаление пользователя и связанных данных
+  - Назначение: Удаление пользователя и связанных данных (DETACH DELETE)
   - Использование: API метод delete_form
-
-- **`send_join_request(session, user_id, group_id)`**
-  - Назначение: Создание JOIN_REQUEST связи
-  - Использование: Запрос на вступление в группу
-
-- **`approve_join_request(session, group_member_user_id, user_id, max_roommates, caps, use_weights, weights)`**
-  - Назначение: Одобрение запроса и добавление в группу
-  - Использование: Обработка одобрения запроса
-
-- **`get_group_with_status(session, group_id)`**
-  - Назначение: Получение группы со статусом активности
-  - Использование: Проверка, можно ли присоединиться к группе
-
-- **`find_similar_users(session, user_id, top_k, caps, use_weights, weights)`**
-  - Назначение: Поиск похожих пользователей (обёртка)
-  - Использование: API метод get_similar
 
 - **`get_user_parameters(session, user_id)`**
   - Назначение: Получение параметров из Parameter узлов
   - Использование: Внутренний метод для расчёта векторов
 
-- **`get_group_member_parameters(session, group_id, exclude_user_id)`**
+#### db/group_ops.py - Операции с группами
+
+- **`add_user_to_group(session, user_id, target_group_id, caps, use_weights, weights)`**
+  - Назначение: Добавление пользователя в существующую группу
+  - Использование: Объединение пользователей при одобрении запроса
+  - Механизм: Удаляет старую группу пользователя, пересчитывает параметры целевой группы как среднее
+
+- **`remove_user_from_group(session, user_id, caps, use_weights, weights)`**
+  - Назначение: Удаление пользователя из группы с созданием новой одно-пользовательской группы
+  - Использование: Выход из группы
+  - Механизм: Создает новую группу `g_{user_id}`, пересчитывает параметры старой группы
+
+- **`get_group_info(session, group_id)`**
+  - Назначение: Получение полной информации о группе (параметры + список участников)
+  - Использование: Отображение деталей группы
+
+- **`get_group_member_parameters(session, group_id)`**
   - Назначение: Получение параметров всех участников группы
-  - Использование: Расчёт средних значений группы
+  - Использование: Расчёт средних значений группы, отображение в CLI
 
-- **`clean_db()`**
-  - Назначение: Полная очистка БД (с подтверждением)
-  - Использование: Сброс БД в начальное состояние
+- **`update_group_parameters(session, group_id, caps, use_weights, weights)`**
+  - Назначение: Пересчет параметров группы как среднее всех участников
+  - Использование: Вызывается после добавления/удаления участников
 
-- **`check_neo4j_connection()`**
-  - Назначение: Проверка подключения к Neo4j
-  - Использование: Диагностика при старте
+- **`get_group_by_user_id(session, user_id)`**
+  - Назначение: Получение группы, в которой состоит пользователь
+  - Использование: Проверка членства в группе
+
+#### db/request_ops.py - Запросы на вступление
+
+- **`send_join_request(session, user_id, group_id)`**
+  - Назначение: Создание связи JOIN_REQUEST между User и Group
+  - Использование: Запрос на вступление в группу
+
+- **`approve_join_request(session, group_member_user_id, user_id, max_roommates, caps, use_weights, weights)`**
+  - Назначение: Одобрение запроса и добавление в группу
+  - Использование: Обработка одобрения запроса от участника группы
+
+- **`get_group_with_status(session, group_id)`**
+  - Назначение: Получение группы со статусом активности (проверка заполненности)
+  - Использование: Проверка, можно ли присоединиться к группе
+
+#### db/similarity_ops.py - Векторный поиск
+
+- **`find_similar(session, vector, top_k, exclude_id)`**
+  - Назначение: Векторный поиск через Neo4j индекс `group_vec_index`
+  - Использование: Получение рекомендаций (основной метод)
+  - Механизм: `db.index.vector.queryNodes('group_vec_index', top_k, vector)` с Евклидовым расстоянием
+
+- **`find_similar_local(users, query_user, caps, use_weights, weights, top_k)`**
+  - Назначение: Локальный поиск похожих групп в памяти
+  - Использование: Fallback при недоступности Neo4j, тестирование
+
+- **`find_similar_users(session, user_id, top_k, caps, use_weights, weights)`**
+  - Назначение: Обёртка для поиска похожих пользователей по ID
+  - Использование: API метод get_similar
 
 - **`build_test_db_and_find_recommendations(...)`**
   - Назначение: Построение тестовой БД и поиск рекомендаций
@@ -454,7 +497,7 @@ Location: db_management_utils.py, line 569
 
 ---
 
-# 🇬🇧 English Version
+# 🇺🇸 English Version
 
 ## System Overview
 
@@ -463,59 +506,72 @@ The Roommate Recommendation System is a Neo4j-based vector search engine for mat
 ### How It Works
 
 1. **User Registration** → Profile created with parameters (rooms, roommates, budget, duration)
+   - Each user automatically gets their own single-member group `g_{user_id}`
 2. **Vectorization** → Parameters normalized to 4D vector [0,1]
-3. **Weighting** → Weights applied (rooms: 1.0, roommates: 1.0, budget: 0.35, duration: 0.15) × multiplier (10)
-4. **Vector Search** → Neo4j finds similar groups via Euclidean distance
-5. **Group Formation** → Users join groups, group parameters averaged
-6. **Management** → Join requests, approvals, leaving groups
+3. **Weighting** → Weights applied (rooms: 8.0, roommates: 8.0, budget: 2.8, months: 1.2)
+4. **Vector Search** → Neo4j uses vector index `group_vec_index` to find similar groups
+   - Metric: Euclidean distance
+   - Query: `db.index.vector.queryNodes('group_vec_index', top_k, query_vector)`
+5. **Group Formation** → When joining, group parameters recalculated as average of all members
+6. **Management** → Leaving group → creates new single-member group
 
 ### Key Parameters
 
-- **rooms**: 1-4, normalization cap=10, base weight=1.0 → final weight=10.0
-- **roommates**: 0-5, normalization cap=10, base weight=1.0 → final weight=10.0
-- **budget**: ₽5,000-60,000, normalization cap=200,000, base weight=0.35 → final weight=3.5
-- **months**: 3-36, normalization cap=36, base weight=0.15 → final weight=1.5
+- **rooms**: 1-4, normalization cap=10, base weight=1.0 → final weight=8.0
+- **roommates**: 1-5, normalization cap=10, base weight=1.0 → final weight=8.0
+- **budget**: ₽5,000-60,000, normalization cap=200,000, base weight=0.35 → final weight=2.8
+- **months**: 3-36, normalization cap=36, base weight=0.15 → final weight=1.2
 
-**Weight Multiplier**: 10 (configurable in `config.py` → `WEIGHT_MULTIPLIER`)
+**Weight Multiplier**: 8 (configurable in `config.py` → `WEIGHT_MULTIPLIER`)
 
 ## Architecture
 
 ```
-┌─────────────────┐
-│   service.py    │  ← API Layer (RecommendationService)
-└────────┬────────┘
-         │
-┌────────▼────────────────────────────────────┐
-│     db_management_utils.py                  │  ← Database Logic
-│  • User/Group management                    │
-│  • Vector search                            │
-│  • Neo4j queries                            │
-└────────┬────────────────────────────────────┘
-         │
-┌────────▼────────────────────────────────────┐
-│     user_vector_utils.py                    │  ← Vector Math
-│  • Parameter normalization                  │
-│  • Vector creation                          │
-│  • Euclidean distance                       │
-└─────────────────────────────────────────────┘
-         │
-┌────────▼────────────────────────────────────┐
-│         Neo4j Database                      │
-│  Nodes: User, Group, Parameter              │
-│  Indexes: Vector (Euclidean)                │
-└─────────────────────────────────────────────┘
+┌─────────────────┐      ┌─────────────────┐
+│   service.py    │      │      cli/       │  ← Interfaces
+│   (API Layer)   │      │  (Interactive)  │
+└────────┬────────┘      └────────┬────────┘
+         │                        │
+         └────────────┬───────────┘
+                      │
+     ┌────────────────▼────────────────────────┐
+     │            db/ (package)                │  ← Database Logic
+     │  connection.py  - Driver, indexes       │
+     │  user_ops.py    - User operations       │
+     │  group_ops.py   - Group operations      │
+     │  request_ops.py - Join requests         │
+     │  similarity_ops.py - Vector search      │
+     └────────┬────────────────────────────────┘
+              │
+     ┌────────▼────────────────────────────────┐
+     │     user_vector_utils.py                │  ← Vector Math
+     │  • Parameter normalization              │
+     │  • Vector creation                      │
+     │  • Euclidean distance                   │
+     └─────────────────────────────────────────┘
+              │
+     ┌────────▼────────────────────────────────┐
+     │         Neo4j Database                  │
+     │  Nodes: User, Group, Parameter          │
+     │  Indexes: group_vec_index (Euclidean)   │
+     └─────────────────────────────────────────┘
 ```
 
 ## System Files
 
 ### 1. **config.py** - System Configuration
-Central configuration file with all constants: parameters, weights, multiplier, database and simulation settings.
+Central configuration file with all constants: parameters, weights (8x multiplier), database and CLI settings.
 
 ### 2. **service.py** - API Service
-High-level API for system interaction. Provides methods for profile creation, finding similar users, managing groups.
+`RecommendationService` class for programmatic access. Provides methods for profile creation, finding similar users, managing groups.
 
-### 3. **db_management_utils.py** - Database Management
-Core Neo4j logic: CRUD operations, vector search, group management, group formation simulation.
+### 3. **db/** - Database Operations Package
+Refactored `db_management_utils.py` into modular structure:
+- **connection.py** - Neo4j driver, index and constraint creation
+- **user_ops.py** - User and form CRUD operations
+- **group_ops.py** - Group management, member add/remove, parameter recalculation
+- **request_ops.py** - Join request handling
+- **similarity_ops.py** - Vector search for similar groups via `find_similar()`
 
 ### 4. **user_vector_utils.py** - Vector Mathematics
 Parameter normalization, weighted vector creation, Euclidean distance calculation.
@@ -523,8 +579,13 @@ Parameter normalization, weighted vector creation, Euclidean distance calculatio
 ### 5. **logging_utils.py** - Logging
 Structured logging for Neo4j queries, vector operations, search results, database statistics.
 
-### 6. **simulation.py** - Interactive Simulation
-Testing tool: user generation, interactive registration, group search, joining/leaving.
+### 6. **cli/** - Interactive Command-Line Interface
+Modular CLI with `questionary` and `rich`:
+- **main.py** - Entry point, Neo4j initialization
+- **menus.py** - Main menu, navigation, user selection
+- **actions.py** - Action handlers (recommendations, join, leave)
+- **displays.py** - Output formatting (tables, trees, panels)
+- **utils.py** - User generation, helper functions
 
 ## Configuration
 
@@ -543,27 +604,33 @@ All system constants are stored in `config.py` for easy customization:
   - `months`: 36 months - maximum duration
 
 ### Weights and Multiplier
-- **WEIGHT_MULTIPLIER**: `10` - multiplier for increased sensitivity
+- **WEIGHT_MULTIPLIER**: `8` - multiplier for increased sensitivity
 - **BASE_WEIGHTS**: Base weights (before multiplier)
   - `rooms`: 1.0
   - `roommates`: 1.0
   - `budget`: 0.35
   - `months`: 0.15
 - **GROUP_PARAMETER_WEIGHTS**: Final weights (base × multiplier)
-  - `rooms`: 10.0
-  - `roommates`: 10.0
-  - `budget`: 3.5
-  - `months`: 1.5
+  - `rooms`: 8.0
+  - `roommates`: 8.0
+  - `budget`: 2.8
+  - `months`: 1.2
 
 ### Search Settings
 - **DEFAULT_TOP_K**: `5` - default number of recommendations
 - **DEFAULT_MAX_ROOMMATES**: `4` - maximum group members
 - **AUTO_DEACTIVATE_FULL_GROUPS**: `True` - auto-deactivate full groups
 
-### Simulation Settings
-- **DEFAULT_FAKE_USER_COUNT**: `20` - number of test users
+### CLI and User Generation Settings
+- **DEFAULT_SAMPLE_USER_COUNT**: `35` - number of sample users at startup
 - **FAKE_USER_BUDGET_RANGE**: `(5000, 60000)` - budget range
 - **FAKE_USER_MONTHS_OPTIONS**: `[3, 6, 9, 12, 18, 24, 36]` - duration options
+- **FAKE_USER_ROOMS_RANGE**: `(1, 4)` - room count range
+- **FAKE_USER_ROOMMATES_RANGE**: `(1, 5)` - roommate count range
+- **AUTO_GROUP_PROBABILITY**: `0.4` - probability of automatic grouping
+- **DISPLAY_ROUNDING_MODE**: `'ceil'` - rounding mode for display (ceil/floor/round/None)
+- **DEFAULT_TREE_MAX_GROUPS**: `50` - maximum groups in tree display
+- **DEFAULT_RECOMMENDATION_COUNT**: `10` - default number of recommendations
 
 ### Logging
 - **DEFAULT_LOG_LEVEL**: `'INFO'` - default log level
@@ -583,7 +650,8 @@ All system constants are stored in `config.py` for easy customization:
 - `GROUP_PARAMETER_WEIGHTS` - final parameter weights
 - `SIMILARITY_FUNCTION` - similarity metric used ('euclidean' or 'cosine')
 - `DEFAULT_CAPS` - parameter normalization boundaries
-- Simulation and logging settings
+- CLI display and user generation settings
+- Logging settings
 
 ### service.py
 
@@ -632,86 +700,105 @@ All system constants are stored in `config.py` for easy customization:
   - Purpose: Get group information
   - Usage: View group composition and status
 
-### db_management_utils.py
+### db/ - Database Operations Package
 
-#### Core Functions
+#### db/connection.py - Database Infrastructure
 
 - **`get_driver(uri, user, password)`**
   - Purpose: Create Neo4j driver
-  - Usage: Connect to DB for each operation
+  - Usage: Connect to DB, reads from environment variables
 
 - **`ensure_constraints_and_index(session, dims)`**
-  - Purpose: Create constraints and vector indexes
+  - Purpose: Create UNIQUE constraints for User/Group and `group_vec_index` vector index
   - Usage: Initialize DB schema on first run
 
+- **`clean_db()`**
+  - Purpose: Complete DB cleanup with interactive confirmation
+  - Usage: Reset DB to initial state
+
+- **`check_neo4j_connection()`**
+  - Purpose: Check Neo4j connection
+  - Usage: Diagnostics on CLI startup
+
+#### db/user_ops.py - User Operations
+
 - **`clear_users(session)`**
-  - Purpose: Clear all users and groups
+  - Purpose: Delete all users and groups
   - Usage: Prepare DB before tests
 
 - **`upsert_users(session, users, caps, use_weights, weights)`**
-  - Purpose: Create/update users and groups
-  - Usage: Save users to DB
-
-- **`find_similar(session, vector, top_k, exclude_id)`**
-  - Purpose: Vector search for similar groups via Neo4j
-  - Usage: Get recommendations (primary method)
-
-- **`find_similar_local(users, query_user, caps, use_weights, weights, top_k)`**
-  - Purpose: Local search for similar groups
-  - Usage: Fallback when Neo4j unavailable
-
-- **`add_user_to_group(session, user_id, target_group_id, caps, use_weights, weights)`**
-  - Purpose: Add user to group
-  - Usage: Merge users when approving request
-
-- **`remove_user_from_group(session, user_id, caps, use_weights, weights)`**
-  - Purpose: Remove user from group
-  - Usage: Leave group
-  - ⚠️ **ISSUE**: Parameter error in Cypher query
-
-- **`get_group_info(session, group_id)`**
-  - Purpose: Get complete group information
-  - Usage: Display group details
+  - Purpose: Create/update users with automatic creation of `g_{user_id}` groups
+  - Usage: Bulk save users to DB
+  - Mechanism: Creates User, Parameter, and Group nodes for each user
 
 - **`get_user_form(session, user_id)`**
   - Purpose: Get user form data
   - Usage: API method get_form
 
 - **`delete_user_form(session, user_id)`**
-  - Purpose: Delete user and related data
+  - Purpose: Delete user and related data (DETACH DELETE)
   - Usage: API method delete_form
-
-- **`send_join_request(session, user_id, group_id)`**
-  - Purpose: Create JOIN_REQUEST relationship
-  - Usage: Request to join group
-
-- **`approve_join_request(session, group_member_user_id, user_id, max_roommates, caps, use_weights, weights)`**
-  - Purpose: Approve request and add to group
-  - Usage: Process request approval
-
-- **`get_group_with_status(session, group_id)`**
-  - Purpose: Get group with activity status
-  - Usage: Check if group can be joined
-
-- **`find_similar_users(session, user_id, top_k, caps, use_weights, weights)`**
-  - Purpose: Find similar users (wrapper)
-  - Usage: API method get_similar
 
 - **`get_user_parameters(session, user_id)`**
   - Purpose: Get parameters from Parameter nodes
   - Usage: Internal method for vector calculation
 
-- **`get_group_member_parameters(session, group_id, exclude_user_id)`**
+#### db/group_ops.py - Group Operations
+
+- **`add_user_to_group(session, user_id, target_group_id, caps, use_weights, weights)`**
+  - Purpose: Add user to existing group
+  - Usage: Merge users when approving request
+  - Mechanism: Deletes user's old group, recalculates target group parameters as average
+
+- **`remove_user_from_group(session, user_id, caps, use_weights, weights)`**
+  - Purpose: Remove user from group with creation of new single-member group
+  - Usage: Leave group
+  - Mechanism: Creates new `g_{user_id}` group, recalculates old group parameters
+
+- **`get_group_info(session, group_id)`**
+  - Purpose: Get complete group information (parameters + member list)
+  - Usage: Display group details
+
+- **`get_group_member_parameters(session, group_id)`**
   - Purpose: Get parameters of all group members
-  - Usage: Calculate group averages
+  - Usage: Calculate group averages, CLI display
 
-- **`clean_db()`**
-  - Purpose: Complete DB cleanup (with confirmation)
-  - Usage: Reset DB to initial state
+- **`update_group_parameters(session, group_id, caps, use_weights, weights)`**
+  - Purpose: Recalculate group parameters as average of all members
+  - Usage: Called after adding/removing members
 
-- **`check_neo4j_connection()`**
-  - Purpose: Check Neo4j connection
-  - Usage: Diagnostics on startup
+- **`get_group_by_user_id(session, user_id)`**
+  - Purpose: Get group that user is a member of
+  - Usage: Check group membership
+
+#### db/request_ops.py - Join Requests
+
+- **`send_join_request(session, user_id, group_id)`**
+  - Purpose: Create JOIN_REQUEST relationship between User and Group
+  - Usage: Request to join group
+
+- **`approve_join_request(session, group_member_user_id, user_id, max_roommates, caps, use_weights, weights)`**
+  - Purpose: Approve request and add to group
+  - Usage: Process approval from group member
+
+- **`get_group_with_status(session, group_id)`**
+  - Purpose: Get group with activity status (capacity check)
+  - Usage: Check if group can be joined
+
+#### db/similarity_ops.py - Vector Search
+
+- **`find_similar(session, vector, top_k, exclude_id)`**
+  - Purpose: Vector search via Neo4j `group_vec_index`
+  - Usage: Get recommendations (primary method)
+  - Mechanism: `db.index.vector.queryNodes('group_vec_index', top_k, vector)` with Euclidean distance
+
+- **`find_similar_local(users, query_user, caps, use_weights, weights, top_k)`**
+  - Purpose: Local in-memory search for similar groups
+  - Usage: Fallback when Neo4j unavailable, testing
+
+- **`find_similar_users(session, user_id, top_k, caps, use_weights, weights)`**
+  - Purpose: Wrapper for finding similar users by ID
+  - Usage: API method get_similar
 
 - **`build_test_db_and_find_recommendations(...)`**
   - Purpose: Build test DB and find recommendations
@@ -754,55 +841,38 @@ All system constants are stored in `config.py` for easy customization:
   - Usage: Calculate similarity between vectors (primary method)
   - **Note**: Replaced cosine_distance for higher sensitivity
 
-### simulation.py
+### cli/ (Command-Line Interface)
 
-#### Generation Functions
+#### Main Components
 
-- **`generate_fake_users(count)`**
-  - Purpose: Generate random test users
-  - Usage: Populate DB for testing
+- **`main.py`**
+  - Purpose: CLI entry point, Neo4j initialization
+  - Usage: Run `python run_cli.py` or `python -m repository.recommendation_system.cli.main`
 
-- **`sample_users()`**
-  - Purpose: Create predefined set of 35 users
-  - Usage: Consistent testing
+- **`menus.py`**
+  - `main_menu()`: Main navigation loop with adaptive options
+  - `startup_menu()`: DB initialization and user selection
+  - `select_user_with_details()`: User selection with parameter display
 
-#### Interaction Functions
+- **`actions.py`**
+  - `action_get_recommendations()`: Vector search and display recommendations
+  - `action_join_group()`: Show member preview → confirm → join
+  - `action_leave_group()`: Leave current group
+  - `action_view_my_group()`: Display current group details
+  - `action_switch_user()`: Change active user
 
-- **`create_form()`**
-  - Purpose: Interactive user data input
-  - Usage: Console registration
+- **`displays.py`**
+  - `display_recommendations()`: Rich table with match percentages
+  - `display_group_tree()`: Tree structure visualization (like Linux `tree`)
+  - `display_group_details()`: Panel with group info and member table
+  - `display_statistics()`: Database statistics
+  - Uses `rich` library for formatted output
 
-- **`get_similar_groups(session, user_data, top_k, caps, use_weights, weights)`**
-  - Purpose: Find similar groups for user
-  - Usage: Get recommendations in simulation
-
-- **`display_group_recommendations(session, recommendations)`**
-  - Purpose: Display recommended groups
-  - Usage: Output search results
-
-- **`join_group_interactive(session, user_id, recommendations, caps, use_weights, weights)`**
-  - Purpose: Interactive group joining
-  - Usage: Select group and auto-approve
-
-- **`leave_group_interactive(session, user_id, caps, use_weights, weights)`**
-  - Purpose: Interactive group leaving
-  - Usage: Request confirmation and leave
-
-#### Simulation Functions
-
-- **`simulate_group_formation(session, max_iterations, max_roommates_per_group, caps, use_weights, weights, verbose)`**
-  - Purpose: Automatic group formation simulation
-  - Usage: Test matching algorithm
-
-- **`run_interactive_simulation(fake_user_count, prefilled_user)`**
-  - Purpose: Run full interactive simulation
-  - Usage: Main function for testing
-  - **Parameters**:
-    - `fake_user_count`: Number of users to generate (default 20)
-    - `prefilled_user`: Optional dict with prefilled user data
-  - **Modes**:
-    - Without parameters: Prompts choice (prefilled/manual input)
-    - With `prefilled_user`: Automatically uses prefilled data
+- **`utils.py`**
+  - `generate_fake_users(count)`: Random user generation
+  - `sample_users()`: Predefined set of 35 users
+  - `setup_sample_groups()`: Group sample users into realistic groups
+  - `create_user_interactive()`: Interactive user creation
 
 ### logging_utils.py
 
@@ -905,36 +975,29 @@ NEO4J_PASSWORD=your_password
 
 1. **Install dependencies**:
    ```bash
-   pip install -r requirements.txt
+   pip install -r repository/recommendation_system/requirements.txt
    ```
 
-2. **Run simulation**:
+2. **Run Interactive CLI**:
    ```bash
-   python simulation.py
+   # Recommended method
+   python run_cli.py
+   
+   # Or as module
+   python -m repository.recommendation_system.cli.main
    ```
    
-   Or with prefilled data:
-   ```python
-   from simulation import run_interactive_simulation
-   
-   # Use default test data (prompted)
-   run_interactive_simulation(fake_user_count=20)
-   
-   # Use custom prefilled data
-   custom_user = {
-       'id': 'my_user',
-       'name': 'My Name',
-       'rooms': 3,
-       'roommates': 2,
-       'budget': 20000,
-       'months': 12
-   }
-   run_interactive_simulation(fake_user_count=20, prefilled_user=custom_user)
-   ```
+   The CLI provides:
+   - Interactive menu navigation
+   - User creation and management
+   - Group recommendations and joining
+   - Tree view of all groups
+   - Database statistics
 
-3. **Use API**:
+3. **Use API (Programmatic)**:
    ```python
-   from service import RecommendationService, Form
+   from repository.recommendation_system.service import RecommendationService
+   from repository.recommendation_system.entity.form import Form
    
    service = RecommendationService()
    service.create_form(user_id, Form(...))
