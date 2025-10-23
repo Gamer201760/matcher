@@ -486,6 +486,12 @@ def add_user_to_group(session, user_id, target_group_id, caps=None, use_weights=
 def remove_user_from_group(session, user_id, caps=None, use_weights=False, weights=None):
     """
     Remove a user from their current group and create a new single-member group for them.
+    
+    This function implements Neo4j best practices:
+    - Explicit relationship deletion with DELETE
+    - In-place property updates with SET
+    - Proper error handling for edge cases
+    - Atomic operations where possible
 
     Args:
         session: Neo4j session
@@ -495,47 +501,76 @@ def remove_user_from_group(session, user_id, caps=None, use_weights=False, weigh
         weights: Parameter weights for group vector creation
 
     Returns:
-        str: ID of the new single-member group, or None if failed
+        str: ID of the new single-member group
+        
+    Raises:
+        ValueError: If user is not in a group or is already in a single-member group
     """
     try:
-        # Get user's current group and parameters
-        user_group_query = """
+        weights = weights or group_parameter_weights
+        
+        # Step 1: Validate user exists and get current group info
+        validation_query = """
             MATCH (u:User {id: $user_id})-[:MEMBER_OF]->(g:Group)
-            RETURN g.id as current_group_id
+            WITH g, COUNT {(g)<-[:MEMBER_OF]-()} as member_count
+            RETURN g.id as current_group_id, member_count
         """
-        result = session.run(user_group_query, user_id=user_id)
+        log_neo4j_query(logger, validation_query, {"user_id": user_id})
+        result = session.run(validation_query, user_id=user_id)
         record = result.single()
 
         if not record:
             logger.warning(f"User {user_id} is not a member of any group")
-            return None
-
+            raise ValueError(f"User {user_id} is not a member of any group")
+        
         current_group_id = record['current_group_id']
+        member_count = record['member_count']
+        
+        # Check if user is already in a single-member group
+        if member_count == 1:
+            logger.warning(f"User {user_id} is already in a single-member group {current_group_id}")
+            raise ValueError(f"User {user_id} is already in a single-member group")
+        
+        logger.debug(f"User {user_id} is in group {current_group_id} with {member_count} members")
+        
+        # Step 2: Get user parameters for new group creation
         user_params = get_user_parameters(session, user_id)
-
-        # Get remaining members of the current group
-        remaining_members = get_group_member_parameters(session, current_group_id, exclude_user_id=user_id)
-
-        # Update old group if there are remaining members
+        
+        # Step 3: Explicitly delete the MEMBER_OF relationship
+        delete_relationship_query = """
+            MATCH (u:User {id: $user_id})-[r:MEMBER_OF]->(g:Group {id: $current_group_id})
+            DELETE r
+            RETURN g.id as old_group_id
+        """
+        log_neo4j_query(logger, delete_relationship_query, {"user_id": user_id, "current_group_id": current_group_id})
+        session.run(delete_relationship_query, user_id=user_id, current_group_id=current_group_id)
+        logger.debug(f"Deleted MEMBER_OF relationship from user {user_id} to group {current_group_id}")
+        
+        # Step 4: Update old group with remaining members or delete if empty
+        remaining_members = get_group_member_parameters(session, current_group_id)
+        
         if remaining_members:
+            # Calculate new averaged parameters for the remaining group
             new_group_params = {}
             for param in PARAMETERS:
                 values = [member[param] for member in remaining_members if param in member]
                 if values:
                     new_group_params[param] = sum(values) / len(values)
-
+            
+            # Create new group vector
             group_values = {p: new_group_params.get(p, 0) for p in PARAMETERS}
-            weights = weights or group_parameter_weights
-
             if use_weights:
                 new_vector = create_group_vector_with_weights(group_values, PARAMETERS, weights, caps)
             else:
                 new_vector = create_user_vector(group_values, PARAMETERS, caps)
-
+            
+            # Update group properties and GroupParameter nodes in place
             update_group_query = """
                 MATCH (g:Group {id: $current_group_id})
-                SET g.rooms = $rooms, g.roommates = $roommates,
-                    g.budget = $budget, g.months = $months,
+                SET g.rooms = $rooms,
+                    g.roommates = $roommates,
+                    g.budget = $budget,
+                    g.months = $months,
                     g.embedding = $embedding
                 WITH g
                 MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
@@ -546,7 +581,15 @@ def remove_user_from_group(session, user_id, caps=None, use_weights=False, weigh
                     WHEN 'months' THEN $months
                     ELSE gp.value
                 END
+                RETURN g.id as updated_group_id
             """
+            log_neo4j_query(logger, update_group_query, {
+                "current_group_id": current_group_id,
+                "rooms": new_group_params.get('rooms', 0),
+                "roommates": new_group_params.get('roommates', 0),
+                "budget": new_group_params.get('budget', 0),
+                "months": new_group_params.get('months', 0)
+            })
             session.run(update_group_query,
                        current_group_id=current_group_id,
                        rooms=new_group_params.get('rooms', 0),
@@ -554,38 +597,55 @@ def remove_user_from_group(session, user_id, caps=None, use_weights=False, weigh
                        budget=new_group_params.get('budget', 0),
                        months=new_group_params.get('months', 0),
                        embedding=new_vector)
+            
+            log_vector_operation(logger, "Updated remaining group vector", len(new_vector), current_group_id)
+            logger.info(f"✓ Updated group {current_group_id} with {len(remaining_members)} remaining members")
         else:
-            # Delete empty group
-            session.run("MATCH (g:Group {id: $current_group_id}) DETACH DELETE g",
-                       current_group_id=current_group_id)
-
-        # Create new single-member group for the removed user
+            # No remaining members, delete the empty group
+            delete_empty_group_query = """
+                MATCH (g:Group {id: $current_group_id})
+                DETACH DELETE g
+            """
+            log_neo4j_query(logger, delete_empty_group_query, {"current_group_id": current_group_id})
+            session.run(delete_empty_group_query, current_group_id=current_group_id)
+            logger.info(f"✓ Deleted empty group {current_group_id}")
+        
+        # Step 5: Create new single-member group for the user
         new_group_id = f"g_{user_id}"
         new_group_name = f"Group of {user_id}"
-
-        weights = weights or group_parameter_weights
+        
+        # Create vector for new single-member group
         if use_weights:
-            new_vector = create_group_vector_with_weights(user_params, PARAMETERS, weights, caps)
+            new_user_vector = create_group_vector_with_weights(user_params, PARAMETERS, weights, caps)
         else:
-            new_vector = create_user_vector(user_params, PARAMETERS, caps)
-
-        # Update user relationship and create new group
+            new_user_vector = create_user_vector(user_params, PARAMETERS, caps)
+        
+        # Create new group and establish relationship in a single atomic query
         create_new_group_query = """
             MATCH (u:User {id: $user_id})
-            SET u.group_id = $new_group_id
             MERGE (g:Group {id: $new_group_id})
             SET g.name = $group_name,
-                g.rooms = $rooms, g.roommates = $roommates,
-                g.budget = $budget, g.months = $months,
+                g.rooms = $rooms,
+                g.roommates = $roommates,
+                g.budget = $budget,
+                g.months = $months,
                 g.embedding = $embedding
             MERGE (u)-[:MEMBER_OF]->(g)
             WITH g
-            UNWIND $parameters AS param
+            UNWIND $param_list AS param
             MERGE (gp:GroupParameter {groupId: $new_group_id, name: param.name})
             SET gp.value = param.value
             MERGE (g)-[:HAS_PARAMETER]->(gp)
+            RETURN g.id as new_group_id
         """
-
+        
+        parameters_list = [{'name': p, 'value': user_params.get(p, 0)} for p in PARAMETERS]
+        log_neo4j_query(logger, create_new_group_query, {
+            "user_id": user_id,
+            "new_group_id": new_group_id,
+            "param_list_count": len(parameters_list)
+        })
+        
         session.run(create_new_group_query,
                    user_id=user_id,
                    new_group_id=new_group_id,
@@ -594,16 +654,21 @@ def remove_user_from_group(session, user_id, caps=None, use_weights=False, weigh
                    roommates=user_params.get('roommates', 0),
                    budget=user_params.get('budget', 0),
                    months=user_params.get('months', 0),
-                   embedding=new_vector,
-                   parameters=[{'name': p, 'value': user_params.get(p, 0)} for p in PARAMETERS])
+                   embedding=new_user_vector,
+                   param_list=parameters_list)
 
         logger.info(f"✓ User {user_id} removed from group {current_group_id}, created new group {new_group_id}")
-        log_vector_operation(logger, "Created new single-member group vector", len(new_vector), new_group_id)
+        log_vector_operation(logger, "Created new single-member group vector", len(new_user_vector), new_group_id)
+        
         return new_group_id
 
+    except ValueError:
+        # Re-raise ValueError for proper error handling upstream
+        raise
     except Exception as e:
         logger.error(f"Error removing user {user_id} from group: {e}")
-        return None
+        logger.debug(f"Error details: {type(e).__name__}: {str(e)}")
+        raise RuntimeError(f"Failed to remove user {user_id} from group: {e}")
 
 
 def get_group_info(session, group_id):

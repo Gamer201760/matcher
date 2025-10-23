@@ -230,18 +230,26 @@ class RecommendationService:
         
         Args:
             user_id: The user leaving the group
+            
+        Raises:
+            ValueError: If user is not in a group or already in a single-member group
+            RuntimeError: If removal operation fails
         """
         with self.driver.session() as session:
-            new_group_id = remove_user_from_group(
-                session, 
-                str(user_id), 
-                caps=self.caps, 
-                use_weights=self.use_weights, 
-                weights=self.weights
-            )
-            
-            if not new_group_id:
-                raise RuntimeError(f"Failed to remove user {user_id} from group")
+            try:
+                remove_user_from_group(
+                    session, 
+                    str(user_id), 
+                    caps=self.caps, 
+                    use_weights=self.use_weights, 
+                    weights=self.weights
+                )
+            except ValueError as e:
+                # Re-raise ValueError for invalid states
+                raise ValueError(f"Cannot remove user {user_id} from group: {e}")
+            except RuntimeError as e:
+                # Re-raise RuntimeError for operation failures
+                raise RuntimeError(f"Failed to remove user {user_id} from group: {e}")
 
     def get_group(self, group_id: UUID) -> Tuple[Group, List[str]]:
         """
