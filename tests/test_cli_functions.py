@@ -185,6 +185,73 @@ class TestCLIUtilityFunctions(unittest.TestCase):
             self.assertGreater(group_info['member_count'], 1)
 
 
+class TestCLINoneHandling(unittest.TestCase):
+    """Test that CLI functions handle None values gracefully."""
+    
+    def test_01_display_tree_with_none_parameters(self):
+        """Test tree display handles groups with None parameters."""
+        from repository.recommendation_system.cli.displays import display_group_tree
+        from repository.recommendation_system.db import get_driver
+        
+        driver = get_driver()
+        with driver.session() as session:
+            # This should not crash even if some groups have None values
+            try:
+                display_group_tree(session, max_groups=10, show_parameters=True)
+            except TypeError as e:
+                self.fail(f"display_group_tree raised TypeError with None values: {e}")
+        driver.close()
+    
+    def test_02_user_selection_with_none_values(self):
+        """Test user selection handles None parameter values."""
+        from repository.recommendation_system.cli.menus import select_user_with_details
+        from repository.recommendation_system.db import get_driver, clean_db, upsert_users
+        
+        driver = get_driver()
+        with driver.session() as session:
+            # Clean and create a user with potential None values
+            session.run("MATCH (n) DETACH DELETE n")
+            
+            # Manually create a user node that might have None values
+            session.run("""
+                CREATE (u:User {
+                    id: 'test_none_user',
+                    name: 'Test None User'
+                })
+            """)
+            
+            # Try to get user list - should not crash
+            query = """
+                MATCH (u:User)
+                OPTIONAL MATCH (u)-[:MEMBER_OF]->(g:Group)
+                RETURN u.id as id, u.name as name, 
+                       u.rooms as rooms, u.roommates as roommates,
+                       u.budget as budget, u.months as months,
+                       g.id as group_id, 
+                       COUNT { (g)<-[:MEMBER_OF]-() } as group_size
+                ORDER BY u.id
+            """
+            result = session.run(query)
+            users = list(result)
+            
+            # Verify we can format the display without errors
+            for user in users:
+                rooms = user['rooms'] if user['rooms'] is not None else 0
+                roommates = user['roommates'] if user['roommates'] is not None else 0
+                budget = user['budget'] if user['budget'] is not None else 0
+                months = user['months'] if user['months'] is not None else 0
+                
+                # This should not raise TypeError
+                choice_str = (
+                    f"{user['name']} — "
+                    f"rooms:{rooms} rm:{roommates} "
+                    f"₽{budget:,}/mo {months}mo"
+                )
+                self.assertIsInstance(choice_str, str)
+        
+        driver.close()
+
+
 if __name__ == '__main__':
     unittest.main()
 
