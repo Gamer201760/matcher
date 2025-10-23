@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 from uuid import UUID
-from db_management_utils import (
+from .db import (
     get_driver,
     ensure_constraints_and_index,
     upsert_users,
@@ -14,7 +14,7 @@ from db_management_utils import (
     find_similar_users,
     PARAMETERS,
 )
-from user_vector_utils import (
+from .user_vector_utils import (
     group_parameter_weights,
 )
 
