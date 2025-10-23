@@ -6,7 +6,7 @@ Create normalized preference vectors for users and groups and compare them with 
 - Supports optional weighting of vector components for GROUPS.
 """
 from math import sqrt
-from config import GROUP_PARAMETER_WEIGHTS, WEIGHT_MULTIPLIER, DEFAULT_CAPS
+from .config import GROUP_PARAMETER_WEIGHTS, WEIGHT_MULTIPLIER, DEFAULT_CAPS
 
 
 def _clamp(value, min_value, max_value):
