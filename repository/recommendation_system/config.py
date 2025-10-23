@@ -32,7 +32,7 @@ DEFAULT_CAPS = {
 # ============================================================================
 
 # Multiplier applied to all weights for increased sensitivity
-WEIGHT_MULTIPLIER = 10
+WEIGHT_MULTIPLIER = 8
 
 # Base weights for group parameter vectors (before multiplier)
 BASE_WEIGHTS = {
