@@ -82,7 +82,9 @@ class GroupRepository:
             Group entity if found, None otherwise
         """
         with self.driver.session() as session:
-            db_group = get_group_info(session, str(group_id))
+            # Database stores groups with 'g_' prefix
+            db_group_id = f"g_{group_id}"
+            db_group = get_group_info(session, db_group_id)
             
             if not db_group:
                 return None

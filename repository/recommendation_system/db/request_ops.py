@@ -112,17 +112,17 @@ def get_join_request(session, request_id):
     
     Args:
         session: Neo4j session
-        request_id: Request ID (elementId or stored UUID property)
+        request_id: Request ID (UUID stored as property)
         
     Returns:
         dict: Request data with id, user_id, group_id, timestamp or None
         
-    Note: Uses elementId() instead of deprecated id() function.
+    Note: Looks up by request_id property instead of internal Neo4j ID.
     """
     query = """
         MATCH (u:User)-[r:JOIN_REQUEST]->(g:Group)
-        WHERE elementId(r) = $request_id
-        RETURN elementId(r) as id, u.id as user_id, g.id as group_id, r.timestamp as timestamp
+        WHERE r.request_id = $request_id
+        RETURN r.request_id as id, u.id as user_id, g.id as group_id, r.timestamp as timestamp
     """
     result = session.run(query, request_id=str(request_id))
     record = result.single()
@@ -149,11 +149,11 @@ def get_all_join_requests(session, group_id):
     Returns:
         list: List of request dicts with id, user_id, group_id, timestamp
         
-    Note: Uses elementId() instead of deprecated id() function.
+    Note: Returns request_id property stored on the relationship.
     """
     query = """
         MATCH (u:User)-[r:JOIN_REQUEST]->(g:Group {id: $group_id})
-        RETURN elementId(r) as id, u.id as user_id, g.id as group_id, r.timestamp as timestamp
+        RETURN r.request_id as id, u.id as user_id, g.id as group_id, r.timestamp as timestamp
         ORDER BY r.timestamp DESC
     """
     result = session.run(query, group_id=group_id)
@@ -176,13 +176,13 @@ def delete_join_request(session, request_id):
     
     Args:
         session: Neo4j session
-        request_id: Request ID (elementId)
+        request_id: Request ID (UUID property)
         
-    Note: Uses elementId() instead of deprecated id() function.
+    Note: Deletes by request_id property stored on the relationship.
     """
     query = """
         MATCH ()-[r:JOIN_REQUEST]->()
-        WHERE elementId(r) = $request_id
+        WHERE r.request_id = $request_id
         DELETE r
     """
     session.run(query, request_id=str(request_id))

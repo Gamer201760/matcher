@@ -39,16 +39,15 @@ class GroupRequestRepository:
             user_id: User ID sending the request
             
         Returns:
-            UUID: The request ID (we return a generated UUID for API consistency,
-                  but internally Neo4j uses elementId for the relationship)
+            UUID: The request ID
         """
         request_id = uuid4()
         
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
             db_group_id = f"g_{group_id}"
-            # Create the request - Neo4j will assign an elementId
-            send_join_request(session, str(user_id), db_group_id)
+            # Create the request with our UUID stored as a property
+            create_join_request_with_id(session, request_id, str(user_id), db_group_id)
         
         return request_id
     
@@ -107,28 +106,19 @@ class GroupRequestRepository:
         Returns:
             GroupRequest: GroupRequest entity
         """
-        # Handle request ID - elementId is a string, generate UUID for API layer
+        # Parse request ID - stored as UUID string property
         request_id = db_dict['id']
         if isinstance(request_id, str):
-            # Try to parse as UUID first
-            try:
-                request_id = UUID(request_id)
-            except ValueError:
-                # It's an elementId string, generate a deterministic UUID from it
-                # Use hash of the elementId to create consistent UUID
-                import hashlib
-                hash_digest = hashlib.md5(request_id.encode()).hexdigest()
-                request_id = UUID(hash_digest)
+            request_id = UUID(request_id)
         
+        # Parse user ID
         user_id = db_dict['user_id']
         if isinstance(user_id, str):
-            # Remove 'g_' prefix if present and convert to UUID
-            clean_user_id = user_id.replace('g_', '', 1) if user_id.startswith('g_') else user_id
-            user_id = UUID(clean_user_id)
+            user_id = UUID(user_id)
         
+        # Parse group ID - remove 'g_' prefix if present
         group_id = db_dict['group_id']
         if isinstance(group_id, str):
-            # Remove 'g_' prefix if present and convert to UUID
             clean_group_id = group_id.replace('g_', '', 1) if group_id.startswith('g_') else group_id
             group_id = UUID(clean_group_id)
         
