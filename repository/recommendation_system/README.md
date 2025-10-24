@@ -126,20 +126,62 @@
   - `rooms`: 10 - максимум комнат
   - `roommates`: 10 - максимум соседей
   - `budget`: 200,000 ₽ - максимальный бюджет
-  - `months`: 36 месяцев - максимальный срок
+  - `months`: 64 месяцев - максимальный срок
 
-### Веса и множитель
+### Веса нормализации (динамический расчёт)
+
+Система использует **двухэтапную систему взвешивания** для справедливого сопоставления:
+
+**Этап 1: Веса нормализации (NORMALIZATION_WEIGHTS)**
+- Автоматически рассчитываются при запуске системы (~1 секунда)
+- Корректируют различия в типичных диапазонах значений
+- Используют scipy оптимизацию для минимизации дисперсии средних значений
+- Обеспечивают равный вклад всех параметров до применения весов важности
+
+**Проблема без весов нормализации:**
+- `budget` обычно использует 16% от cap (среднее значение ~0.16)
+- `months` обычно использует 42% от cap (среднее значение ~0.42)
+- Без коррекции `months` имеет ~2.5x больше влияния, чем `budget`, до применения весов важности
+
+**Решение:**
+```python
+NORMALIZATION_WEIGHTS = {
+    'rooms': ~2.47,      # корректирует типичный диапазон 1-4 vs cap 10
+    'roommates': ~2.11,  # корректирует типичный диапазон 1-5 vs cap 10
+    'budget': ~3.82,     # корректирует типичный диапазон 5k-60k vs cap 200k
+    'months': ~1.50      # корректирует типичный диапазон 3-36 vs cap 64
+}
+```
+
+После применения весов нормализации все параметры имеют среднее значение ~0.5, создавая справедливую основу.
+
+**См. `normalization_weights.ipynb` для детального анализа и визуализации.**
+
+**Этап 2: Веса важности (GROUP_PARAMETER_WEIGHTS)**
+- Применяются ПОСЛЕ весов нормализации
+- Выражают приоритеты параметров для подбора соседей
+
 - **WEIGHT_MULTIPLIER**: `8` - множитель для усиления чувствительности
 - **BASE_WEIGHTS**: Базовые веса (до множителя)
   - `rooms`: 1.0
   - `roommates`: 1.0
   - `budget`: 0.35
   - `months`: 0.15
-- **GROUP_PARAMETER_WEIGHTS**: Финальные веса (базовые × множитель)
-  - `rooms`: 8.0
-  - `roommates`: 8.0
-  - `budget`: 2.8
-  - `months`: 1.2
+- **GROUP_PARAMETER_WEIGHTS**: Финальные веса важности (базовые × множитель)
+  - `rooms`: 8.0 - наиболее важный
+  - `roommates`: 8.0 - наиболее важный
+  - `budget`: 2.8 - средней важности
+  - `months`: 1.2 - наименее важный
+
+**Трёхэтапный процесс векторизации:**
+```
+Значение → [÷ cap] → [× norm_weight] → [× importance_weight] → Финальный вектор
+  10         0.10         0.10×2.47           0.247×8.0            1.976
+```
+
+1. **Нормализация по cap**: значение / cap → [0, 1]
+2. **Веса нормализации**: выравнивают распределения
+3. **Веса важности**: приоритизируют параметры
 
 ### Настройки поиска
 - **DEFAULT_TOP_K**: `5` - количество рекомендаций по умолчанию
@@ -543,20 +585,62 @@ All system constants are stored in `config.py` for easy customization:
   - `rooms`: 10 - maximum rooms
   - `roommates`: 10 - maximum roommates
   - `budget`: 200,000 ₽ - maximum budget
-  - `months`: 36 months - maximum duration
+  - `months`: 64 months - maximum duration
 
-### Weights and Multiplier
+### Normalization Weights (Dynamic Calculation)
+
+The system uses a **two-stage weighting system** for fair matching:
+
+**Stage 1: Normalization Weights (NORMALIZATION_WEIGHTS)**
+- Automatically calculated on system startup (~1 second)
+- Correct for different typical value ranges relative to caps
+- Use scipy optimization to minimize variance of parameter means
+- Ensure equal contribution of all parameters before importance weighting
+
+**Problem without normalization weights:**
+- `budget` typically uses 16% of cap (mean value ~0.16)
+- `months` typically uses 42% of cap (mean value ~0.42)
+- Without correction, `months` has ~2.5x more influence than `budget` before importance weighting
+
+**Solution:**
+```python
+NORMALIZATION_WEIGHTS = {
+    'rooms': ~2.47,      # corrects typical range 1-4 vs cap 10
+    'roommates': ~2.11,  # corrects typical range 1-5 vs cap 10
+    'budget': ~3.82,     # corrects typical range 5k-60k vs cap 200k
+    'months': ~1.50      # corrects typical range 3-36 vs cap 64
+}
+```
+
+After applying normalization weights, all parameters have mean value ~0.5, creating a fair baseline.
+
+**See `normalization_weights.ipynb` for detailed analysis and visualization.**
+
+**Stage 2: Importance Weights (GROUP_PARAMETER_WEIGHTS)**
+- Applied AFTER normalization weights
+- Express parameter priorities for roommate matching
+
 - **WEIGHT_MULTIPLIER**: `8` - multiplier for increased sensitivity
 - **BASE_WEIGHTS**: Base weights (before multiplier)
   - `rooms`: 1.0
   - `roommates`: 1.0
   - `budget`: 0.35
   - `months`: 0.15
-- **GROUP_PARAMETER_WEIGHTS**: Final weights (base × multiplier)
-  - `rooms`: 8.0
-  - `roommates`: 8.0
-  - `budget`: 2.8
-  - `months`: 1.2
+- **GROUP_PARAMETER_WEIGHTS**: Final importance weights (base × multiplier)
+  - `rooms`: 8.0 - most important
+  - `roommates`: 8.0 - most important
+  - `budget`: 2.8 - moderately important
+  - `months`: 1.2 - least important
+
+**Three-stage vectorization process:**
+```
+Value → [÷ cap] → [× norm_weight] → [× importance_weight] → Final Vector
+  10      0.10        0.10×2.47           0.247×8.0            1.976
+```
+
+1. **Cap normalization**: value / cap → [0, 1]
+2. **Normalization weights**: equalize distributions
+3. **Importance weights**: prioritize parameters
 
 ### Search Settings
 - **DEFAULT_TOP_K**: `5` - default number of recommendations

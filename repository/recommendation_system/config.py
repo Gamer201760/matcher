@@ -25,7 +25,7 @@ DEFAULT_CAPS = {
     'rooms': 10,       # Maximum number of rooms
     'roommates': 10,   # Maximum number of roommates
     'budget': 200000,  # Maximum budget in rubles
-    'months': 36       # Maximum rental duration in months
+    'months': 64       # Maximum rental duration in months
 }
 
 # ============================================================================
@@ -39,8 +39,8 @@ WEIGHT_MULTIPLIER = 8
 BASE_WEIGHTS = {
     'rooms': 1.0,
     'roommates': 1.0,
-    'budget': 0.35,
-    'months': 0.15
+    'budget': 1,
+    'months': 1
 }
 
 # Final weights (base weights * multiplier)
@@ -113,6 +113,44 @@ FAKE_USER_ROOMMATES_RANGE = (1, 5)
 
 # Probability of auto-grouping generated users
 AUTO_GROUP_PROBABILITY = 0.4
+
+# ============================================================================
+# NORMALIZATION WEIGHTS (DYNAMIC CALCULATION)
+# ============================================================================
+
+# Import the normalization weight calculator
+from .calculate_normalization_weights import calculate_optimal_normalization_weights
+
+# Calculate normalization weights dynamically on import
+# These weights equalize parameter distributions before importance weights are applied
+# 
+# Two-stage weighting system:
+# 1. NORMALIZATION_WEIGHTS: Correct for different typical ranges vs caps (this section)
+#    - Ensures all parameters have similar mean values after normalization
+#    - Example: 'budget' typically uses 16% of cap, 'months' uses 42% of cap
+#    - Without these weights, parameters would be biased before importance weighting
+#
+# 2. GROUP_PARAMETER_WEIGHTS: Express matching priorities (defined above)
+#    - Applied after normalization to prioritize important parameters
+#    - Example: rooms (8.0) is more important than months (1.2)
+#
+# The calculation uses scipy optimization to minimize variance of parameter means,
+# ensuring fair comparison before importance weights are applied.
+# Typically takes <1 second on startup.
+#
+# See normalization_weights.ipynb for detailed analysis and visualization.
+
+NORMALIZATION_WEIGHTS = calculate_optimal_normalization_weights(
+    sample_size=1000,
+    parameters=PARAMETERS,
+    default_caps=DEFAULT_CAPS,
+    user_ranges={
+        'rooms': FAKE_USER_ROOMS_RANGE,
+        'roommates': FAKE_USER_ROOMMATES_RANGE,
+        'budget': FAKE_USER_BUDGET_RANGE,
+        'months': FAKE_USER_MONTHS_OPTIONS
+    }
+)
 
 # ============================================================================
 # LOGGING SETTINGS

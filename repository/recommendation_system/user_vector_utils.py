@@ -1,12 +1,15 @@
 """
 Create normalized preference vectors for users and groups and compare them with cosine distance.
 
-- Normalizes each parameter to [0, 1] using simple, capped transforms
-  consistent with prior distance capping (rooms/roommates cap at 2, months cap at 36).
-- Supports optional weighting of vector components for GROUPS.
+Three-stage vector creation process:
+1. Cap-based normalization: Normalize each parameter to [0, 1] by dividing by cap
+2. Normalization weights: Apply weights to equalize parameter distributions
+3. Importance weights: Apply GROUP_PARAMETER_WEIGHTS to prioritize parameters
+
+This ensures fair comparison before importance weighting is applied.
 """
 from math import sqrt
-from .config import GROUP_PARAMETER_WEIGHTS, WEIGHT_MULTIPLIER, DEFAULT_CAPS
+from .config import GROUP_PARAMETER_WEIGHTS, WEIGHT_MULTIPLIER, DEFAULT_CAPS, NORMALIZATION_WEIGHTS
 
 
 def _clamp(value, min_value, max_value):
@@ -59,39 +62,75 @@ available_parameters = {
 group_parameter_weights = GROUP_PARAMETER_WEIGHTS
 
 
-def create_user_vector(user:dict, parameters:list, caps:dict=None):
-    """Create an unweighted normalized vector in the order of `parameters`."""
+def create_user_vector(user:dict, parameters:list, caps:dict=None, apply_normalization=True):
+    """Create a normalized vector in the order of `parameters`.
+    
+    Three-stage normalization process:
+    1. Cap-based normalization: value / cap → [0, 1]
+    2. Normalization weights: normalized * norm_weight (equalizes distributions)
+    3. Importance weights: Applied later in create_group_vector_with_weights
+    
+    Args:
+        user: Dict with parameter values
+        parameters: Ordered list of parameter names
+        caps: Optional dict of caps (overrides DEFAULT_CAPS)
+        apply_normalization: If True, apply normalization weights (default: True)
+        
+    Returns:
+        List of normalized values in parameter order
+    """
     vector = []
     caps = caps or {}
     for param in parameters:
         if param in available_parameters and param in user:
+            # Stage 1: Normalize by cap
             normalizer = available_parameters[param]
             if param in ('budget', 'months'):
                 # Pass optional cap if provided
                 cap_value = caps.get(param)
                 if cap_value is not None:
-                    vector.append(normalizer(user[param], cap_value))
+                    normalized = normalizer(user[param], cap_value)
                 else:
-                    vector.append(normalizer(user[param]))
+                    normalized = normalizer(user[param])
             else:
-                vector.append(normalizer(user[param]))
+                normalized = normalizer(user[param])
+            
+            # Stage 2: Apply normalization weight to equalize distributions
+            if apply_normalization:
+                norm_weight = NORMALIZATION_WEIGHTS.get(param, 1.0)
+                normalized = normalized * norm_weight
+            
+            vector.append(normalized)
         else:
             vector.append(0.0)
     return vector
 
 def create_group_vector_with_weights(values:dict, parameters:list, weights:dict, caps:dict=None):
     """Create a weighted normalized vector for a GROUP using group parameter values.
-
-    values: mapping of parameter name to raw numeric value (e.g., averaged across members)
-    parameters: ordered list of parameter names
-    weights: group weights mapping
-    caps: optional caps for normalizers
+    
+    Three-stage process:
+    1. Cap-based normalization: done in create_user_vector (value / cap)
+    2. Normalization weights: done in create_user_vector (equalizes distributions)
+    3. Importance weights: applied here (prioritizes parameters for matching)
+    
+    Args:
+        values: mapping of parameter name to raw numeric value (e.g., averaged across members)
+        parameters: ordered list of parameter names
+        weights: importance weights dict (e.g., GROUP_PARAMETER_WEIGHTS)
+        caps: optional caps for normalizers
+        
+    Returns:
+        List of fully weighted values ready for vector search
     """
-    base_vector = create_user_vector(values, parameters, caps)
+    # Stages 1 & 2: Get normalized vector with normalization weights applied
+    base_vector = create_user_vector(values, parameters, caps, apply_normalization=True)
+    
+    # Stage 3: Apply importance weights
     weighted_vector = []
     for i, param in enumerate(parameters):
         w = weights.get(param, 1.0)
         weighted_vector.append(base_vector[i] * w)
+    
     return weighted_vector
 
 
