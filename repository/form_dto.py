@@ -5,7 +5,7 @@ from entity.parameters import Parameters, Sex, UserType
 from entity.point import Point
 
 
-def db_dict_to_form(db_dict: dict, user_id: UUID) -> Form:
+def db_form_to_form(db_dict: dict, user_id: UUID) -> Form:
     """
     Convert database dictionary to Form entity.
 

@@ -10,7 +10,7 @@ from uuid import UUID
 from neo4j import Driver
 
 from entity.group import Group
-from repository.group_dto import db_dict_to_group
+from repository.group_dto import db_group_to_group
 from repository.recommendation_system.config import PARAMETERS
 from repository.recommendation_system.db import (
     find_similar,
@@ -116,7 +116,7 @@ class GroupRecommendationRepository:
                         )
                         continue
 
-                    group_entity = db_dict_to_group(db_group, parsed_id)
+                    group_entity = db_group_to_group(db_group, parsed_id)
                     result_groups.append(group_entity)
 
             return result_groups

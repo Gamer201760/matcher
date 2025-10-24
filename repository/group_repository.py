@@ -13,8 +13,8 @@ from neo4j import Driver
 from entity.form import Form
 from entity.group import Group
 from entity.parameters import Parameters
-from repository.form_dto import db_dict_to_form
-from repository.group_dto import db_dict_to_group
+from repository.form_dto import db_form_to_form
+from repository.group_dto import db_group_to_group
 from repository.recommendation_system.db import (
     add_user_to_group,
     change_group_owner,
@@ -91,7 +91,7 @@ class GroupRepository:
             if not db_group:
                 return None
 
-            return db_dict_to_group(db_group, group_id)
+            return db_group_to_group(db_group, group_id)
 
     def get_by_user_id(self, user_id: UUID) -> Optional[Group]:
         """
@@ -115,7 +115,7 @@ class GroupRepository:
                 return None
 
             # Parse group ID using robust helper
-            return db_dict_to_group(db_group, self._parse_group_id(group_id_str))
+            return db_group_to_group(db_group, self._parse_group_id(group_id_str))
 
     def get_by_owner_id(self, owner_id: UUID) -> Optional[Group]:
         """
@@ -137,7 +137,7 @@ class GroupRepository:
             if not group_id_str:
                 return None
 
-            return db_dict_to_group(db_group, self._parse_group_id(group_id_str))
+            return db_group_to_group(db_group, self._parse_group_id(group_id_str))
 
     def update_parameters(self, group_id: UUID, parameters: Parameters) -> None:
         """
@@ -206,7 +206,7 @@ class GroupRepository:
             forms = []
             for member_dict in db_members:
                 user_id = UUID(member_dict['id'])
-                forms.append(db_dict_to_form(member_dict, user_id))
+                forms.append(db_form_to_form(member_dict, user_id))
 
             return forms
 

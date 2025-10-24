@@ -17,7 +17,7 @@ from neo4j import Driver
 
 from entity.form import Form
 from entity.parameters import Parameters
-from repository.form_dto import db_dict_to_form
+from repository.form_dto import db_form_to_form
 from repository.recommendation_system.db import (
     delete_user_form,
     get_user_form,
@@ -87,7 +87,7 @@ class FormRepository:
             if not db_form:
                 return None
 
-            return db_dict_to_form(db_form, user_id)
+            return db_form_to_form(db_form, user_id)
 
     def update_parameters_by_user_id(
         self, user_id: UUID, parameters: Parameters
