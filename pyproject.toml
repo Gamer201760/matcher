@@ -9,6 +9,8 @@ dependencies = [
     "neo4j>=6.0.2",
     "numpy>=2.3.4",
     "python-dotenv>=1.1.1",
+    "questionary>=2.1.1",
+    "rich>=14.2.0",
     "scipy>=1.16.2",
 ]
 
