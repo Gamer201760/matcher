@@ -408,7 +408,8 @@ def get_group_member_parameters(session, group_id, exclude_user_id=None):
         OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pm:Parameter {name: 'roommates'})
         OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pb:Parameter {name: 'budget'})
         OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pn:Parameter {name: 'months'})
-        RETURN u.id as user_id,
+        RETURN u.id as id,
+               u.name as name,
                coalesce(pr.value, 0) as rooms,
                coalesce(pm.value, 0) as roommates,
                coalesce(pb.value, 0) as budget,

@@ -198,8 +198,24 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
         {'owner': 'u8', 'members': ['u14', 'u21']},  # Family-sized group
         {'owner': 'u13', 'members': ['u19', 'u26', 'u34']},  # Big group seekers
         {'owner': 'u17', 'members': ['u33']},  # Premium long-term
-        # Leave some users solo: u5, u7, u9, u11, u12, u16, u18, u20, u22, u25, u28, u29, u30, u31, u35
+        # Users in single-person groups: u5, u7, u9, u11, u12, u16, u20, u22, u25, u28, u29, u30, u31, u32, u35
+        # Users WITHOUT any group (truly solo): u18
     ]
+    
+    # Users to leave completely without groups (delete their auto-created single-person groups)
+    truly_solo_users = ['u18', 'u20', 'u25', 'u31']
+    
+    for user_id in truly_solo_users:
+        group_id = f"g_{user_id}"
+        delete_query = """
+            MATCH (g:Group {id: $group_id})
+            OPTIONAL MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
+            DETACH DELETE gp, g
+        """
+        try:
+            session.run(delete_query, group_id=group_id)
+        except Exception:
+            pass  # Skip if deletion fails
     
     # Execute groupings
     for group_config in groups:
@@ -215,7 +231,7 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
             )
 
 
-def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, weights: dict, group_probability: float = 0.4):
+def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, weights: dict, group_probability: float = 0.4, leave_some_solo: float = 0.2):
     """
     Automatically group generated users with some probability.
     
@@ -226,14 +242,39 @@ def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, 
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
         group_probability: Chance of creating a group (default 0.4)
+        leave_some_solo: Fraction of users to leave without any group (default 0.2, i.e., 20%)
     """
     from repository.recommendation_system.db import add_user_to_group
     
     # Sort users by similarity (simple heuristic)
     sorted_users = sorted(users, key=lambda u: (u['rooms'], u['budget']))
     
+    # Determine how many users to leave without any group
+    num_truly_solo = int(len(sorted_users) * leave_some_solo)
+    # Randomly select users to leave without groups
+    truly_solo_indices = set(random.sample(range(len(sorted_users)), num_truly_solo))
+    
+    # Delete groups for truly solo users (they were auto-created by upsert_users)
+    for idx in truly_solo_indices:
+        user = sorted_users[idx]
+        group_id = f"g_{user['id']}"
+        delete_query = """
+            MATCH (g:Group {id: $group_id})
+            OPTIONAL MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
+            DETACH DELETE gp, g
+        """
+        try:
+            session.run(delete_query, group_id=group_id)
+        except Exception:
+            pass  # Skip if deletion fails
+    
     i = 0
     while i < len(sorted_users):
+        # Skip truly solo users
+        if i in truly_solo_indices:
+            i += 1
+            continue
+            
         # Random chance to create a group
         if random.random() < group_probability and i + 1 < len(sorted_users):
             # Create group with 2-4 members
@@ -241,19 +282,23 @@ def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, 
             owner = sorted_users[i]
             members = sorted_users[i+1:i+group_size]
             
-            target_group_id = f"g_{owner['id']}"
-            for member in members:
-                try:
-                    add_user_to_group(
-                        session,
-                        member['id'],
-                        target_group_id,
-                        caps=caps,
-                        use_weights=use_weights,
-                        weights=weights
-                    )
-                except Exception:
-                    pass  # Skip if grouping fails
+            # Filter out truly solo users from members
+            members = [m for j, m in enumerate(sorted_users[i+1:i+group_size], start=i+1) if j not in truly_solo_indices]
+            
+            if members:  # Only create group if there are valid members
+                target_group_id = f"g_{owner['id']}"
+                for member in members:
+                    try:
+                        add_user_to_group(
+                            session,
+                            member['id'],
+                            target_group_id,
+                            caps=caps,
+                            use_weights=use_weights,
+                            weights=weights
+                        )
+                    except Exception:
+                        pass  # Skip if grouping fails
             
             i += group_size
         else:

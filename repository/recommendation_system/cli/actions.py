@@ -6,6 +6,7 @@ getting recommendations, switching users, etc.
 """
 import questionary
 from typing import Optional
+from rich.table import Table
 from repository.recommendation_system.cli.displays import (
     console, display_recommendations, display_group_details,
     display_group_tree, display_statistics, display_user_info,

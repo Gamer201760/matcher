@@ -42,15 +42,15 @@ def main_menu(session, current_user_id: str, caps: dict, use_weights: bool, weig
         # Check if user is in a group
         from repository.recommendation_system.db import get_group_by_user_id
         current_group = get_group_by_user_id(session, current_user_id)
-        is_in_group = current_group is not None
+        is_in_multi_person_group = current_group is not None and current_group.get('member_count', 0) > 1
         
         # Build menu choices dynamically
         choices = [
             "🔍 Get Recommendations",
         ]
         
-        # Only show Join if NOT in a group
-        if not is_in_group:
+        # Only show Join if NOT in a multi-person group (single-person groups can still join)
+        if not is_in_multi_person_group:
             choices.append("🤝 Join a Group")
         
         choices.extend([
@@ -151,9 +151,12 @@ def select_user_with_details(session, caps: dict, use_weights: bool, weights: di
     for user in users:
         group_info = ""
         if user['group_id']:
-            group_info = f"[green]in group ({user['group_size']} members)[/green]"
+            if user['group_size'] == 1:
+                group_info = "[yellow]single-person group[/yellow]"
+            else:
+                group_info = f"[green]in group ({user['group_size']} members)[/green]"
         else:
-            group_info = "[dim]solo[/dim]"
+            group_info = "[cyan]no group[/cyan]"
         
         # Handle None values with defaults
         rooms = user['rooms'] if user['rooms'] is not None else 0
