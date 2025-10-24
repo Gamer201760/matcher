@@ -3,10 +3,12 @@ Menu system for interactive CLI.
 
 Contains the main menu loop and startup configuration menu.
 """
+
 from typing import Optional
 
 import questionary
-from repository.recommendation_system.cli.actions import (
+
+from infrastructure.cli.actions import (
     action_clean_database,
     action_create_fake_users,
     action_create_new_user_main,
@@ -18,122 +20,136 @@ from repository.recommendation_system.cli.actions import (
     action_view_my_group,
     action_view_statistics,
 )
-from repository.recommendation_system.cli.displays import (
+from infrastructure.cli.displays import (
     console,
     display_error,
     display_info,
 )
-from repository.recommendation_system.cli.utils import (
+from infrastructure.cli.utils import (
     auto_group_users,
     generate_fake_users,
     sample_users,
     setup_sample_groups,
 )
-from repository.recommendation_system.db import clean_db, upsert_users
+from infrastructure.neo4j import clean_db, upsert_users
+from infrastructure.neo4j.group_ops import get_group_by_user_id
 
 
-def main_menu(session, current_user_id: str, caps: dict, use_weights: bool, weights: dict) -> str:
+def main_menu(
+    session, current_user_id: str, caps: dict, use_weights: bool, weights: dict
+) -> str:
     """
     Main menu loop - runs until user exits.
-    
+
     Args:
         session: Neo4j session
         current_user_id: Current user ID
         caps: Normalization caps
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
-        
+
     Returns:
         str: Current user ID (may have changed via switch user)
     """
     while True:
         # Show current user context with name
-        user_query = "MATCH (u:User {id: $user_id}) RETURN u.name as name"
+        user_query = 'MATCH (u:User {id: $user_id}) RETURN u.name as name'
         result = session.run(user_query, user_id=current_user_id)
         user_record = result.single()
         user_name = user_record['name'] if user_record else 'Unknown'
 
-        console.print(f"\n[bold cyan]Current User:[/bold cyan] [yellow]{user_name}[/yellow] [dim]({current_user_id})[/dim]")
+        console.print(
+            f'\n[bold cyan]Current User:[/bold cyan] [yellow]{user_name}[/yellow] [dim]({current_user_id})[/dim]'
+        )
 
         # Check if user is in a group
-        from repository.recommendation_system.db import get_group_by_user_id
+
         current_group = get_group_by_user_id(session, current_user_id)
-        is_in_multi_person_group = current_group is not None and current_group.get('member_count', 0) > 1
+        is_in_multi_person_group = (
+            current_group is not None and current_group.get('member_count', 0) > 1
+        )
 
         # Build menu choices dynamically
         choices = [
-            "🔍 Get Recommendations",
+            '🔍 Get Recommendations',
         ]
 
         # Only show Join if NOT in a multi-person group (single-person groups can still join)
         if not is_in_multi_person_group:
-            choices.append("🤝 Join a Group")
+            choices.append('🤝 Join a Group')
 
-        choices.extend([
-            "🚪 Leave My Group",
-            "👁️  View My Group",
-            "🌳 View All Groups (Tree)",
-            "👤 Switch User",
-            "➕ Create New User",
-            "📊 View Statistics",
-            "➕ Add Fake Users",
-            "🧹 Clean Database",
-            "❌ Exit"
-        ])
+        choices.extend(
+            [
+                '🚪 Leave My Group',
+                '👁️  View My Group',
+                '🌳 View All Groups (Tree)',
+                '👤 Switch User',
+                '➕ Create New User',
+                '📊 View Statistics',
+                '➕ Add Fake Users',
+                '🧹 Clean Database',
+                '❌ Exit',
+            ]
+        )
 
         choice = questionary.select(
-            "🏠 Roommate Matcher - Main Menu",
-            choices=choices
+            '🏠 Roommate Matcher - Main Menu', choices=choices
         ).ask()
 
         if not choice:
             continue
 
-        if choice == "🔍 Get Recommendations":
-            action_get_recommendations(session, current_user_id, caps, use_weights, weights)
+        if choice == '🔍 Get Recommendations':
+            action_get_recommendations(
+                session, current_user_id, caps, use_weights, weights
+            )
 
-        elif choice == "🤝 Join a Group":
+        elif choice == '🤝 Join a Group':
             action_join_group(session, current_user_id, caps, use_weights, weights)
 
-        elif choice == "🚪 Leave My Group":
+        elif choice == '🚪 Leave My Group':
             action_leave_group(session, current_user_id, caps, use_weights, weights)
 
-        elif choice == "👁️  View My Group":
+        elif choice == '👁️  View My Group':
             action_view_my_group(session, current_user_id)
 
-        elif choice == "🌳 View All Groups (Tree)":
+        elif choice == '🌳 View All Groups (Tree)':
             action_view_all_groups(session, show_parameters=True)
 
-        elif choice == "👤 Switch User":
+        elif choice == '👤 Switch User':
             new_user_id = action_switch_user(session)
             if new_user_id:
                 current_user_id = new_user_id
 
-        elif choice == "➕ Create New User":
-            new_user_id = action_create_new_user_main(session, caps, use_weights, weights)
+        elif choice == '➕ Create New User':
+            new_user_id = action_create_new_user_main(
+                session, caps, use_weights, weights
+            )
             if new_user_id:
-                display_info(f"Would you like to switch to the new user {new_user_id}?")
-                switch = questionary.confirm("Switch to new user?", default=True).ask()
+                display_info(f'Would you like to switch to the new user {new_user_id}?')
+                switch = questionary.confirm('Switch to new user?', default=True).ask()
                 if switch:
                     current_user_id = new_user_id
 
-        elif choice == "📊 View Statistics":
+        elif choice == '📊 View Statistics':
             action_view_statistics(session)
 
-        elif choice == "➕ Add Fake Users":
+        elif choice == '➕ Add Fake Users':
             action_create_fake_users(session, caps, use_weights, weights)
 
-        elif choice == "🧹 Clean Database":
+        elif choice == '🧹 Clean Database':
             action_clean_database(session)
 
-        elif choice == "❌ Exit":
-            console.print("\n[green]👋 Thanks for using Roommate Matcher![/green]\n")
+        elif choice == '❌ Exit':
+            console.print('\n[green]👋 Thanks for using Roommate Matcher![/green]\n')
             break
 
     return current_user_id
 
 
-def select_user_with_details(session, caps: dict, use_weights: bool, weights: dict) -> Optional[str]:
+def select_user_with_details(
+    session, caps: dict, use_weights: bool, weights: dict
+) -> Optional[str]:
     """Select user showing their parameters and group status."""
     # Get users with full details from Parameter nodes
     query = """
@@ -155,24 +171,24 @@ def select_user_with_details(session, caps: dict, use_weights: bool, weights: di
     users = list(result)
 
     if not users:
-        display_error("No users found. Please restart and create users.")
+        display_error('No users found. Please restart and create users.')
         return None
 
     # Format choices with parameters
     choices = []
 
     # Add "Create New User" option at the TOP for visibility
-    choices.append("➕ Create New User")
+    choices.append('➕ Create New User')
 
     for user in users:
-        group_info = ""
+        group_info = ''
         if user['group_id']:
             if user['group_size'] == 1:
-                group_info = "[yellow]single-person group[/yellow]"
+                group_info = '[yellow]single-person group[/yellow]'
             else:
                 group_info = f"[green]in group ({user['group_size']} members)[/green]"
         else:
-            group_info = "[cyan]no group[/cyan]"
+            group_info = '[cyan]no group[/cyan]'
 
         # Handle None values with defaults
         rooms = user['rooms'] if user['rooms'] is not None else 0
@@ -189,14 +205,13 @@ def select_user_with_details(session, caps: dict, use_weights: bool, weights: di
         choices.append(choice_str)
 
     choice = questionary.select(
-        "Select your user (or create a new one):",
-        choices=choices
+        'Select your user (or create a new one):', choices=choices
     ).ask()
 
     if not choice:
         return None
 
-    if "Create New User" in choice:
+    if 'Create New User' in choice:
         return action_create_new_user_main(session, caps, use_weights, weights)
 
     # Extract user ID from choice (find matching user)
@@ -208,37 +223,36 @@ def select_user_with_details(session, caps: dict, use_weights: bool, weights: di
     return None
 
 
-def startup_menu(session, caps: dict, use_weights: bool, weights: dict) -> Optional[str]:
+def startup_menu(
+    session, caps: dict, use_weights: bool, weights: dict
+) -> Optional[str]:
     """
     Improved startup flow.
-    
+
     Args:
         session: Neo4j session
         caps: Normalization caps
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
-        
+
     Returns:
         str: User ID to start with, or None
     """
     # Ask about database cleanup
-    clean = questionary.confirm(
-        "Clean database before starting?",
-        default=False
-    ).ask()
+    clean = questionary.confirm('Clean database before starting?', default=False).ask()
 
     if clean:
-        clean_db()
-        console.print("[green]✓ Database cleaned[/green]")
+        clean_db(session)
+        console.print('[green]✓ Database cleaned[/green]')
 
         # Auto-create sample users
-        console.print("[cyan]Creating sample users...[/cyan]")
+        console.print('[cyan]Creating sample users...[/cyan]')
         users = sample_users()
         # Allow customizing count
         count_choice = questionary.text(
-            f"How many sample users to create? (default: {len(users)})",
+            f'How many sample users to create? (default: {len(users)})',
             default=str(len(users)),
-            validate=lambda x: x.isdigit() and int(x) > 0
+            validate=lambda x: x.isdigit() and int(x) > 0,
         ).ask()
 
         if not count_choice:
@@ -249,7 +263,9 @@ def startup_menu(session, caps: dict, use_weights: bool, weights: dict) -> Optio
         else:
             users = sample_users()
 
-        upsert_users(session, users, caps=caps, use_weights=use_weights, weights=weights)
+        upsert_users(
+            session, users, caps=caps, use_weights=use_weights, weights=weights
+        )
 
         # Group them if using sample users
         if len(users) == 35:
@@ -258,8 +274,7 @@ def startup_menu(session, caps: dict, use_weights: bool, weights: dict) -> Optio
             # Group random users probabilistically
             auto_group_users(session, users, caps, use_weights, weights)
 
-        console.print(f"[green]✓ Created {len(users)} users[/green]")
+        console.print(f'[green]✓ Created {len(users)} users[/green]')
 
     # Show enhanced user selection with parameters
     return select_user_with_details(session, caps, use_weights, weights)
-

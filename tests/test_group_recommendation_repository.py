@@ -7,16 +7,15 @@ Tests group recommendation using vector similarity search.
 import unittest
 from uuid import uuid4
 
-from repository.recommendation_system.db import (
+from entity.form import Form
+from entity.parameters import Parameters, Sex, UserType
+from entity.point import Point
+from infrastructure.neo4j import (
     check_neo4j_connection,
     clear_users,
     ensure_constraints_and_index,
     get_driver,
 )
-
-from entity.form import Form
-from entity.parameters import Parameters, Sex, UserType
-from entity.point import Point
 from repository.form_repository import FormRepository
 from repository.group_recommendation_repository import GroupRecommendationRepository
 from repository.group_repository import GroupRepository
@@ -30,7 +29,7 @@ class TestGroupRecommendationRepository(unittest.TestCase):
         """Set up test environment once before all tests."""
         # Check Neo4j connection
         if not check_neo4j_connection():
-            raise RuntimeError("Neo4j database is not available")
+            raise RuntimeError('Neo4j database is not available')
 
         # Initialize database
         with get_driver() as driver:
@@ -58,14 +57,16 @@ class TestGroupRecommendationRepository(unittest.TestCase):
         if hasattr(self, 'group_repo'):
             self.group_repo.close()
 
-    def _create_test_form(self, user_id=None, budget=50000, rooms=2, roommates=1) -> Form:
+    def _create_test_form(
+        self, user_id=None, budget=50000, rooms=2, roommates=1
+    ) -> Form:
         """Helper to create a test form with customizable parameters."""
         if user_id is None:
             user_id = uuid4()
 
         parameters = Parameters(
-            name=f"User {user_id}",
-            surname="Test",
+            name=f'User {user_id}',
+            surname='Test',
             geo=Point(55.7558, 37.6173),
             photos=[],
             budget=budget,
@@ -77,21 +78,19 @@ class TestGroupRecommendationRepository(unittest.TestCase):
             pet=False,
             sex=Sex.MALE,
             user_type=UserType.STUDENT,
-            description="Test user"
+            description='Test user',
         )
 
-        return Form(
-            id=user_id,
-            user_id=user_id,
-            parameters=parameters
-        )
+        return Form(id=user_id, user_id=user_id, parameters=parameters)
 
     def test_01_execute_basic_recommendation(self):
         """Test basic recommendation for a single-member group."""
         # Create three users with different parameters
         form1 = self._create_test_form(budget=50000, rooms=2, roommates=1)
         form2 = self._create_test_form(budget=50000, rooms=2, roommates=1)  # Identical
-        form3 = self._create_test_form(budget=100000, rooms=5, roommates=4)  # Very different
+        form3 = self._create_test_form(
+            budget=100000, rooms=5, roommates=4
+        )  # Very different
 
         self.form_repo.create(form1)
         self.form_repo.create(form2)
@@ -112,7 +111,7 @@ class TestGroupRecommendationRepository(unittest.TestCase):
             most_similar = recommendations[0]
             self.assertIsNotNone(most_similar)
 
-        print(f"✓ Got {len(recommendations)} recommendations for group {group1.id}")
+        print(f'✓ Got {len(recommendations)} recommendations for group {group1.id}')
 
     def test_02_execute_no_other_groups(self):
         """Test recommendation when there are no other groups."""
@@ -129,7 +128,7 @@ class TestGroupRecommendationRepository(unittest.TestCase):
         # Verify
         self.assertEqual(len(recommendations), 0)
 
-        print("✓ Correctly returned empty list when no other groups exist")
+        print('✓ Correctly returned empty list when no other groups exist')
 
     def test_03_execute_similarity_ordering(self):
         """Test that recommendations are ordered by similarity."""
@@ -156,7 +155,7 @@ class TestGroupRecommendationRepository(unittest.TestCase):
         # The order should be by similarity (form2 most similar, form4 least)
         # Note: We can't check exact IDs due to group naming, but we can verify
         # that we got multiple recommendations
-        print(f"✓ Got {len(recommendations)} ordered recommendations")
+        print(f'✓ Got {len(recommendations)} ordered recommendations')
 
     def test_04_execute_with_top_k_limit(self):
         """Test recommendation with top_k limit."""
@@ -179,14 +178,16 @@ class TestGroupRecommendationRepository(unittest.TestCase):
 
         repo_limited.close()
 
-        print(f"✓ Correctly limited recommendations to {len(recommendations)}")
+        print(f'✓ Correctly limited recommendations to {len(recommendations)}')
 
     def test_05_execute_for_multi_member_group(self):
         """Test recommendation for a multi-member group."""
         # Create three users
         form1 = self._create_test_form(budget=30000, rooms=1, roommates=1)
         form2 = self._create_test_form(budget=70000, rooms=3, roommates=3)
-        form3 = self._create_test_form(budget=50000, rooms=2, roommates=2)  # Average of form1+form2
+        form3 = self._create_test_form(
+            budget=50000, rooms=2, roommates=2
+        )  # Average of form1+form2
 
         self.form_repo.create(form1)
         self.form_repo.create(form2)
@@ -203,7 +204,7 @@ class TestGroupRecommendationRepository(unittest.TestCase):
         # Verify
         self.assertGreater(len(recommendations), 0)
 
-        print(f"✓ Got {len(recommendations)} recommendations for multi-member group")
+        print(f'✓ Got {len(recommendations)} recommendations for multi-member group')
 
     def test_06_execute_excludes_own_group(self):
         """Test that recommendations don't include the query group itself."""
@@ -222,7 +223,7 @@ class TestGroupRecommendationRepository(unittest.TestCase):
         recommendation_ids = {rec.id for rec in recommendations}
         self.assertNotIn(group1.id, recommendation_ids)
 
-        print("✓ Correctly excluded own group from recommendations")
+        print('✓ Correctly excluded own group from recommendations')
 
     def test_07_execute_nonexistent_group(self):
         """Test recommendation for non-existent group returns empty list."""
@@ -234,7 +235,7 @@ class TestGroupRecommendationRepository(unittest.TestCase):
         # Verify empty list is returned
         self.assertEqual(len(recommendations), 0)
 
-        print("✓ Correctly returned empty list for non-existent group")
+        print('✓ Correctly returned empty list for non-existent group')
 
     def test_08_context_manager(self):
         """Test repository works as context manager."""
@@ -251,9 +252,8 @@ class TestGroupRecommendationRepository(unittest.TestCase):
             recommendations = repo.execute(group1.id)
             self.assertIsInstance(recommendations, list)
 
-        print("✓ Context manager works correctly")
+        print('✓ Context manager works correctly')
 
 
 if __name__ == '__main__':
     unittest.main()
-

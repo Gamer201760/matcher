@@ -6,8 +6,7 @@ Usage:
     python run_cli.py
 """
 
-from repository.recommendation_system.cli.main import run
+from infrastructure.cli.main import run
 
 if __name__ == '__main__':
     run()
-

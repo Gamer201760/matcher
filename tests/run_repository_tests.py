@@ -21,9 +21,9 @@ from test_notification_repository import TestNotificationRepository
 
 def run_repository_tests():
     """Run all repository tests."""
-    print("=" * 60)
-    print("🧪 Repository Test Suite")
-    print("=" * 60)
+    print('=' * 60)
+    print('🧪 Repository Test Suite')
+    print('=' * 60)
     print()
 
     # Create test suite
@@ -43,24 +43,23 @@ def run_repository_tests():
 
     # Print summary
     print()
-    print("=" * 60)
-    print("📊 TEST SUMMARY")
-    print("=" * 60)
-    print(f"Tests run: {result.testsRun}")
-    print(f"Successes: {result.testsRun - len(result.failures) - len(result.errors)}")
-    print(f"Failures: {len(result.failures)}")
-    print(f"Errors: {len(result.errors)}")
+    print('=' * 60)
+    print('📊 TEST SUMMARY')
+    print('=' * 60)
+    print(f'Tests run: {result.testsRun}')
+    print(f'Successes: {result.testsRun - len(result.failures) - len(result.errors)}')
+    print(f'Failures: {len(result.failures)}')
+    print(f'Errors: {len(result.errors)}')
 
     if result.wasSuccessful():
-        print("✅ ALL REPOSITORY TESTS PASSED!")
+        print('✅ ALL REPOSITORY TESTS PASSED!')
     else:
-        print("❌ SOME TESTS FAILED")
+        print('❌ SOME TESTS FAILED')
 
-    print("=" * 60)
+    print('=' * 60)
 
     return 0 if result.wasSuccessful() else 1
 
 
 if __name__ == '__main__':
     sys.exit(run_repository_tests())
-

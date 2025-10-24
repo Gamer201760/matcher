@@ -8,7 +8,7 @@ This module handles:
 """
 
 import dotenv
-from neo4j import Driver, GraphDatabase
+from neo4j import Driver, GraphDatabase, Session
 from neo4j.exceptions import Neo4jError
 
 from ..config import SIMILARITY_FUNCTION
@@ -143,77 +143,76 @@ def ensure_constraints_and_index(session, dims):
         # Continue execution - constraints might already exist
 
 
-def clean_db(driver: Driver):
+def clean_db(session: Session):
     """Clean the entire database after user confirmation."""
     logger.debug('Starting complete database cleanup...')
 
     try:
-        with driver.session() as session:
-            # Delete all nodes and relationships
-            delete_query = 'MATCH (n) DETACH DELETE n'
-            log_neo4j_query(logger, delete_query)
-            session.run(delete_query)
-            logger.info('✓ All nodes and relationships deleted')
+        # Delete all nodes and relationships
+        delete_query = 'MATCH (n) DETACH DELETE n'
+        log_neo4j_query(logger, delete_query)
+        session.run(delete_query)
+        logger.info('✓ All nodes and relationships deleted')
 
-            # Drop all indexes (except built-in ones)
-            indexes_query = """
+        # Drop all indexes (except built-in ones)
+        indexes_query = """
                     SHOW INDEXES
                     YIELD name, type
                     WHERE type = 'VECTOR'
                     RETURN name
                 """
-            log_neo4j_query(logger, indexes_query)
-            indexes_result = session.run(indexes_query)
+        log_neo4j_query(logger, indexes_query)
+        indexes_result = session.run(indexes_query)
 
-            dropped_indexes = 0
-            for record in indexes_result:
-                index_name = record['name']
-                try:
-                    drop_index_query = 'DROP INDEX $index_name'
-                    log_neo4j_query(logger, drop_index_query, index_name=index_name)
-                    session.run(drop_index_query, index_name=index_name)
-                    logger.info(f'✓ Dropped index: {index_name}')
-                    dropped_indexes += 1
-                except Neo4jError as e:
-                    logger.debug(f'Could not drop index {index_name}: {e}')
+        dropped_indexes = 0
+        for record in indexes_result:
+            index_name = record['name']
+            try:
+                drop_index_query = 'DROP INDEX $index_name'
+                log_neo4j_query(logger, drop_index_query, index_name=index_name)
+                session.run(drop_index_query, index_name=index_name)
+                logger.info(f'✓ Dropped index: {index_name}')
+                dropped_indexes += 1
+            except Neo4jError as e:
+                logger.debug(f'Could not drop index {index_name}: {e}')
 
-            # Drop all constraints
-            constraints_query = """
+        # Drop all constraints
+        constraints_query = """
                     SHOW CONSTRAINTS
                     YIELD name
                     RETURN name
                 """
-            log_neo4j_query(logger, constraints_query)
-            constraints_result = session.run(constraints_query)
+        log_neo4j_query(logger, constraints_query)
+        constraints_result = session.run(constraints_query)
 
-            dropped_constraints = 0
-            for record in constraints_result:
-                constraint_name = record['name']
-                try:
-                    drop_constraint_query = 'DROP CONSTRAINT $constraint_name'
-                    log_neo4j_query(
-                        logger,
-                        drop_constraint_query,
-                        constraint_name=constraint_name,
-                    )
-                    session.run(
-                        drop_constraint_query,
-                        constraint_name=constraint_name,
-                    )
-                    logger.info(f'✓ Dropped constraint: {constraint_name}')
-                    dropped_constraints += 1
-                except Neo4jError as e:
-                    logger.debug(f'Could not drop constraint {constraint_name}: {e}')
+        dropped_constraints = 0
+        for record in constraints_result:
+            constraint_name = record['name']
+            try:
+                drop_constraint_query = 'DROP CONSTRAINT $constraint_name'
+                log_neo4j_query(
+                    logger,
+                    drop_constraint_query,
+                    constraint_name=constraint_name,
+                )
+                session.run(
+                    drop_constraint_query,
+                    constraint_name=constraint_name,
+                )
+                logger.info(f'✓ Dropped constraint: {constraint_name}')
+                dropped_constraints += 1
+            except Neo4jError as e:
+                logger.debug(f'Could not drop constraint {constraint_name}: {e}')
 
-            logger.info('✅ Database cleaned successfully!')
-            log_database_stats(
-                logger,
-                {
-                    'indexes_dropped': dropped_indexes,
-                    'constraints_dropped': dropped_constraints,
-                },
-            )
-            return True
+        logger.info('✅ Database cleaned successfully!')
+        log_database_stats(
+            logger,
+            {
+                'indexes_dropped': dropped_indexes,
+                'constraints_dropped': dropped_constraints,
+            },
+        )
+        return True
 
     except Exception as e:
         logger.error(f'Error cleaning database: {e}')
