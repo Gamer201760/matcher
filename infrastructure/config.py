@@ -123,7 +123,7 @@ from .calculate_normalization_weights import calculate_optimal_normalization_wei
 
 # Calculate normalization weights dynamically on import
 # These weights equalize parameter distributions before importance weights are applied
-# 
+#
 # Two-stage weighting system:
 # 1. NORMALIZATION_WEIGHTS: Correct for different typical ranges vs caps (this section)
 #    - Ensures all parameters have similar mean values after normalization
@@ -183,10 +183,10 @@ def round_for_display(value: float, is_budget: bool = False) -> float:
     """
     if value is None or DISPLAY_ROUNDING_MODE is None:
         return value
-    
+
     decimal_places = BUDGET_DECIMAL_PLACES if is_budget else NUMERIC_DECIMAL_PLACES
     multiplier = 10 ** decimal_places
-    
+
     if DISPLAY_ROUNDING_MODE == 'ceil':
         return math.ceil(value * multiplier) / multiplier
     elif DISPLAY_ROUNDING_MODE == 'floor':

@@ -13,9 +13,7 @@ from neo4j import Driver
 from entity.form import Form
 from entity.group import Group
 from entity.parameters import Parameters
-from repository.form_dto import db_form_to_form
-from repository.group_dto import db_group_to_group
-from repository.recommendation_system.db import (
+from infrastructure.neo4j import (
     add_user_to_group,
     change_group_owner,
     count_group_members,
@@ -29,6 +27,8 @@ from repository.recommendation_system.db import (
     remove_user_from_group,
     update_group_parameters,
 )
+from repository.form_dto import db_form_to_form
+from repository.group_dto import db_group_to_group
 
 
 class GroupRepository:

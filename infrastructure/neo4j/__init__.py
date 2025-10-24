@@ -13,59 +13,58 @@ code that imports from db_management_utils.
 """
 
 # Connection and infrastructure
+# Re-export PARAMETERS constant for convenience
+from ..config import PARAMETERS
 from .connection import (
-    get_driver,
-    ensure_constraints_and_index,
-    clean_db,
     check_neo4j_connection,
-)
-
-# User operations
-from .user_ops import (
-    clear_users,
-    upsert_users,
-    get_user_form,
-    delete_user_form,
-    get_user_parameters,
+    clean_db,
+    ensure_constraints_and_index,
+    get_driver,
 )
 
 # Group operations
 from .group_ops import (
     add_user_to_group,
-    remove_user_from_group,
-    get_group_info,
-    get_group_with_status,
-    get_group_member_parameters,
-    get_group_by_user_id,
-    get_group_by_owner_id,
-    list_group_members,
-    count_group_members,
-    update_group_parameters,
     change_group_owner,
+    count_group_members,
     delete_group,
     delete_group_by_owner,
+    get_group_by_owner_id,
+    get_group_by_user_id,
+    get_group_info,
+    get_group_member_parameters,
+    get_group_with_status,
+    list_group_members,
+    remove_user_from_group,
+    update_group_parameters,
 )
 
 # Request operations
 from .request_ops import (
-    send_join_request,
     approve_join_request,
-    get_join_request,
-    get_all_join_requests,
-    delete_join_request,
     create_join_request_with_id,
+    delete_join_request,
+    get_all_join_requests,
+    get_join_request,
+    send_join_request,
 )
 
 # Similarity operations
 from .similarity_ops import (
+    build_test_db_and_find_recommendations,
     find_similar,
     find_similar_local,
     find_similar_users,
-    build_test_db_and_find_recommendations,
 )
 
-# Re-export PARAMETERS constant for convenience
-from ..config import PARAMETERS
+# User operations
+from .user_ops import (
+    clear_users,
+    delete_user_form,
+    get_user_form,
+    get_user_parameters,
+    upsert_users,
+)
 
 __all__ = [
     # Connection

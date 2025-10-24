@@ -10,19 +10,19 @@ from uuid import UUID
 from neo4j import Driver
 
 from entity.group import Group
-from repository.group_dto import db_group_to_group
-from repository.recommendation_system.config import PARAMETERS
-from repository.recommendation_system.db import (
+from infrastructure.config import PARAMETERS
+from infrastructure.logging_utils import setup_logger
+from infrastructure.neo4j import (
     find_similar,
     get_group_info,
     get_group_member_parameters,
 )
-from repository.recommendation_system.logging_utils import setup_logger
-from repository.recommendation_system.user_vector_utils import (
+from infrastructure.user_vector_utils import (
     create_group_vector_with_weights,
     create_user_vector,
     group_parameter_weights,
 )
+from repository.group_dto import db_group_to_group
 
 logger = setup_logger()
 
