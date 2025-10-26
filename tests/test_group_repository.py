@@ -7,12 +7,12 @@ Tests group operations, membership management, and parameter calculations.
 import unittest
 from uuid import uuid4
 
-from repository.recommendation_system.db import (
+from infrastructure.neo4j.connection import (
     check_neo4j_connection,
-    clear_users,
     ensure_constraints_and_index,
     get_driver,
 )
+from infrastructure.neo4j.user_ops import clear_users
 
 from entity.form import Form
 from entity.parameters import Parameters, Sex, UserType

@@ -10,7 +10,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from repository.recommendation_system.cli.displays import (
+from infrastructure.cli.displays import (
     display_error,
     display_group_details,
     display_group_tree,
@@ -21,13 +21,13 @@ from repository.recommendation_system.cli.displays import (
     display_user_info,
     display_warning,
 )
-from repository.recommendation_system.cli.utils import (
+from infrastructure.cli.utils import (
     generate_fake_users,
     get_all_user_ids,
     sample_users,
     setup_sample_groups,
 )
-from repository.recommendation_system.db import (
+from infrastructure.neo4j.db import (
     PARAMETERS,
     ensure_constraints_and_index,
     get_driver,
@@ -51,7 +51,7 @@ class TestCLIDisplayFunctions(unittest.TestCase):
             users = sample_users()
             caps = {'budget': 200000, 'months': 36}
             use_weights = True
-            from repository.recommendation_system.user_vector_utils import (
+            from infrastructure.user_vector_utils import (
                 group_parameter_weights,
             )
 
@@ -170,7 +170,7 @@ class TestCLIUtilityFunctions(unittest.TestCase):
                 {'id': 'test2', 'name': 'Test 2', 'rooms': 2, 'roommates': 1, 'budget': 15000, 'months': 6}
             ]
             caps = {'budget': 200000, 'months': 36}
-            from repository.recommendation_system.user_vector_utils import (
+            from infrastructure.user_vector_utils import (
                 group_parameter_weights,
             )
             upsert_users(session, users, caps=caps, use_weights=True, weights=group_parameter_weights)
@@ -186,7 +186,7 @@ class TestCLIUtilityFunctions(unittest.TestCase):
             # Create sample users
             users = sample_users()
             caps = {'budget': 200000, 'months': 36}
-            from repository.recommendation_system.user_vector_utils import (
+            from infrastructure.user_vector_utils import (
                 group_parameter_weights,
             )
 
@@ -196,7 +196,7 @@ class TestCLIUtilityFunctions(unittest.TestCase):
             setup_sample_groups(session, caps, True, group_parameter_weights)
 
             # Verify groups were created (check that g_u1 has members)
-            from repository.recommendation_system.db import get_group_info
+            from infrastructure.neo4j.group_ops import get_group_info
             group_info = get_group_info(session, 'g_u1')
             self.assertIsNotNone(group_info)
             self.assertGreater(group_info['member_count'], 1)
@@ -207,8 +207,8 @@ class TestCLINoneHandling(unittest.TestCase):
 
     def test_01_display_tree_with_none_parameters(self):
         """Test tree display handles groups with None parameters."""
-        from repository.recommendation_system.cli.displays import display_group_tree
-        from repository.recommendation_system.db import get_driver
+        from infrastructure.cli.displays import display_group_tree
+        from infrastructure.neo4j.connection import get_driver
 
         driver = get_driver()
         with driver.session() as session:
@@ -221,7 +221,7 @@ class TestCLINoneHandling(unittest.TestCase):
 
     def test_02_user_selection_with_none_values(self):
         """Test user selection handles None parameter values."""
-        from repository.recommendation_system.db import (
+        from infrastructure.neo4j.connection import (
             get_driver,
         )
 
