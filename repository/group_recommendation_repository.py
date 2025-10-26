@@ -53,7 +53,7 @@ class GroupRecommendationRepository:
         self.weights = weights or group_parameter_weights
         self.top_k = top_k
 
-    def execute(self, group_id: UUID) -> list[Group]:
+    def execute(self, group_id: UUID) -> list[tuple[Group, float]]:
         """
         Find similar groups to the given group.
 
@@ -94,7 +94,7 @@ class GroupRecommendationRepository:
             )
 
             # Convert to Group entities
-            result_groups = []
+            result_groups: list[tuple[Group, float]] = []
             for similar in similar_groups:
                 similar_group_id = similar['id']
 
@@ -117,7 +117,7 @@ class GroupRecommendationRepository:
                         continue
 
                     group_entity = db_group_to_group(db_group, parsed_id)
-                    result_groups.append(group_entity)
+                    result_groups.append((group_entity, similar.get('score', 0)))
 
             return result_groups
 
@@ -141,9 +141,8 @@ class GroupRecommendationRepository:
                 avg_params[param] += member.get(param, 0)
 
         count = len(members)
-        for param, _ in avg_params:
+        for param in avg_params.keys():
             avg_params[param] = avg_params[param] / count
-
         return avg_params
 
     def close(self):

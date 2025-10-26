@@ -48,7 +48,6 @@ def find_similar(session, vector, exclude_id, top_k=5):
         logger,
         similarity_query,
         **params,
-        vector=f'[{len(vector)}elements]',
     )
 
     records = session.run(similarity_query, **params)

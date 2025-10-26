@@ -42,7 +42,7 @@ class GroupRepository(Protocol):
 class GroupRecomendationRepository(Protocol):
     """Рекомендует группу другой группе"""
 
-    def execute(self, group_id: UUID) -> list[Group]:
+    def execute(self, group_id: UUID) -> list[tuple[Group, float]]:
         """
         Берёт среднюю из анкет пользователей, состоящих в группе
         и ищет ближайших из остальных групп, так же по средним из анкет

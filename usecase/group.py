@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from uuid import UUID
 
 from entity.errors import DomainError, NotFoundError
@@ -20,7 +20,7 @@ class FindGroupService:
         self._group_repo = group_repo
         self._recommendation_repo = recommendation_repo
 
-    def execute(self, user_id: UUID) -> List[Group]:
+    def execute(self, user_id: UUID) -> List[Tuple[Group, float]]:
         """
         Выполняет поиск подходящих групп для текущей группы пользователя.
         """

@@ -116,7 +116,9 @@ class FindGroupServicer(pb2_grpc.FindGroupServiceServicer):
         try:
             user_id = UUID(request.user_id)
             groups = self.service.execute(user_id)
-            return pb2.FindGroupsResponse(groups=[to_proto_group(g) for g in groups])
+            return pb2.FindGroupsResponse(
+                groups=[to_proto_group(g[0], g[1]) for g in groups]
+            )
         except NotFoundError as e:
             context.abort(grpc.StatusCode.NOT_FOUND, str(e))
         except DomainError as e:

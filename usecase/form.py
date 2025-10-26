@@ -2,7 +2,6 @@ from uuid import UUID, uuid4
 
 from entity.errors import DomainError, NotFoundError
 from entity.form import Form
-from entity.group import Group
 from entity.parameters import Parameters
 
 from .interface import FormRepository, GroupRepository
@@ -38,17 +37,17 @@ class FormService:
             )
         )
 
-        group_id = self._group_repo.create(
-            Group(
-                id=uuid4(),
-                max_users=parameters.roommates_count + 1,
-                owner_id=user_id,
-                parameters=parameters,
-            )
-        )
-
-        self._group_repo.add_user(user_id=user_id, group_id=group_id)
-        self._group_repo.calculate_params(group_id)
+        # group_id = self._group_repo.create(
+        #     Group(
+        #         id=uuid4(),
+        #         max_users=parameters.roommates_count + 1,
+        #         owner_id=user_id,
+        #         parameters=parameters,
+        #     )
+        # )
+        #
+        # self._group_repo.add_user(user_id=user_id, group_id=group_id)
+        # self._group_repo.calculate_params(group_id)
 
     def get_by_user(self, user_id: UUID) -> Form:
         """

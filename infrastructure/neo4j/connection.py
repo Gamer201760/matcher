@@ -7,17 +7,19 @@ This module handles:
 - Database cleanup operations
 """
 
+import logging
+
 import dotenv
 from neo4j import Driver, GraphDatabase, Session
 from neo4j.exceptions import Neo4jError
 
 from ..config import SIMILARITY_FUNCTION
-from ..logging_utils import log_database_stats, log_neo4j_query, setup_logger
+from ..logging_utils import log_database_stats, log_neo4j_query
 
 dotenv.load_dotenv()
 
 # Setup logger
-logger = setup_logger('roommate_db', 'INFO')
+logger = logging.getLogger(__name__)
 
 
 def get_driver(uri: str, user: str, password: str):

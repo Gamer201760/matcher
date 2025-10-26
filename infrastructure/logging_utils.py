@@ -52,11 +52,11 @@ def setup_logger(name: str = 'roommate_system', level: str = 'INFO') -> logging.
 
     # Set level
     numeric_level = getattr(logging, level.upper(), logging.INFO)
-    logger.setLevel(numeric_level)
+    logger.setLevel(logging.DEBUG)
 
     # Create console handler
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(numeric_level)
+    console_handler.setLevel(logging.DEBUG)
 
     # Create formatter
     console_formatter = ColoredFormatter(

@@ -27,9 +27,7 @@ if _version_not_supported:
 
 
 class FormServiceStub(object):
-    """Use case services and requests/responses
-
-    FormService: CRUD for user forms
+    """Form Service
     """
 
     def __init__(self, channel):
@@ -61,9 +59,7 @@ class FormServiceStub(object):
 
 
 class FormServiceServicer(object):
-    """Use case services and requests/responses
-
-    FormService: CRUD for user forms
+    """Form Service
     """
 
     def CreateForm(self, request, context):
@@ -122,9 +118,7 @@ def add_FormServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class FormService(object):
-    """Use case services and requests/responses
-
-    FormService: CRUD for user forms
+    """Form Service
     """
 
     @staticmethod
@@ -237,7 +231,7 @@ class FormService(object):
 
 
 class GroupQueryServiceStub(object):
-    """GroupQuery: Basic group operations
+    """GroupQuery Service
     """
 
     def __init__(self, channel):
@@ -264,7 +258,7 @@ class GroupQueryServiceStub(object):
 
 
 class GroupQueryServiceServicer(object):
-    """GroupQuery: Basic group operations
+    """GroupQuery Service
     """
 
     def GetGroup(self, request, context):
@@ -312,7 +306,7 @@ def add_GroupQueryServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class GroupQueryService(object):
-    """GroupQuery: Basic group operations
+    """GroupQuery Service
     """
 
     @staticmethod
@@ -398,7 +392,7 @@ class GroupQueryService(object):
 
 
 class FindGroupServiceStub(object):
-    """FindGroupService: Recommendations
+    """FindGroup Service
     """
 
     def __init__(self, channel):
@@ -415,7 +409,7 @@ class FindGroupServiceStub(object):
 
 
 class FindGroupServiceServicer(object):
-    """FindGroupService: Recommendations
+    """FindGroup Service
     """
 
     def FindGroups(self, request, context):
@@ -441,7 +435,7 @@ def add_FindGroupServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class FindGroupService(object):
-    """FindGroupService: Recommendations
+    """FindGroup Service
     """
 
     @staticmethod
@@ -473,7 +467,7 @@ class FindGroupService(object):
 
 
 class GroupServiceStub(object):
-    """GroupService: Join requests and management
+    """Group Service
     """
 
     def __init__(self, channel):
@@ -485,7 +479,7 @@ class GroupServiceStub(object):
         self.SendJoinRequest = channel.unary_unary(
                 '/matcher.GroupService/SendJoinRequest',
                 request_serializer=matcher_dot_matcher__pb2.SendJoinRequestRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                response_deserializer=matcher_dot_matcher__pb2.SendJoinRequestResponse.FromString,
                 _registered_method=True)
         self.AcceptJoinRequest = channel.unary_unary(
                 '/matcher.GroupService/AcceptJoinRequest',
@@ -500,7 +494,7 @@ class GroupServiceStub(object):
 
 
 class GroupServiceServicer(object):
-    """GroupService: Join requests and management
+    """Group Service
     """
 
     def SendJoinRequest(self, request, context):
@@ -527,7 +521,7 @@ def add_GroupServiceServicer_to_server(servicer, server):
             'SendJoinRequest': grpc.unary_unary_rpc_method_handler(
                     servicer.SendJoinRequest,
                     request_deserializer=matcher_dot_matcher__pb2.SendJoinRequestRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                    response_serializer=matcher_dot_matcher__pb2.SendJoinRequestResponse.SerializeToString,
             ),
             'AcceptJoinRequest': grpc.unary_unary_rpc_method_handler(
                     servicer.AcceptJoinRequest,
@@ -548,7 +542,7 @@ def add_GroupServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class GroupService(object):
-    """GroupService: Join requests and management
+    """Group Service
     """
 
     @staticmethod
@@ -567,7 +561,7 @@ class GroupService(object):
             target,
             '/matcher.GroupService/SendJoinRequest',
             matcher_dot_matcher__pb2.SendJoinRequestRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            matcher_dot_matcher__pb2.SendJoinRequestResponse.FromString,
             options,
             channel_credentials,
             insecure,

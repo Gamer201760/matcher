@@ -51,7 +51,6 @@ from .request_ops import (
 
 # Similarity operations
 from .similarity_ops import (
-    build_test_db_and_find_recommendations,
     find_similar,
     find_similar_local,
     find_similar_users,
@@ -103,8 +102,6 @@ __all__ = [
     'find_similar',
     'find_similar_local',
     'find_similar_users',
-    'build_test_db_and_find_recommendations',
     # Config
     'PARAMETERS',
 ]
-
