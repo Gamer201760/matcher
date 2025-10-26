@@ -118,7 +118,7 @@ def add_user_to_group(
                 embedding=new_vector,
             )
 
-            # Move user to new group and delete old group
+            # Move user to new group and delete old group with all its parameters
             # CRITICAL: Must explicitly DELETE old MEMBER_OF relationship first
             move_user_query = """
                 MATCH (u:User {id: $user_id})
@@ -129,7 +129,8 @@ def add_user_to_group(
                 MATCH (g:Group {id: $target_group_id})
                 MERGE (u)-[:MEMBER_OF]->(g)
                 WITH old_g
-                DETACH DELETE old_g
+                OPTIONAL MATCH (old_g)-[:HAS_PARAMETER]->(gp:GroupParameter)
+                DETACH DELETE gp, old_g
             """
             session.run(
                 move_user_query,
@@ -307,10 +308,11 @@ def remove_user_from_group(
                 f'✓ Updated group {current_group_id} with {len(remaining_members)} remaining members'
             )
         else:
-            # No remaining members, delete the empty group
+            # No remaining members, delete the empty group with all its parameters
             delete_empty_group_query = """
                 MATCH (g:Group {id: $current_group_id})
-                DETACH DELETE g
+                OPTIONAL MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
+                DETACH DELETE gp, g
             """
             log_neo4j_query(
                 logger,
@@ -664,7 +666,7 @@ def change_group_owner(session, group_id, new_owner_id):
 
 def delete_group(session, group_id):
     """
-    Delete a group by its ID.
+    Delete a group by its ID, including all related GroupParameter nodes.
 
     Args:
         session: Neo4j session
@@ -672,15 +674,16 @@ def delete_group(session, group_id):
     """
     query = """
         MATCH (g:Group {id: $group_id})
-        DETACH DELETE g
+        OPTIONAL MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
+        DETACH DELETE gp, g
     """
     session.run(query, group_id=group_id)
-    logger.info(f'✓ Deleted group {group_id}')
+    logger.info(f'✓ Deleted group {group_id} and its parameters')
 
 
 def delete_group_by_owner(session, owner_id):
     """
-    Delete a group owned by a specific user.
+    Delete a group owned by a specific user, including all related GroupParameter nodes.
 
     Args:
         session: Neo4j session
@@ -689,7 +692,8 @@ def delete_group_by_owner(session, owner_id):
     query = """
         MATCH (g:Group)
         WHERE g.owner_id = $owner_id
-        DETACH DELETE g
+        OPTIONAL MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
+        DETACH DELETE gp, g
     """
     session.run(query, owner_id=owner_id)
-    logger.info(f'✓ Deleted group owned by {owner_id}')
+    logger.info(f'✓ Deleted group owned by {owner_id} and its parameters')

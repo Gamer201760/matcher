@@ -160,26 +160,130 @@ def get_user_form(session, user_id):
 def delete_user_form(session, user_id):
     """
     Delete a user and all associated data (parameters, group, relationships).
+    
+    Handles two scenarios:
+    1. User in multi-member group: Remove user and update remaining group
+    2. User in single-member group: Delete both user and group with all parameters
 
     Args:
         session: Neo4j session
         user_id: User ID to delete
     """
-    # Delete user's parameters
+    # Import here to avoid circular dependency
+    from ..config import PARAMETERS
+    from ..user_vector_utils import (
+        create_group_vector_with_weights,
+        create_user_vector,
+        group_parameter_weights,
+    )
+    
+    # Step 1: Check if user is in a multi-member group
+    check_group_query = """
+        MATCH (u:User {id: $user_id})-[:MEMBER_OF]->(g:Group)
+        WITH g, COUNT {(g)<-[:MEMBER_OF]-()} as member_count
+        RETURN g.id as group_id, member_count
+    """
+    result = session.run(check_group_query, user_id=user_id)
+    record = result.single()
+    
+    if not record:
+        logger.warning(f'User {user_id} is not in any group, deleting user only')
+        # Just delete the user and their parameters
+        delete_params_query = """
+            MATCH (u:User {id: $user_id})-[:HAS_PARAMETER]->(p:Parameter)
+            DETACH DELETE p
+        """
+        session.run(delete_params_query, user_id=user_id)
+        
+        delete_user_query = """
+            MATCH (u:User {id: $user_id})
+            DETACH DELETE u
+        """
+        session.run(delete_user_query, user_id=user_id)
+        logger.info(f'✓ Deleted user {user_id} (no group found)')
+        return
+    
+    group_id = record['group_id']
+    member_count = record['member_count']
+    
+    if member_count > 1:
+        # Multi-member group: Remove user and update group
+        logger.debug(f'User {user_id} is in multi-member group {group_id} with {member_count} members')
+        
+        # Step 2: Delete the MEMBER_OF relationship
+        delete_relationship_query = """
+            MATCH (u:User {id: $user_id})-[r:MEMBER_OF]->(g:Group {id: $group_id})
+            DELETE r
+        """
+        session.run(delete_relationship_query, user_id=user_id, group_id=group_id)
+        
+        # Step 3: Get remaining group members and update group
+        from .group_ops import get_group_member_parameters
+        remaining_members = get_group_member_parameters(session, group_id)
+        
+        if remaining_members:
+            # Calculate new averaged parameters for the remaining group
+            new_group_params = {}
+            for param in PARAMETERS:
+                values = [member[param] for member in remaining_members if param in member]
+                if values:
+                    new_group_params[param] = sum(values) / len(values)
+            
+            # Create new group vector (use default weights)
+            weights = group_parameter_weights
+            caps = {'budget': 200000, 'months': 36, 'rooms': 10, 'roommates': 10}
+            group_values = {p: new_group_params.get(p, 0) for p in PARAMETERS}
+            new_vector = create_group_vector_with_weights(
+                group_values, PARAMETERS, weights, caps
+            )
+            
+            # Update group properties and GroupParameter nodes
+            update_group_query = """
+                MATCH (g:Group {id: $group_id})
+                SET g.rooms = $rooms,
+                    g.roommates = $roommates,
+                    g.budget = $budget,
+                    g.months = $months,
+                    g.embedding = $embedding
+                WITH g
+                MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
+                SET gp.value = CASE gp.name
+                    WHEN 'rooms' THEN $rooms
+                    WHEN 'roommates' THEN $roommates
+                    WHEN 'budget' THEN $budget
+                    WHEN 'months' THEN $months
+                    ELSE gp.value
+                END
+            """
+            session.run(
+                update_group_query,
+                group_id=group_id,
+                rooms=new_group_params.get('rooms', 0),
+                roommates=new_group_params.get('roommates', 0),
+                budget=new_group_params.get('budget', 0),
+                months=new_group_params.get('months', 0),
+                embedding=new_vector,
+            )
+            logger.info(f'✓ Updated group {group_id} after removing user {user_id}')
+    else:
+        # Single-member group: Delete group with all GroupParameter nodes
+        logger.debug(f'User {user_id} is in single-member group {group_id}')
+        delete_group_query = """
+            MATCH (u:User {id: $user_id})-[:MEMBER_OF]->(g:Group)
+            OPTIONAL MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
+            DETACH DELETE gp, g
+        """
+        session.run(delete_group_query, user_id=user_id)
+        logger.info(f'✓ Deleted group {group_id} and its parameters')
+    
+    # Step 4: Delete user's parameters
     delete_params_query = """
         MATCH (u:User {id: $user_id})-[:HAS_PARAMETER]->(p:Parameter)
         DETACH DELETE p
     """
     session.run(delete_params_query, user_id=user_id)
-
-    # Delete user's group
-    delete_group_query = """
-        MATCH (u:User {id: $user_id})-[:MEMBER_OF]->(g:Group)
-        DETACH DELETE g
-    """
-    session.run(delete_group_query, user_id=user_id)
-
-    # Delete user
+    
+    # Step 5: Delete user
     delete_user_query = """
         MATCH (u:User {id: $user_id})
         DETACH DELETE u
