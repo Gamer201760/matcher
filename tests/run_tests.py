@@ -11,8 +11,8 @@ Usage:
     python tests/run_tests.py notification       # Run NotificationRepository tests
 """
 
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 # Test file mapping
@@ -31,22 +31,22 @@ def main():
         test_target = 'all'
     else:
         test_target = sys.argv[1].lower()
-    
+
     if test_target not in TEST_FILES:
         print(f"Unknown test target: {test_target}")
         print(f"\nAvailable targets: {', '.join(TEST_FILES.keys())}")
         sys.exit(1)
-    
+
     test_path = TEST_FILES[test_target]
-    
+
     print(f"{'='*60}")
     print(f"Running {test_target} tests...")
     print(f"{'='*60}\n")
-    
+
     # Run pytest with verbose output
     cmd = ['python', '-m', 'pytest', test_path, '-v', '--tb=short']
-    
-    result = subprocess.run(cmd, cwd=Path(__file__).parent.parent)
+
+    result = subprocess.run(cmd, check=False, cwd=Path(__file__).parent.parent)
     sys.exit(result.returncode)
 
 if __name__ == '__main__':

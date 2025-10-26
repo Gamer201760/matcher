@@ -122,14 +122,17 @@ def from_proto_form(proto: pb2.Form) -> Form:
     )
 
 
-def to_proto_group(group: Group) -> pb2.Group:
-    return pb2.Group(
-        id=str(group.id),
-        owner_id=str(group.owner_id),
-        parameters=to_proto_parameters(group.parameters),
-        max_users=group.max_users,
-        created_at=datetime_to_timestamp(group.created_at),
-        updated_at=datetime_to_timestamp(group.updated_at),
+def to_proto_group(group: Group, score: float) -> pb2.GroupWithScore:
+    return pb2.GroupWithScore(
+        group=pb2.Group(
+            id=str(group.id),
+            owner_id=str(group.owner_id),
+            parameters=to_proto_parameters(group.parameters),
+            max_users=group.max_users,
+            created_at=datetime_to_timestamp(group.created_at),
+            updated_at=datetime_to_timestamp(group.updated_at),
+        ),
+        score=score,
     )
 
 

@@ -30,8 +30,7 @@ class _SexEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWr
     SEX_MALE: _Sex.ValueType  # 1
     SEX_FEMALE: _Sex.ValueType  # 2
 
-class Sex(_Sex, metaclass=_SexEnumTypeWrapper):
-    """Enums based on entity definitions"""
+class Sex(_Sex, metaclass=_SexEnumTypeWrapper): ...
 
 SEX_UNSPECIFIED: Sex.ValueType  # 0
 SEX_MALE: Sex.ValueType  # 1
@@ -59,8 +58,6 @@ global___UserType = UserType
 
 @typing.final
 class Point(google.protobuf.message.Message):
-    """Entity messages"""
-
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     LAT_FIELD_NUMBER: builtins.int
@@ -145,7 +142,6 @@ class Form(google.protobuf.message.Message):
     CREATED_AT_FIELD_NUMBER: builtins.int
     UPDATED_AT_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """UUID as string"""
     user_id: builtins.str
     active: builtins.bool
     @property
@@ -178,11 +174,8 @@ class GroupRequest(google.protobuf.message.Message):
     USER_ID_FIELD_NUMBER: builtins.int
     CREATED_AT_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """UUID as string"""
     group_id: builtins.str
-    """UUID as string"""
     user_id: builtins.str
-    """UUID as string"""
     @property
     def created_at(self) -> google.protobuf.timestamp_pb2.Timestamp: ...
     def __init__(
@@ -209,9 +202,7 @@ class Group(google.protobuf.message.Message):
     CREATED_AT_FIELD_NUMBER: builtins.int
     UPDATED_AT_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """UUID as string"""
     owner_id: builtins.str
-    """UUID as string"""
     max_users: builtins.int
     @property
     def parameters(self) -> global___Parameters: ...
@@ -235,13 +226,32 @@ class Group(google.protobuf.message.Message):
 global___Group = Group
 
 @typing.final
+class GroupWithScore(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    GROUP_FIELD_NUMBER: builtins.int
+    SCORE_FIELD_NUMBER: builtins.int
+    score: builtins.float
+    @property
+    def group(self) -> global___Group: ...
+    def __init__(
+        self,
+        *,
+        group: global___Group | None = ...,
+        score: builtins.float = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["group", b"group"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["group", b"group", "score", b"score"]) -> None: ...
+
+global___GroupWithScore = GroupWithScore
+
+@typing.final
 class CreateFormRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     USER_ID_FIELD_NUMBER: builtins.int
     PARAMETERS_FIELD_NUMBER: builtins.int
     user_id: builtins.str
-    """UUID as string"""
     @property
     def parameters(self) -> global___Parameters: ...
     def __init__(
@@ -261,7 +271,6 @@ class GetFormByUserRequest(google.protobuf.message.Message):
 
     USER_ID_FIELD_NUMBER: builtins.int
     user_id: builtins.str
-    """UUID as string"""
     def __init__(
         self,
         *,
@@ -278,7 +287,6 @@ class UpdateFormRequest(google.protobuf.message.Message):
     USER_ID_FIELD_NUMBER: builtins.int
     PARAMETERS_FIELD_NUMBER: builtins.int
     user_id: builtins.str
-    """UUID as string"""
     @property
     def parameters(self) -> global___Parameters: ...
     def __init__(
@@ -298,7 +306,6 @@ class DeleteFormRequest(google.protobuf.message.Message):
 
     USER_ID_FIELD_NUMBER: builtins.int
     user_id: builtins.str
-    """UUID as string"""
     def __init__(
         self,
         *,
@@ -314,7 +321,6 @@ class GetGroupRequest(google.protobuf.message.Message):
 
     GROUP_ID_FIELD_NUMBER: builtins.int
     group_id: builtins.str
-    """UUID as string"""
     def __init__(
         self,
         *,
@@ -330,7 +336,6 @@ class DeleteGroupRequest(google.protobuf.message.Message):
 
     OWNER_ID_FIELD_NUMBER: builtins.int
     owner_id: builtins.str
-    """UUID as string"""
     def __init__(
         self,
         *,
@@ -346,7 +351,6 @@ class ListGroupMembersRequest(google.protobuf.message.Message):
 
     GROUP_ID_FIELD_NUMBER: builtins.int
     group_id: builtins.str
-    """UUID as string"""
     def __init__(
         self,
         *,
@@ -378,7 +382,6 @@ class FindGroupsRequest(google.protobuf.message.Message):
 
     USER_ID_FIELD_NUMBER: builtins.int
     user_id: builtins.str
-    """UUID as string"""
     def __init__(
         self,
         *,
@@ -394,11 +397,11 @@ class FindGroupsResponse(google.protobuf.message.Message):
 
     GROUPS_FIELD_NUMBER: builtins.int
     @property
-    def groups(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___Group]: ...
+    def groups(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___GroupWithScore]: ...
     def __init__(
         self,
         *,
-        groups: collections.abc.Iterable[global___Group] | None = ...,
+        groups: collections.abc.Iterable[global___GroupWithScore] | None = ...,
     ) -> None: ...
     def ClearField(self, field_name: typing.Literal["groups", b"groups"]) -> None: ...
 
@@ -411,9 +414,7 @@ class SendJoinRequestRequest(google.protobuf.message.Message):
     USER_ID_FIELD_NUMBER: builtins.int
     GROUP_ID_FIELD_NUMBER: builtins.int
     user_id: builtins.str
-    """UUID as string"""
     group_id: builtins.str
-    """UUID as string"""
     def __init__(
         self,
         *,
@@ -425,15 +426,29 @@ class SendJoinRequestRequest(google.protobuf.message.Message):
 global___SendJoinRequestRequest = SendJoinRequestRequest
 
 @typing.final
+class SendJoinRequestResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    REQUEST_ID_FIELD_NUMBER: builtins.int
+    request_id: builtins.str
+    """UUID создаваемого запроса на вступление"""
+    def __init__(
+        self,
+        *,
+        request_id: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["request_id", b"request_id"]) -> None: ...
+
+global___SendJoinRequestResponse = SendJoinRequestResponse
+
+@typing.final
 class AcceptJoinRequestRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     OWNER_ID_FIELD_NUMBER: builtins.int
     REQUEST_ID_FIELD_NUMBER: builtins.int
     owner_id: builtins.str
-    """UUID as string"""
     request_id: builtins.str
-    """UUID as string"""
     def __init__(
         self,
         *,
@@ -451,9 +466,7 @@ class RejectJoinRequestRequest(google.protobuf.message.Message):
     OWNER_ID_FIELD_NUMBER: builtins.int
     REQUEST_ID_FIELD_NUMBER: builtins.int
     owner_id: builtins.str
-    """UUID as string"""
     request_id: builtins.str
-    """UUID as string"""
     def __init__(
         self,
         *,

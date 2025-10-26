@@ -10,19 +10,19 @@ from uuid import UUID
 from neo4j import Driver
 
 from entity.group import Group
-from repository.group_dto import db_group_to_group
-from repository.recommendation_system.config import PARAMETERS
-from repository.recommendation_system.db import (
+from infrastructure.config import PARAMETERS
+from infrastructure.logging_utils import setup_logger
+from infrastructure.neo4j import (
     find_similar,
     get_group_info,
     get_group_member_parameters,
 )
-from repository.recommendation_system.logging_utils import setup_logger
-from repository.recommendation_system.user_vector_utils import (
+from infrastructure.user_vector_utils import (
     create_group_vector_with_weights,
     create_user_vector,
     group_parameter_weights,
 )
+from repository.group_dto import db_group_to_group
 
 logger = setup_logger()
 
@@ -53,7 +53,7 @@ class GroupRecommendationRepository:
         self.weights = weights or group_parameter_weights
         self.top_k = top_k
 
-    def execute(self, group_id: UUID) -> list[Group]:
+    def execute(self, group_id: UUID) -> list[tuple[Group, float]]:
         """
         Find similar groups to the given group.
 
@@ -94,7 +94,7 @@ class GroupRecommendationRepository:
             )
 
             # Convert to Group entities
-            result_groups = []
+            result_groups: list[tuple[Group, float]] = []
             for similar in similar_groups:
                 similar_group_id = similar['id']
 
@@ -117,7 +117,7 @@ class GroupRecommendationRepository:
                         continue
 
                     group_entity = db_group_to_group(db_group, parsed_id)
-                    result_groups.append(group_entity)
+                    result_groups.append((group_entity, similar.get('score', 0)))
 
             return result_groups
 
@@ -141,9 +141,8 @@ class GroupRecommendationRepository:
                 avg_params[param] += member.get(param, 0)
 
         count = len(members)
-        for param, _ in avg_params:
+        for param in avg_params.keys():
             avg_params[param] = avg_params[param] / count
-
         return avg_params
 
     def close(self):

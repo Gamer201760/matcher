@@ -17,12 +17,12 @@ from neo4j import Driver
 
 from entity.form import Form
 from entity.parameters import Parameters
-from repository.form_dto import db_form_to_form
-from repository.recommendation_system.db import (
+from infrastructure.neo4j import (
     delete_user_form,
     get_user_form,
     upsert_users,
 )
+from repository.form_dto import db_form_to_form
 
 
 class FormRepository:

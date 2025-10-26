@@ -11,13 +11,13 @@ from uuid import UUID, uuid4
 from neo4j import Driver
 
 from entity.group import GroupRequest
-from repository.group_dto import db_request_to_group_request
-from repository.recommendation_system.db import (
+from infrastructure.neo4j import (
     create_join_request_with_id,
     delete_join_request,
     get_all_join_requests,
     get_join_request,
 )
+from repository.group_dto import db_request_to_group_request
 
 
 class GroupRequestRepository:

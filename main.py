@@ -1,6 +1,73 @@
+import os
+from concurrent import futures
+
+import grpc
+from dotenv import load_dotenv
+
+import gen.matcher.matcher_pb2_grpc as pb2_grpc
+from adapter.grpc.server import (
+    FindGroupServicer,
+    FormServicer,
+    GroupQueryServicer,
+    GroupServicer,
+)
+from infrastructure.config import PARAMETERS
+from infrastructure.neo4j.connection import ensure_constraints_and_index, get_driver
+from repository.form_repository import FormRepository
+from repository.group_recommendation_repository import GroupRecommendationRepository
+from repository.group_repository import GroupRepository
+from repository.group_request_repository import GroupRequestRepository
+from usecase.form import FormService
+from usecase.group import FindGroupService, GroupService
+from usecase.group_query import GroupQuery
+
+load_dotenv()
+
+
 def main():
-    print("Hello from matcher!")
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    driver = get_driver(
+        os.getenv('NEO4J_URI', ''),
+        os.getenv('NEO4J_USERNAME', ''),
+        os.getenv('NEO4J_PASSWORD', ''),
+    )
+    with driver.session() as session:
+        ensure_constraints_and_index(session, dims=len(PARAMETERS))
+
+    group_repo = GroupRepository(driver)
+    recomend_repo = GroupRecommendationRepository(driver)
+    form_repo = FormRepository(driver)
+    req_repo = GroupRequestRepository(driver)
+
+    form_serv = FormService(form_repo, group_repo)
+    find_serv = FindGroupService(
+        group_repo,
+        recomend_repo,
+    )
+    group_serv = GroupService(group_repo, req_repo)
+
+    group_q = GroupQuery(group_repo)
+
+    # Регистрация сервиса
+    pb2_grpc.add_FindGroupServiceServicer_to_server(
+        FindGroupServicer(find_serv),
+        server,
+    )
+    pb2_grpc.add_FormServiceServicer_to_server(FormServicer(form_serv), server)
+    pb2_grpc.add_GroupQueryServiceServicer_to_server(
+        GroupQueryServicer(group_q), server
+    )
+    pb2_grpc.add_GroupServiceServicer_to_server(GroupServicer(group_serv), server)
+    # Привязка к порту
+    server.add_insecure_port('127.0.0.1:50051')
+
+    # Запуск сервера
+    server.start()
+    print('gRPC server started on port 50051')
+
+    # Ожидание завершения
+    server.wait_for_termination()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

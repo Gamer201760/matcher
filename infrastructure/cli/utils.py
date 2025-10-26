@@ -4,8 +4,9 @@ Utility functions for the interactive CLI.
 Contains helper functions for user generation, database queries, and interactive input.
 """
 import random
+from typing import Dict, List, Optional
+
 import questionary
-from typing import List, Dict, Optional
 
 
 def generate_fake_users(count: int) -> List[Dict]:
@@ -32,12 +33,12 @@ def generate_fake_users(count: int) -> List[Dict]:
         'Onyx', 'Poet', 'Quest', 'Raven', 'Story', 'Timber', 'Unity', 'Wren',
         'Ever', 'Zion', 'Arrow', 'Bear', 'Cloud', 'Dawn', 'Ember', 'Frost'
     ]
-    
+
     users = []
     for i in range(count):
         user_id = f'gen_u{i+1}'
         name = random.choice(names) if i < len(names) else names[i % len(names)]
-        
+
         # Ensure no 0 values - all parameters must be > 0
         users.append({
             'id': user_id,
@@ -47,7 +48,7 @@ def generate_fake_users(count: int) -> List[Dict]:
             'budget': random.randint(5000, 60000),
             'months': random.choice([3, 6, 9, 12, 18, 24, 36])
         })
-    
+
     return users
 
 
@@ -95,7 +96,7 @@ def sample_users() -> List[Dict]:
         {'id': 'u34', 'name': 'Hugo (Big Budget Group)',      'rooms': 3, 'roommates': 4, 'budget': 50000, 'months': 12},
         {'id': 'u35', 'name': 'Ivy (Compact Duo)',            'rooms': 1, 'roommates': 1, 'budget':  8500, 'months':  9},
     ]
-    
+
     return users
 
 
@@ -111,39 +112,39 @@ def create_user_interactive() -> Optional[Dict]:
             "Enter user ID:",
             default=f"user_{random.randint(1000, 9999)}"
         ).ask()
-        
+
         if not user_id:
             return None
-        
+
         name = questionary.text(
             "Enter name:",
             default=f"User {user_id}"
         ).ask()
-        
+
         rooms = questionary.text(
             "How many rooms do you need? (1-4):",
             default="2",
             validate=lambda x: x.isdigit() and 1 <= int(x) <= 4
         ).ask()
-        
+
         roommates = questionary.text(
             "How many roommates do you want? (0-5):",
             default="1",
             validate=lambda x: x.isdigit() and 0 <= int(x) <= 5
         ).ask()
-        
+
         budget = questionary.text(
             "Monthly budget (rubles):",
             default="15000",
             validate=lambda x: x.isdigit() and int(x) > 0
         ).ask()
-        
+
         months = questionary.text(
             "Rental period (months):",
             default="12",
             validate=lambda x: x.isdigit() and int(x) > 0
         ).ask()
-        
+
         user_data = {
             'id': user_id,
             'name': name,
@@ -152,9 +153,9 @@ def create_user_interactive() -> Optional[Dict]:
             'budget': int(budget),
             'months': int(months)
         }
-        
+
         return user_data
-        
+
     except (KeyboardInterrupt, TypeError):
         return None
 
@@ -188,7 +189,7 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
         weights: Parameter weights
     """
     from repository.recommendation_system.db import add_user_to_group
-    
+
     # Define group assignments (target_user is group owner, others join)
     groups = [
         {'owner': 'u1', 'members': ['u6', 'u27']},  # Budget students group
@@ -201,10 +202,10 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
         # Users in single-person groups: u5, u7, u9, u11, u12, u16, u20, u22, u25, u28, u29, u30, u31, u32, u35
         # Users WITHOUT any group (truly solo): u18
     ]
-    
+
     # Users to leave completely without groups (delete their auto-created single-person groups)
     truly_solo_users = ['u18', 'u20', 'u25', 'u31']
-    
+
     for user_id in truly_solo_users:
         group_id = f"g_{user_id}"
         delete_query = """
@@ -216,7 +217,7 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
             session.run(delete_query, group_id=group_id)
         except Exception:
             pass  # Skip if deletion fails
-    
+
     # Execute groupings
     for group_config in groups:
         target_group_id = f"g_{group_config['owner']}"
@@ -245,15 +246,15 @@ def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, 
         leave_some_solo: Fraction of users to leave without any group (default 0.2, i.e., 20%)
     """
     from repository.recommendation_system.db import add_user_to_group
-    
+
     # Sort users by similarity (simple heuristic)
     sorted_users = sorted(users, key=lambda u: (u['rooms'], u['budget']))
-    
+
     # Determine how many users to leave without any group
     num_truly_solo = int(len(sorted_users) * leave_some_solo)
     # Randomly select users to leave without groups
     truly_solo_indices = set(random.sample(range(len(sorted_users)), num_truly_solo))
-    
+
     # Delete groups for truly solo users (they were auto-created by upsert_users)
     for idx in truly_solo_indices:
         user = sorted_users[idx]
@@ -267,24 +268,24 @@ def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, 
             session.run(delete_query, group_id=group_id)
         except Exception:
             pass  # Skip if deletion fails
-    
+
     i = 0
     while i < len(sorted_users):
         # Skip truly solo users
         if i in truly_solo_indices:
             i += 1
             continue
-            
+
         # Random chance to create a group
         if random.random() < group_probability and i + 1 < len(sorted_users):
             # Create group with 2-4 members
             group_size = min(random.randint(2, 4), len(sorted_users) - i)
             owner = sorted_users[i]
             members = sorted_users[i+1:i+group_size]
-            
+
             # Filter out truly solo users from members
             members = [m for j, m in enumerate(sorted_users[i+1:i+group_size], start=i+1) if j not in truly_solo_indices]
-            
+
             if members:  # Only create group if there are valid members
                 target_group_id = f"g_{owner['id']}"
                 for member in members:
@@ -299,7 +300,7 @@ def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, 
                         )
                     except Exception:
                         pass  # Skip if grouping fails
-            
+
             i += group_size
         else:
             i += 1
