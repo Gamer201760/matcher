@@ -12,6 +12,8 @@ from infrastructure.cli.actions import (
     action_clean_database,
     action_create_fake_users,
     action_create_new_user_main,
+    action_delete_my_account,
+    action_delete_my_group,
     action_get_recommendations,
     action_join_group,
     action_leave_group,
@@ -28,6 +30,7 @@ from infrastructure.cli.displays import (
 from infrastructure.cli.utils import (
     auto_group_users,
     generate_fake_users,
+    repair_users_without_groups,
     sample_users,
     setup_sample_groups,
 )
@@ -81,12 +84,15 @@ def main_menu(
         choices.extend(
             [
                 '🚪 Leave My Group',
+                '💥 Dissolve My Group',
                 '👁️  View My Group',
                 '🌳 View All Groups (Tree)',
                 '👤 Switch User',
                 '➕ Create New User',
+                '🗑️  Delete My Account',
                 '📊 View Statistics',
                 '➕ Add Fake Users',
+                '🔧 Repair Database',
                 '🧹 Clean Database',
                 '❌ Exit',
             ]
@@ -110,6 +116,9 @@ def main_menu(
         elif choice == '🚪 Leave My Group':
             action_leave_group(session, current_user_id, caps, use_weights, weights)
 
+        elif choice == '💥 Dissolve My Group':
+            action_delete_my_group(session, current_user_id, caps, use_weights, weights)
+
         elif choice == '👁️  View My Group':
             action_view_my_group(session, current_user_id)
 
@@ -131,11 +140,30 @@ def main_menu(
                 if switch:
                     current_user_id = new_user_id
 
+        elif choice == '🗑️  Delete My Account':
+            new_user_id = action_delete_my_account(
+                session, current_user_id, caps, use_weights, weights
+            )
+            if new_user_id:
+                current_user_id = new_user_id
+            else:
+                # User cancelled or no users available, exit the menu
+                console.print('\n[yellow]No user selected. Exiting...[/yellow]\n')
+                break
+
         elif choice == '📊 View Statistics':
             action_view_statistics(session)
 
         elif choice == '➕ Add Fake Users':
             action_create_fake_users(session, caps, use_weights, weights)
+
+        elif choice == '🔧 Repair Database':
+            display_info('Checking for users without groups...')
+            repaired = repair_users_without_groups(session, caps, use_weights, weights)
+            if repaired > 0:
+                console.print(f'[green]✓ Repaired {repaired} user(s) without groups[/green]')
+            else:
+                console.print('[green]✓ No issues found - all users have groups[/green]')
 
         elif choice == '🧹 Clean Database':
             action_clean_database(session)
@@ -275,6 +303,11 @@ def startup_menu(
             auto_group_users(session, users, caps, use_weights, weights)
 
         console.print(f'[green]✓ Created {len(users)} users[/green]')
+
+    # Repair any users without groups (safety check after creation)
+    repaired = repair_users_without_groups(session, caps, use_weights, weights)
+    if repaired > 0:
+        console.print(f'[yellow]⚠️  Repaired {repaired} user(s) that were missing groups[/yellow]')
 
     # Show enhanced user selection with parameters
     return select_user_with_details(session, caps, use_weights, weights)
