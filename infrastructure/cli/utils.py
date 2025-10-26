@@ -175,6 +175,106 @@ def get_all_user_ids(session) -> List[tuple]:
     return [(record['id'], record['name'] or record['id']) for record in result]
 
 
+def repair_users_without_groups(session, caps: dict, use_weights: bool, weights: dict):
+    """
+    Find and repair any users who don't have a group (should never happen, but safety net).
+    
+    Args:
+        session: Neo4j session
+        caps: Normalization caps
+        use_weights: Whether to use weighted vectors
+        weights: Parameter weights
+        
+    Returns:
+        int: Number of users repaired
+    """
+    from infrastructure.neo4j.user_ops import get_user_parameters
+    from infrastructure.user_vector_utils import (
+        create_group_vector_with_weights,
+        create_user_vector,
+        group_parameter_weights,
+    )
+    from infrastructure.config import PARAMETERS
+    
+    # Find users without groups
+    query = """
+        MATCH (u:User)
+        WHERE NOT (u)-[:MEMBER_OF]->(:Group)
+        RETURN u.id as user_id, u.name as name
+    """
+    result = session.run(query)
+    users_without_groups = [record for record in result]
+    
+    if not users_without_groups:
+        return 0
+    
+    print(f'⚠️  Found {len(users_without_groups)} user(s) without groups. Repairing...')
+    
+    weights = weights or group_parameter_weights
+    repaired = 0
+    
+    for user_record in users_without_groups:
+        user_id = user_record['user_id']
+        try:
+            # Get user parameters
+            user_params = get_user_parameters(session, user_id)
+            
+            # Create single-member group
+            group_id = f'g_{user_id}'
+            group_name = f"Group of {user_record['name'] or user_id}"
+            
+            # Create vector
+            if use_weights:
+                group_vector = create_group_vector_with_weights(
+                    user_params, PARAMETERS, weights, caps
+                )
+            else:
+                group_vector = create_user_vector(user_params, PARAMETERS, caps)
+            
+            # Create group and link user
+            repair_query = """
+                MATCH (u:User {id: $user_id})
+                MERGE (g:Group {id: $group_id})
+                SET g.name = $group_name,
+                    g.rooms = $rooms,
+                    g.roommates = $roommates,
+                    g.budget = $budget,
+                    g.months = $months,
+                    g.embedding = $embedding
+                MERGE (u)-[:MEMBER_OF]->(g)
+                WITH g
+                UNWIND $param_list AS param
+                MERGE (gp:GroupParameter {groupId: $group_id, name: param.name})
+                SET gp.value = param.value
+                MERGE (g)-[:HAS_PARAMETER]->(gp)
+            """
+            
+            parameters_list = [
+                {'name': p, 'value': user_params.get(p, 0)} for p in PARAMETERS
+            ]
+            
+            session.run(
+                repair_query,
+                user_id=user_id,
+                group_id=group_id,
+                group_name=group_name,
+                rooms=user_params.get('rooms', 0),
+                roommates=user_params.get('roommates', 0),
+                budget=user_params.get('budget', 0),
+                months=user_params.get('months', 0),
+                embedding=group_vector,
+                param_list=parameters_list,
+            )
+            
+            print(f'  ✓ Repaired user {user_id} - created group {group_id}')
+            repaired += 1
+            
+        except Exception as e:
+            print(f'  ✗ Failed to repair user {user_id}: {e}')
+    
+    return repaired
+
+
 def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
     """
     Group sample users into predefined groups for realistic testing.
@@ -188,7 +288,7 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
     """
-    from repository.recommendation_system.db import add_user_to_group
+    from infrastructure.neo4j.group_ops import add_user_to_group
 
     # Define group assignments (target_user is group owner, others join)
     groups = [
@@ -199,24 +299,10 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
         {'owner': 'u8', 'members': ['u14', 'u21']},  # Family-sized group
         {'owner': 'u13', 'members': ['u19', 'u26', 'u34']},  # Big group seekers
         {'owner': 'u17', 'members': ['u33']},  # Premium long-term
-        # Users in single-person groups: u5, u7, u9, u11, u12, u16, u20, u22, u25, u28, u29, u30, u31, u32, u35
-        # Users WITHOUT any group (truly solo): u18
+        # Other users remain in single-person groups: u5, u7, u9, u11, u12, u16, u18, u20, u22, u25, u28, u29, u30, u31, u35
     ]
 
-    # Users to leave completely without groups (delete their auto-created single-person groups)
-    truly_solo_users = ['u18', 'u20', 'u25', 'u31']
-
-    for user_id in truly_solo_users:
-        group_id = f"g_{user_id}"
-        delete_query = """
-            MATCH (g:Group {id: $group_id})
-            OPTIONAL MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
-            DETACH DELETE gp, g
-        """
-        try:
-            session.run(delete_query, group_id=group_id)
-        except Exception:
-            pass  # Skip if deletion fails
+    # All users should always have a group - no deletion of groups
 
     # Execute groupings
     for group_config in groups:
@@ -235,6 +321,7 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
 def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, weights: dict, group_probability: float = 0.4, leave_some_solo: float = 0.2):
     """
     Automatically group generated users with some probability.
+    Respects group size constraints based on user's desired roommates count.
     
     Args:
         session: Neo4j session
@@ -243,65 +330,62 @@ def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, 
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
         group_probability: Chance of creating a group (default 0.4)
-        leave_some_solo: Fraction of users to leave without any group (default 0.2, i.e., 20%)
+        leave_some_solo: Fraction of users to leave in single-person groups (default 0.2, i.e., 20%)
+        
+    Note:
+        All users will always have a group node. Some will be in single-person groups.
+        Group size is limited by min(owner_desired_roommates + 1, DEFAULT_MAX_ROOMMATES + 1)
     """
-    from repository.recommendation_system.db import add_user_to_group
+    from infrastructure.neo4j.group_ops import add_user_to_group
 
     # Sort users by similarity (simple heuristic)
     sorted_users = sorted(users, key=lambda u: (u['rooms'], u['budget']))
 
-    # Determine how many users to leave without any group
-    num_truly_solo = int(len(sorted_users) * leave_some_solo)
-    # Randomly select users to leave without groups
-    truly_solo_indices = set(random.sample(range(len(sorted_users)), num_truly_solo))
-
-    # Delete groups for truly solo users (they were auto-created by upsert_users)
-    for idx in truly_solo_indices:
-        user = sorted_users[idx]
-        group_id = f"g_{user['id']}"
-        delete_query = """
-            MATCH (g:Group {id: $group_id})
-            OPTIONAL MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
-            DETACH DELETE gp, g
-        """
-        try:
-            session.run(delete_query, group_id=group_id)
-        except Exception:
-            pass  # Skip if deletion fails
-
+    # All users should remain in groups - no "truly solo" users without groups
+    # We'll leave some users in single-person groups based on leave_some_solo probability
+    
     i = 0
     while i < len(sorted_users):
-        # Skip truly solo users
-        if i in truly_solo_indices:
-            i += 1
-            continue
-
-        # Random chance to create a group
+        # Random chance to create a group (if we're not leaving this user solo)
         if random.random() < group_probability and i + 1 < len(sorted_users):
-            # Create group with 2-4 members
-            group_size = min(random.randint(2, 4), len(sorted_users) - i)
+            # Calculate max group size based on owner's roommates preference
             owner = sorted_users[i]
-            members = sorted_users[i+1:i+group_size]
+            owner_desired_roommates = owner.get('roommates', 1)
+            
+            # Max group size = min(desired_roommates + 1, DEFAULT_MAX_ROOMMATES + 1)
+            # Import DEFAULT_MAX_ROOMMATES from config
+            from infrastructure.config import DEFAULT_MAX_ROOMMATES
+            max_group_size = min(
+                int(owner_desired_roommates) + 1,  # +1 to include the owner
+                DEFAULT_MAX_ROOMMATES + 1,
+                len(sorted_users) - i  # Can't exceed remaining users
+            )
+            
+            # Create group with 2 to max_group_size members
+            if max_group_size >= 2:
+                group_size = min(random.randint(2, max_group_size), len(sorted_users) - i)
+                members = sorted_users[i+1:i+group_size]
 
-            # Filter out truly solo users from members
-            members = [m for j, m in enumerate(sorted_users[i+1:i+group_size], start=i+1) if j not in truly_solo_indices]
+                if members:  # Only create group if there are valid members
+                    target_group_id = f"g_{owner['id']}"
+                    for member in members:
+                        try:
+                            add_user_to_group(
+                                session,
+                                member['id'],
+                                target_group_id,
+                                caps=caps,
+                                use_weights=use_weights,
+                                weights=weights
+                            )
+                        except Exception:
+                            pass  # Skip if grouping fails
 
-            if members:  # Only create group if there are valid members
-                target_group_id = f"g_{owner['id']}"
-                for member in members:
-                    try:
-                        add_user_to_group(
-                            session,
-                            member['id'],
-                            target_group_id,
-                            caps=caps,
-                            use_weights=use_weights,
-                            weights=weights
-                        )
-                    except Exception:
-                        pass  # Skip if grouping fails
-
-            i += group_size
+                i += group_size
+            else:
+                # Owner doesn't want roommates, leave in single-person group
+                i += 1
         else:
+            # Leave user in single-person group
             i += 1
 
