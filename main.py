@@ -2,7 +2,6 @@ import os
 from concurrent import futures
 
 import grpc
-from dotenv import load_dotenv
 
 import gen.matcher.matcher_pb2_grpc as pb2_grpc
 from adapter.grpc.server import (
@@ -12,6 +11,7 @@ from adapter.grpc.server import (
     GroupServicer,
 )
 from infrastructure.config import PARAMETERS
+from infrastructure.logging_utils import setup_logger
 from infrastructure.neo4j.connection import ensure_constraints_and_index, get_driver
 from repository.form_repository import FormRepository
 from repository.group_recommendation_repository import GroupRecommendationRepository
@@ -21,10 +21,11 @@ from usecase.form import FormService
 from usecase.group import FindGroupService, GroupService
 from usecase.group_query import GroupQuery
 
-load_dotenv()
+logger = setup_logger('main')
 
 
 def main():
+    logger.info('start')
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     driver = get_driver(
         os.getenv('NEO4J_URI', ''),
@@ -59,11 +60,11 @@ def main():
     )
     pb2_grpc.add_GroupServiceServicer_to_server(GroupServicer(group_serv), server)
     # Привязка к порту
-    server.add_insecure_port('127.0.0.1:50051')
+    server.add_insecure_port('0.0.0.0:50051')
 
     # Запуск сервера
     server.start()
-    print('gRPC server started on port 50051')
+    logger.info('gRPC server started on port 50051')
 
     # Ожидание завершения
     server.wait_for_termination()

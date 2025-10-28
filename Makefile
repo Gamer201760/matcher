@@ -14,6 +14,9 @@ help:
 install:
 	uv sync
 
+make run:
+	uv run main.py
+
 test:
 	uv run pytest -v
 
