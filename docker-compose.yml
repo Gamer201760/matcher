@@ -7,7 +7,7 @@ services:
     environment:
       - NEO4J_AUTH=neo4j/123456789
     healthcheck:
-      test: [ "CMD", "/var/lib/neo4j/bin/cypher-shell", "-u", "${NEO4J_USERNAME}", "-p", "${NEO4J_PASSWORD}", "MATCH () RETURN count(*) as count" ]
+      test: [ "CMD", "/var/lib/neo4j/bin/cypher-shell", "-u", "neo4j", "-p", "123456789", "MATCH () RETURN count(*) as count" ]
       interval: 3s
       timeout: 3s
       retries: 10
