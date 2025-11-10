@@ -14,7 +14,7 @@ from ..logging_utils import (
     log_vector_operation,
     setup_logger,
 )
-from ..config import PARAMETER_STATISTICS, GROUP_PARAMETER_WEIGHTS
+from ..config import get_parameter_statistics, GROUP_PARAMETER_WEIGHTS
 from recommendation import create_vector
 
 # Setup logger
@@ -85,7 +85,7 @@ def add_user_to_group(
             new_vector = create_vector(
                 group_values, 
                 PARAMETERS, 
-                statistics=PARAMETER_STATISTICS,
+                statistics=get_parameter_statistics(),
                 weights=weights if use_weights else None
             )
 
@@ -254,7 +254,7 @@ def remove_user_from_group(
                 new_vector = create_vector(
                     group_values, 
                     PARAMETERS, 
-                    statistics=PARAMETER_STATISTICS,
+                    statistics=get_parameter_statistics(),
                     weights=weights if use_weights else None
                 )
 
@@ -332,7 +332,7 @@ def remove_user_from_group(
             new_user_vector = create_vector(
                 user_params, 
                 PARAMETERS, 
-                statistics=PARAMETER_STATISTICS,
+                statistics=get_parameter_statistics(),
                 weights=weights if use_weights else None
             )
 
@@ -612,7 +612,7 @@ def update_group_parameters(
         new_vector = create_vector(
             group_values, 
             PARAMETERS, 
-            statistics=PARAMETER_STATISTICS,
+            statistics=get_parameter_statistics(),
             weights=weights if use_weights else None
         )
 

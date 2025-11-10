@@ -7,7 +7,7 @@ This module handles:
 - Test database and simulation functions
 """
 
-from ..config import PARAMETERS, PARAMETER_STATISTICS, GROUP_PARAMETER_WEIGHTS
+from ..config import PARAMETERS, get_parameter_statistics, GROUP_PARAMETER_WEIGHTS
 from ..logging_utils import (
     log_neo4j_query,
     log_similarity_results,
@@ -71,7 +71,7 @@ def find_similar_local(
     qvec = create_vector(
         group_values, 
         PARAMETERS, 
-        statistics=PARAMETER_STATISTICS,
+        statistics=get_parameter_statistics(),
         weights=weights if use_weights else None
     )
 
@@ -90,7 +90,7 @@ def find_similar_local(
         uvec = create_vector(
             values, 
             PARAMETERS, 
-            statistics=PARAMETER_STATISTICS,
+            statistics=get_parameter_statistics(),
             weights=weights if use_weights else None
         )
 
@@ -142,7 +142,7 @@ def find_similar_users(
     query_vec = create_vector(
         group_values, 
         PARAMETERS, 
-        statistics=PARAMETER_STATISTICS,
+        statistics=get_parameter_statistics(),
         weights=weights if use_weights else None
     )
 

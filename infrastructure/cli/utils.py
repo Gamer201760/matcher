@@ -190,7 +190,7 @@ def repair_users_without_groups(session, caps: dict, use_weights: bool, weights:
     """
     from infrastructure.neo4j.user_ops import get_user_parameters
     from recommendation import create_vector
-    from infrastructure.config import PARAMETER_STATISTICS, GROUP_PARAMETER_WEIGHTS
+    from infrastructure.config import get_parameter_statistics, GROUP_PARAMETER_WEIGHTS
     from infrastructure.config import PARAMETERS
     
     # Find users without groups
@@ -224,7 +224,7 @@ def repair_users_without_groups(session, caps: dict, use_weights: bool, weights:
             group_vector = create_vector(
                 user_params, 
                 PARAMETERS, 
-                statistics=PARAMETER_STATISTICS,
+                statistics=get_parameter_statistics(),
                 weights=weights if use_weights else None
             )
             

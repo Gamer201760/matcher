@@ -14,7 +14,7 @@ from ..logging_utils import (
     log_vector_operation,
     setup_logger,
 )
-from ..config import PARAMETER_STATISTICS, GROUP_PARAMETER_WEIGHTS
+from ..config import get_parameter_statistics, GROUP_PARAMETER_WEIGHTS
 from recommendation import create_vector
 
 # Setup logger
@@ -73,7 +73,7 @@ def upsert_users(session, users, caps=None, use_weights=False, weights=None):
         gvec = create_vector(
             group_values, 
             PARAMETERS, 
-            statistics=PARAMETER_STATISTICS,
+            statistics=get_parameter_statistics(),
             weights=weights if use_weights else None
         )
 
@@ -228,7 +228,7 @@ def delete_user_form(session, user_id):
             new_vector = create_vector(
                 group_values, 
                 PARAMETERS, 
-                statistics=PARAMETER_STATISTICS,
+                statistics=get_parameter_statistics(),
                 weights=weights
             )
             

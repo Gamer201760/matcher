@@ -111,17 +111,48 @@ NORMALIZATION_METHOD = 'ZSCORE'
 
 # Parameter statistics (structure depends on normalization method)
 # Updated dynamically by calling update_statistics() after user generation
-PARAMETER_STATISTICS = {
-    'rooms': {'mean': 2.5, 'std': 1.0},
-    'roommates': {'mean': 3.0, 'std': 1.5},
-    'budget': {'mean': 30000, 'std': 20000},
-    'months': {'mean': 12, 'std': 8},
-}
+# This will be automatically set to the correct format based on NORMALIZATION_METHOD
+_PARAMETER_STATISTICS = None  # Internal variable, use get_parameter_statistics()
+
+
+def get_parameter_statistics():
+    """
+    Get the current parameter statistics.
+    
+    Initializes statistics with defaults if not already set.
+    Call get_normalizer() first to ensure proper initialization.
+    
+    Returns:
+        Dict mapping parameter names to their statistics
+    """
+    global _PARAMETER_STATISTICS
+    
+    # Initialize if needed
+    if _PARAMETER_STATISTICS is None:
+        get_normalizer()  # This will initialize _PARAMETER_STATISTICS
+    
+    return _PARAMETER_STATISTICS
+
+
+def set_parameter_statistics(statistics):
+    """
+    Set the parameter statistics.
+    
+    Used to update statistics after calculating from user data.
+    
+    Args:
+        statistics: Dict mapping parameter names to their statistics
+    """
+    global _PARAMETER_STATISTICS
+    _PARAMETER_STATISTICS = statistics
 
 
 def get_normalizer():
     """
     Get the configured normalization strategy instance.
+    
+    Also initializes PARAMETER_STATISTICS with correct default format
+    if it hasn't been initialized yet.
     
     Returns:
         NormalizationStrategy: Instance of the configured normalizer
@@ -129,15 +160,44 @@ def get_normalizer():
     Raises:
         ValueError: If NORMALIZATION_METHOD is unknown
     """
+    import numpy as np
     from recommendation.ZSCORE_NORMALIZATION import ZScoreNormalization
     from recommendation.PERCENTILE_NORMALIZATION import PercentileNormalization
     
+    global _PARAMETER_STATISTICS
+    
     if NORMALIZATION_METHOD == 'ZSCORE':
-        return ZScoreNormalization()
+        normalizer = ZScoreNormalization()
+        # Initialize with default Z-score statistics if not set
+        if _PARAMETER_STATISTICS is None:
+            _PARAMETER_STATISTICS = {
+                'rooms': {'mean': 2.5, 'std': 1.0},
+                'roommates': {'mean': 3.0, 'std': 1.5},
+                'budget': {'mean': 30000, 'std': 20000},
+                'months': {'mean': 12, 'std': 8},
+            }
     elif NORMALIZATION_METHOD == 'PERCENTILE':
-        return PercentileNormalization()
+        normalizer = PercentileNormalization()
+        # Initialize with default percentile statistics if not set
+        if _PARAMETER_STATISTICS is None:
+            _PARAMETER_STATISTICS = {
+                'rooms': {
+                    'percentiles': np.array([1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3] + [3]*89 + [4])
+                },
+                'roommates': {
+                    'percentiles': np.array([1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4] + [4]*89 + [5])
+                },
+                'budget': {
+                    'percentiles': np.linspace(5000, 60000, 101)
+                },
+                'months': {
+                    'percentiles': np.array([3]*10 + [6]*15 + [9]*15 + [12]*30 + [18]*15 + [24]*10 + [36]*6)
+                },
+            }
     else:
         raise ValueError(f"Unknown normalization method: {NORMALIZATION_METHOD}")
+    
+    return normalizer
 
 # ============================================================================
 # LOGGING SETTINGS

@@ -28,7 +28,7 @@ from infrastructure.cli.utils import (
     sample_users,
     setup_sample_groups,
 )
-from infrastructure.config import PARAMETERS, PARAMETER_STATISTICS
+from infrastructure.config import PARAMETERS, get_parameter_statistics, set_parameter_statistics
 from infrastructure.neo4j import (
     add_user_to_group,
     clean_db,
@@ -63,7 +63,7 @@ def update_parameter_statistics_action():
         
         if statistics and user_count >= 10:
             # Update the config module's statistics
-            config.PARAMETER_STATISTICS = statistics
+            set_parameter_statistics(statistics)
             display_success(f'✓ Statistics updated from {user_count} users ({config.NORMALIZATION_METHOD} method)')
         elif user_count < 10:
             display_info(f'Using default statistics (only {user_count} users, need at least 10)')
@@ -99,7 +99,7 @@ def action_get_recommendations(
         query_vec = create_vector(
             group_values, 
             PARAMETERS, 
-            statistics=PARAMETER_STATISTICS,
+            statistics=get_parameter_statistics(),
             weights=weights if use_weights else None
         )
 
@@ -129,12 +129,12 @@ def action_get_recommendations(
                 # Retry the operation
                 user_params = get_user_parameters(session, current_user_id)
                 group_values = {p: user_params.get(p, 0) for p in PARAMETERS}
-                if use_weights:
-                    query_vec = create_group_vector_with_weights(
-                        group_values, PARAMETERS, weights, caps
-                    )
-                else:
-                    query_vec = create_user_vector(group_values, PARAMETERS, caps)
+                query_vec = create_vector(
+                    group_values, 
+                    PARAMETERS, 
+                    statistics=get_parameter_statistics(),
+                    weights=weights if use_weights else None
+                )
                 exclude_id = f'g_{current_user_id}'
                 recommendations = find_similar(
                     session, query_vec, top_k=10, exclude_id=exclude_id
@@ -171,12 +171,12 @@ def action_join_group(
 
         # Create query vector
         group_values = {p: user_params.get(p, 0) for p in PARAMETERS}
-        if use_weights:
-            query_vec = create_group_vector_with_weights(
-                group_values, PARAMETERS, weights, caps
-            )
-        else:
-            query_vec = create_user_vector(group_values, PARAMETERS, caps)
+        query_vec = create_vector(
+            group_values, 
+            PARAMETERS, 
+            statistics=get_parameter_statistics(),
+            weights=weights if use_weights else None
+        )
 
         # Find similar groups
         exclude_id = f'g_{current_user_id}'
@@ -759,10 +759,6 @@ def action_delete_my_group(
 
         # For each member, create a new single-member group
         from infrastructure.neo4j.user_ops import get_user_parameters
-        from infrastructure.user_vector_utils import (
-            create_group_vector_with_weights,
-            create_user_vector,
-        )
 
         # Step 1: Create all new groups for members (without touching old group yet)
         console.print(f'\n[cyan]🔍 DEBUG: STEP 1 - Creating new groups for each member[/cyan]')
@@ -793,12 +789,12 @@ def action_delete_my_group(
                     continue
 
                 # Create vector for new single-member group
-                if use_weights:
-                    new_user_vector = create_group_vector_with_weights(
-                        user_params, PARAMETERS, weights, caps
-                    )
-                else:
-                    new_user_vector = create_user_vector(user_params, PARAMETERS, caps)
+                new_user_vector = create_vector(
+                    user_params, 
+                    PARAMETERS, 
+                    statistics=get_parameter_statistics(),
+                    weights=weights if use_weights else None
+                )
 
                 console.print(f'[cyan]   Vector created with {len(new_user_vector)} dimensions[/cyan]')
 
@@ -881,12 +877,12 @@ def action_delete_my_group(
                     user_params = get_user_parameters(session, owner_id)
                     
                     # Create vector for new single-member group
-                    if use_weights:
-                        new_user_vector = create_group_vector_with_weights(
-                            user_params, PARAMETERS, weights, caps
-                        )
-                    else:
-                        new_user_vector = create_user_vector(user_params, PARAMETERS, caps)
+                    new_user_vector = create_vector(
+                        user_params, 
+                        PARAMETERS, 
+                        statistics=get_parameter_statistics(),
+                        weights=weights if use_weights else None
+                    )
                     
                     # Create the owner's new group
                     create_group_query = """
