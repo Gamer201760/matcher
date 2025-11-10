@@ -113,7 +113,7 @@ def to_proto_form(form: Form) -> pb2.Form:
 def to_proto_request(request: GroupRequest) -> pb2.GroupRequest:
     return pb2.GroupRequest(
         id=str(request.id),
-        group_id=str(request.id),
+        group_id=str(request.group_id),
         user_id=str(request.user_id),
         created_at=datetime_to_timestamp(request.created_at),
     )

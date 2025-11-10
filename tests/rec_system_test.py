@@ -8,6 +8,7 @@ methods work correctly with the Neo4j database.
 import os
 import sys
 import unittest
+import uuid
 
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -32,6 +33,13 @@ from infrastructure.neo4j import (
 
 # Setup logger
 logger = setup_logger('test_service', 'INFO')
+
+# Helper function to generate deterministic UUIDs for testing
+_test_namespace = uuid.UUID('00000000-0000-0000-0000-000000000000')
+
+def test_uuid(name: str) -> str:
+    """Generate deterministic UUID for testing based on name"""
+    return str(uuid.uuid5(_test_namespace, name))
 
 
 class TestRecommendationService(unittest.TestCase):
@@ -85,7 +93,7 @@ class TestRecommendationService(unittest.TestCase):
         """Test creating a new user form"""
         logger.info('Testing create_form()...')
 
-        user_id = 'test_user_1'
+        user_id = test_uuid('test_user_1')
         form = Form(
             user_id=user_id,
             name='Test User 1',
@@ -115,7 +123,7 @@ class TestRecommendationService(unittest.TestCase):
         logger.info('Testing get_form()...')
 
         # Create a form first
-        user_id = 'test_user_2'
+        user_id = test_uuid('test_user_2')
         form = Form(
             user_id=user_id,
             name='Test User 2',
@@ -154,7 +162,7 @@ class TestRecommendationService(unittest.TestCase):
         logger.info('Testing update_form()...')
 
         # Create initial form
-        user_id = 'test_user_3'
+        user_id = test_uuid('test_user_3')
         form = Form(
             user_id=user_id,
             name='Test User 3',
@@ -193,7 +201,7 @@ class TestRecommendationService(unittest.TestCase):
         logger.info('Testing delete_form()...')
 
         # Create a form
-        user_id = 'test_user_4'
+        user_id = test_uuid('test_user_4')
         form = Form(
             user_id=user_id,
             name='Test User 4',
@@ -226,7 +234,7 @@ class TestRecommendationService(unittest.TestCase):
         # Create multiple users with varying preferences
         users = [
             Form(
-                user_id='sim_user_1',
+                user_id=test_uuid('sim_user_1'),
                 name='User 1',
                 rooms=2,
                 roommates=1,
@@ -234,7 +242,7 @@ class TestRecommendationService(unittest.TestCase):
                 months=12,
             ),
             Form(
-                user_id='sim_user_2',
+                user_id=test_uuid('sim_user_2'),
                 name='User 2',
                 rooms=2,
                 roommates=1,
@@ -242,7 +250,7 @@ class TestRecommendationService(unittest.TestCase):
                 months=12,
             ),
             Form(
-                user_id='sim_user_3',
+                user_id=test_uuid('sim_user_3'),
                 name='User 3',
                 rooms=1,
                 roommates=0,
@@ -250,7 +258,7 @@ class TestRecommendationService(unittest.TestCase):
                 months=6,
             ),
             Form(
-                user_id='sim_user_4',
+                user_id=test_uuid('sim_user_4'),
                 name='User 4',
                 rooms=3,
                 roommates=3,
@@ -258,7 +266,7 @@ class TestRecommendationService(unittest.TestCase):
                 months=18,
             ),
             Form(
-                user_id='sim_user_5',
+                user_id=test_uuid('sim_user_5'),
                 name='User 5',
                 rooms=2,
                 roommates=2,
@@ -272,7 +280,7 @@ class TestRecommendationService(unittest.TestCase):
         logger.info(f'✓ Created {len(users)} test users')
 
         # Find similar users for sim_user_1
-        similar = self.service.get_similar('sim_user_1', top_k=3)
+        similar = self.service.get_similar(test_uuid('sim_user_1'), top_k=3)
 
         self.assertIsNotNone(similar)
         self.assertGreater(len(similar), 0)
@@ -285,7 +293,7 @@ class TestRecommendationService(unittest.TestCase):
             self.assertGreaterEqual(score, 0.0)
             self.assertLessEqual(score, 1.0)
             self.assertNotEqual(
-                form.user_id, 'sim_user_1'
+                form.user_id, test_uuid('sim_user_1')
             )  # Should not include query user
 
         # Most similar should be sim_user_2 (very similar preferences)
@@ -310,7 +318,7 @@ class TestRecommendationService(unittest.TestCase):
 
         # Create two users
         user1_form = Form(
-            user_id='group_user_1',
+            user_id=test_uuid('group_user_1'),
             name='Group User 1',
             rooms=2,
             roommates=1,
@@ -318,7 +326,7 @@ class TestRecommendationService(unittest.TestCase):
             months=12,
         )
         user2_form = Form(
-            user_id='group_user_2',
+            user_id=test_uuid('group_user_2'),
             name='Group User 2',
             rooms=2,
             roommates=1,
@@ -326,13 +334,13 @@ class TestRecommendationService(unittest.TestCase):
             months=12,
         )
 
-        self.service.create_form('group_user_1', user1_form)
-        self.service.create_form('group_user_2', user2_form)
+        self.service.create_form(test_uuid('group_user_1'), user1_form)
+        self.service.create_form(test_uuid('group_user_2'), user2_form)
         logger.info('✓ Created 2 users')
 
         # User 2 sends request to User 1's group
-        group_id = 'group_user_1'
-        self.service.send_request_to_group('group_user_2', group_id)
+        group_id = test_uuid('group_user_1')
+        self.service.send_request_to_group(test_uuid('group_user_2'), group_id)
         logger.info(f'✓ User group_user_2 sent request to group {group_id}')
 
         # Verify request exists in database
@@ -343,7 +351,7 @@ class TestRecommendationService(unittest.TestCase):
                     RETURN r
                 """
                 result = session.run(
-                    check_query, user_id='group_user_2', group_id=group_id
+                    check_query, user_id=test_uuid('group_user_2'), group_id=group_id
                 )
                 self.assertIsNotNone(result.single())
 
@@ -355,7 +363,7 @@ class TestRecommendationService(unittest.TestCase):
 
         # Create two users
         user1_form = Form(
-            user_id='approve_user_1',
+            user_id=test_uuid('approve_user_1'),
             name='Approve User 1',
             rooms=2,
             roommates=2,
@@ -363,7 +371,7 @@ class TestRecommendationService(unittest.TestCase):
             months=12,
         )
         user2_form = Form(
-            user_id='approve_user_2',
+            user_id=test_uuid('approve_user_2'),
             name='Approve User 2',
             rooms=2,
             roommates=2,
@@ -371,18 +379,18 @@ class TestRecommendationService(unittest.TestCase):
             months=12,
         )
 
-        self.service.create_form('approve_user_1', user1_form)
-        self.service.create_form('approve_user_2', user2_form)
+        self.service.create_form(test_uuid('approve_user_1'), user1_form)
+        self.service.create_form(test_uuid('approve_user_2'), user2_form)
         logger.info('✓ Created 2 users')
 
         # User 2 sends request to User 1's group
-        group_id = 'approve_user_1'
-        self.service.send_request_to_group('approve_user_2', group_id)
+        group_id = test_uuid('approve_user_1')
+        self.service.send_request_to_group(test_uuid('approve_user_2'), group_id)
         logger.info('✓ Request sent')
 
         # User 1 approves the request
         self.service.approve_request(
-            'approve_user_1', 'approve_user_2', max_roommates=4
+            test_uuid('approve_user_1'), test_uuid('approve_user_2'), max_roommates=4
         )
         logger.info('✓ Request approved')
 
@@ -394,7 +402,7 @@ class TestRecommendationService(unittest.TestCase):
                     RETURN g.id as group_id
                 """
                 result = session.run(
-                    check_query, user_id='approve_user_2', group_id=group_id
+                    check_query, user_id=test_uuid('approve_user_2'), group_id=group_id
                 )
                 record = result.single()
                 self.assertIsNotNone(record)
@@ -410,28 +418,28 @@ class TestRecommendationService(unittest.TestCase):
         users = []
         for i in range(1, 5):  # 4 users
             form = Form(
-                user_id=f'capacity_user_{i}',
+                user_id=test_uuid(f'capacity_user_{i}'),
                 name=f'Capacity User {i}',
                 rooms=2,
                 roommates=4,
                 budget=15000,
                 months=12,
             )
-            self.service.create_form(f'capacity_user_{i}', form)
-            users.append(f'capacity_user_{i}')
+            self.service.create_form(test_uuid(f'capacity_user_{i}'), form)
+            users.append(test_uuid(f'capacity_user_{i}'))
 
         logger.info(f'✓ Created {len(users)} users')
 
         # Users 2, 3, 4 send requests to User 1's group
-        group_id = 'capacity_user_1'
+        group_id = test_uuid('capacity_user_1')
         for i in range(2, 5):
-            self.service.send_request_to_group(f'capacity_user_{i}', group_id)
+            self.service.send_request_to_group(test_uuid(f'capacity_user_{i}'), group_id)
         logger.info('✓ Requests sent')
 
         # User 1 approves requests (max_roommates = 4)
         for i in range(2, 5):
             self.service.approve_request(
-                'capacity_user_1', f'capacity_user_{i}', max_roommates=4
+                test_uuid('capacity_user_1'), test_uuid(f'capacity_user_{i}'), max_roommates=4
             )
             logger.info(f'✓ Approved capacity_user_{i}')
 
@@ -450,22 +458,22 @@ class TestRecommendationService(unittest.TestCase):
         # Create three users and form a group
         for i in range(1, 4):
             form = Form(
-                user_id=f'leave_user_{i}',
+                user_id=test_uuid(f'leave_user_{i}'),
                 name=f'Leave User {i}',
                 rooms=2,
                 roommates=2,
                 budget=15000,
                 months=12,
             )
-            self.service.create_form(f'leave_user_{i}', form)
+            self.service.create_form(test_uuid(f'leave_user_{i}'), form)
         logger.info('✓ Created 3 users')
 
         # Users 2 and 3 join User 1's group
-        group_id = 'leave_user_1'
+        group_id = test_uuid('leave_user_1')
         for i in range(2, 4):
-            self.service.send_request_to_group(f'leave_user_{i}', group_id)
+            self.service.send_request_to_group(test_uuid(f'leave_user_{i}'), group_id)
             self.service.approve_request(
-                'leave_user_1', f'leave_user_{i}', max_roommates=5
+                test_uuid('leave_user_1'), test_uuid(f'leave_user_{i}'), max_roommates=5
             )
         logger.info('✓ Formed group with 3 members')
 
@@ -474,7 +482,7 @@ class TestRecommendationService(unittest.TestCase):
         self.assertEqual(len(members), 3)
 
         # User 2 leaves the group
-        self.service.leave_from_group('leave_user_2')
+        self.service.leave_from_group(test_uuid('leave_user_2'))
         logger.info('✓ leave_user_2 left the group')
 
         # Verify User 2 is now in their own group
@@ -484,10 +492,10 @@ class TestRecommendationService(unittest.TestCase):
                     MATCH (u:User {id: $user_id})-[:MEMBER_OF]->(g:Group)
                     RETURN g.id as group_id
                 """
-                result = session.run(check_query, user_id='leave_user_2')
+                result = session.run(check_query, user_id=test_uuid('leave_user_2'))
                 record = result.single()
                 self.assertIsNotNone(record)
-                self.assertEqual(record['group_id'], 'leave_user_2')
+                self.assertEqual(record['group_id'], test_uuid('leave_user_2'))
 
         # Verify original group now has 2 members
         group, members = self.service.get_group(group_id)
@@ -502,22 +510,22 @@ class TestRecommendationService(unittest.TestCase):
         # Create users
         for i in range(1, 4):
             form = Form(
-                user_id=f'info_user_{i}',
+                user_id=test_uuid(f'info_user_{i}'),
                 name=f'Info User {i}',
                 rooms=2,
                 roommates=3,
                 budget=15000,
                 months=12,
             )
-            self.service.create_form(f'info_user_{i}', form)
+            self.service.create_form(test_uuid(f'info_user_{i}'), form)
         logger.info('✓ Created 3 users')
 
         # Form a group
-        group_id = 'info_user_1'
+        group_id = test_uuid('info_user_1')
         for i in range(2, 4):
-            self.service.send_request_to_group(f'info_user_{i}', group_id)
+            self.service.send_request_to_group(test_uuid(f'info_user_{i}'), group_id)
             self.service.approve_request(
-                'info_user_1', f'info_user_{i}', max_roommates=5
+                test_uuid('info_user_1'), test_uuid(f'info_user_{i}'), max_roommates=5
             )
         logger.info('✓ Formed group with 3 members')
 
@@ -531,9 +539,9 @@ class TestRecommendationService(unittest.TestCase):
 
         # Verify members
         self.assertEqual(len(members), 3)
-        self.assertIn('info_user_1', members)
-        self.assertIn('info_user_2', members)
-        self.assertIn('info_user_3', members)
+        self.assertIn(test_uuid('info_user_1'), members)
+        self.assertIn(test_uuid('info_user_2'), members)
+        self.assertIn(test_uuid('info_user_3'), members)
 
         logger.info(
             f'✓ Group {group_id}: {len(members)} members, active={group.active}'
