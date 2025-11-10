@@ -60,7 +60,7 @@ def find_similar_local(
     """Find similar groups using local computation (fallback method)."""
     weights = weights or GROUP_PARAMETER_WEIGHTS
     query_user_id = query_user.get('id')
-    query_group_id = f'g_{query_user_id}'
+    query_group_id = query_user_id
 
     logger.debug(
         f'Computing local similarity for group {query_group_id} against {len(users)} groups'
@@ -82,7 +82,7 @@ def find_similar_local(
     results = []
     for u in users:
         uid = u['id']
-        gid = f'g_{uid}'
+        gid = uid
         if gid == query_group_id:
             continue
 
@@ -147,7 +147,7 @@ def find_similar_users(
     )
 
     # Find similar groups
-    exclude_group_id = f'g_{user_id}'
+    exclude_group_id = user_id
     similar_groups = find_similar(
         session, query_vec, top_k=top_k, exclude_id=exclude_group_id
     )

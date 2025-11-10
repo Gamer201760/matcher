@@ -173,10 +173,10 @@ def display_group_tree(
 
     Example output:
     Groups/
-    ├── g_user1 (2 members) — rooms: 2, roommates: 1, budget: ₽15000/mo, months: 12
+    ├── user1 (2 members) — rooms: 2, roommates: 1, budget: ₽15000/mo, months: 12
     │   ├── Alice — rooms:2 rm:1 ₽15,000/mo 12mo
     │   └── Bob — rooms:2 rm:1 ₽14,000/mo 12mo
-    └── g_user3 (1 member) — rooms: 1, roommates: 0, budget: ₽8000/mo, months: 6
+    └── user3 (1 member) — rooms: 1, roommates: 0, budget: ₽8000/mo, months: 6
         └── Charlie — rooms:1 rm:0 ₽8,000/mo 6mo
     """
     # Query all groups with their members AND member parameters from Parameter nodes

@@ -31,7 +31,7 @@
 ### Принцип работы
 
 1. **Регистрация пользователя** → Создаётся профиль с параметрами (комнаты, соседи, бюджет, срок)
-   - Каждому пользователю автоматически создаётся одно-пользовательская группа `g_{user_id}`
+   - Каждому пользователю автоматически создаётся одно-пользовательская группа с ID = user_id
 2. **Векторизация** → Параметры нормализуются в 4-мерный вектор [0,1]
 3. **Взвешивание** → Применяются веса (комнаты: 8.0, соседи: 8.0, бюджет: 2.8, месяцы: 1.2)
 4. **Векторный поиск** → Neo4j использует векторный индекс `group_vec_index` для поиска похожих групп
@@ -293,7 +293,7 @@ NORMALIZATION_WEIGHTS = {
   - Использование: Подготовка БД перед тестами
 
 - **`upsert_users(session, users, caps, use_weights, weights)`**
-  - Назначение: Создание/обновление пользователей с автоматическим созданием групп `g_{user_id}`
+  - Назначение: Создание/обновление пользователей с автоматическим созданием групп с ID = user_id
   - Использование: Массовое сохранение пользователей в БД
   - Механизм: Создает узлы User, Parameter и Group для каждого пользователя
 
@@ -319,7 +319,7 @@ NORMALIZATION_WEIGHTS = {
 - **`remove_user_from_group(session, user_id, caps, use_weights, weights)`**
   - Назначение: Удаление пользователя из группы с созданием новой одно-пользовательской группы
   - Использование: Выход из группы
-  - Механизм: Создает новую группу `g_{user_id}`, пересчитывает параметры старой группы
+  - Механизм: Создает новую группу с ID = user_id, пересчитывает параметры старой группы
 
 - **`get_group_info(session, group_id)`**
   - Назначение: Получение полной информации о группе (параметры + список участников)
@@ -490,7 +490,7 @@ The Roommate Recommendation System is a Neo4j-based vector search engine for mat
 ### How It Works
 
 1. **User Registration** → Profile created with parameters (rooms, roommates, budget, duration)
-   - Each user automatically gets their own single-member group `g_{user_id}`
+   - Each user automatically gets their own single-member group with ID = user_id
 2. **Vectorization** → Parameters normalized to 4D vector [0,1]
 3. **Weighting** → Weights applied (rooms: 8.0, roommates: 8.0, budget: 2.8, months: 1.2)
 4. **Vector Search** → Neo4j uses vector index `group_vec_index` to find similar groups
@@ -753,7 +753,7 @@ Value → [÷ cap] → [× norm_weight] → [× importance_weight] → Final Vec
   - Usage: Prepare DB before tests
 
 - **`upsert_users(session, users, caps, use_weights, weights)`**
-  - Purpose: Create/update users with automatic creation of `g_{user_id}` groups
+  - Purpose: Create/update users with automatic creation of groups with ID = user_id
   - Usage: Bulk save users to DB
   - Mechanism: Creates User, Parameter, and Group nodes for each user
 
@@ -779,7 +779,7 @@ Value → [÷ cap] → [× norm_weight] → [× importance_weight] → Final Vec
 - **`remove_user_from_group(session, user_id, caps, use_weights, weights)`**
   - Purpose: Remove user from group with creation of new single-member group
   - Usage: Leave group
-  - Mechanism: Creates new `g_{user_id}` group, recalculates old group parameters
+  - Mechanism: Creates new group with ID = user_id, recalculates old group parameters
 
 - **`get_group_info(session, group_id)`**
   - Purpose: Get complete group information (parameters + member list)

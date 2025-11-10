@@ -85,7 +85,7 @@ class GroupRepository:
         """
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
-            db_group_id = f'g_{group_id}'
+            db_group_id = group_id
             db_group = get_group_info(session, db_group_id)
 
             if not db_group:
@@ -156,7 +156,7 @@ class GroupRepository:
 
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
-            db_group_id = f'g_{group_id}'
+            db_group_id = group_id
             update_group_parameters(
                 session,
                 db_group_id,
@@ -175,7 +175,7 @@ class GroupRepository:
         """
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
-            db_group_id = f'g_{group_id}'
+            db_group_id = group_id
             delete_group(session, db_group_id)
 
     def delete_by_owner_id(self, owner_id: UUID) -> None:
@@ -200,7 +200,7 @@ class GroupRepository:
         """
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
-            db_group_id = f'g_{group_id}'
+            db_group_id = group_id
             db_members = list_group_members(session, db_group_id)
 
             forms = []
@@ -222,7 +222,7 @@ class GroupRepository:
         """
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
-            db_group_id = f'g_{group_id}'
+            db_group_id = group_id
             return count_group_members(session, db_group_id)
 
     def add_user(self, user_id: UUID, group_id: UUID) -> None:
@@ -235,7 +235,7 @@ class GroupRepository:
         """
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
-            db_group_id = f'g_{group_id}'
+            db_group_id = group_id
             success = add_user_to_group(
                 session,
                 str(user_id),
@@ -284,7 +284,7 @@ class GroupRepository:
         """
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
-            db_group_id = f'g_{group_id}'
+            db_group_id = group_id
 
             # Get all member parameters
             members = get_group_member_parameters(session, db_group_id)
@@ -338,7 +338,7 @@ class GroupRepository:
         Parse group ID from database format to UUID.
 
         Handles both formats:
-        - 'g_{uuid}' -> extracts UUID
+        - '{uuid}' -> uses UUID directly as group ID
         - plain UUID string -> converts to UUID
 
         Args:

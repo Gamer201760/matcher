@@ -324,7 +324,7 @@ def remove_user_from_group(
             logger.info(f'✓ Deleted empty group {current_group_id}')
 
         # Step 5: Create new single-member group for the user
-        new_group_id = f'g_{user_id}'
+        new_group_id = user_id
         new_group_name = f'Group of {user_id}'
 
         # Create vector for new single-member group

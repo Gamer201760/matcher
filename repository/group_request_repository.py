@@ -46,7 +46,7 @@ class GroupRequestRepository:
 
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
-            db_group_id = f'g_{group_id}'
+            db_group_id = group_id
             # Create the request with our UUID stored as a property
             create_join_request_with_id(session, request_id, str(user_id), db_group_id)
 
@@ -82,7 +82,7 @@ class GroupRequestRepository:
         """
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
-            db_group_id = f'g_{group_id}'
+            db_group_id = group_id
             db_requests = get_all_join_requests(session, db_group_id)
 
             return [db_request_to_group_request(req) for req in db_requests]

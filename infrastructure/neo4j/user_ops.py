@@ -74,7 +74,7 @@ def upsert_users(session, users, caps=None, use_weights=False, weights=None):
         rows = []
         for u in batch:
             # Single-member group id and name
-            group_id = f"g_{u['id']}"
+            group_id = u['id']
             group_name = f"Group of {u.get('name') or u['id']}"
 
             # Prepare parameter list as separate nodes (user and group)

@@ -4,6 +4,7 @@ Utility functions for the interactive CLI.
 Contains helper functions for user generation, database queries, and interactive input.
 """
 import random
+import uuid
 from typing import Dict, List, Optional
 
 import questionary
@@ -12,6 +13,8 @@ import questionary
 def generate_fake_users(count: int) -> List[Dict]:
     """
     Generate random users with realistic preferences for simulation.
+    
+    Each user gets a unique UUID as their ID.
     
     Args:
         count: Number of fake users to generate
@@ -36,7 +39,8 @@ def generate_fake_users(count: int) -> List[Dict]:
 
     users = []
     for i in range(count):
-        user_id = f'gen_u{i+1}'
+        # Generate UUID for each user
+        user_id = str(uuid.uuid4())
         name = random.choice(names) if i < len(names) else names[i % len(names)]
 
         # Ensure no 0 values - all parameters must be > 0
@@ -56,69 +60,117 @@ def sample_users() -> List[Dict]:
     """
     Generate a diverse set of test users for recommendation testing.
     
+    Uses deterministic UUIDs based on user numbers for consistent grouping.
+    
     Returns:
         list: List of 35 predefined test users with varied preferences
     """
-    users = [
-        {'id': 'u1',  'name': 'Alice (Budget Student)',      'rooms': 1, 'roommates': 1, 'budget':  8000, 'months': 12},
-        {'id': 'u2',  'name': 'Bob (Shared Apartment)',       'rooms': 2, 'roommates': 2, 'budget': 12000, 'months':  6},
-        {'id': 'u3',  'name': 'Charlie (Luxury Seeker)',      'rooms': 4, 'roommates': 2, 'budget': 60000, 'months': 12},
-        {'id': 'u4',  'name': 'Dave (Professional)',          'rooms': 2, 'roommates': 1, 'budget': 15000, 'months':  9},
-        {'id': 'u5',  'name': 'Eve (Solo Living)',            'rooms': 1, 'roommates': 0, 'budget': 11000, 'months': 24},
-        {'id': 'u6',  'name': 'Frank (Budget Conscious)',     'rooms': 1, 'roommates': 1, 'budget':  9000, 'months': 12},
-        {'id': 'u7',  'name': 'Grace (Short Term)',           'rooms': 2, 'roommates': 1, 'budget': 14000, 'months':  3},
-        {'id': 'u8',  'name': 'Henry (Family Space)',         'rooms': 3, 'roommates': 3, 'budget': 25000, 'months': 18},
-        {'id': 'u9',  'name': 'Irene (Long Term Saver)',      'rooms': 1, 'roommates': 0, 'budget':  7000, 'months': 36},
-        {'id': 'u10', 'name': 'Jack (Flexible)',              'rooms': 2, 'roommates': 2, 'budget': 13000, 'months':  9},
-        {'id': 'u11', 'name': 'Kate (High Budget Solo)',      'rooms': 2, 'roommates': 0, 'budget': 25000, 'months': 12},
-        {'id': 'u12', 'name': 'Liam (Short Stay)',            'rooms': 1, 'roommates': 1, 'budget':  9000, 'months':  3},
-        {'id': 'u13', 'name': 'Mia (Big Group Seeker)',       'rooms': 4, 'roommates': 5, 'budget': 30000, 'months': 12},
-        {'id': 'u14', 'name': 'Noah (Family Style)',          'rooms': 3, 'roommates': 3, 'budget': 28000, 'months': 18},
-        {'id': 'u15', 'name': 'Olivia (Remote Worker)',       'rooms': 2, 'roommates': 1, 'budget': 16000, 'months': 12},
-        {'id': 'u16', 'name': 'Paul (Frugal)',                'rooms': 1, 'roommates': 2, 'budget':  6000, 'months':  6},
-        {'id': 'u17', 'name': 'Quinn (Premium Long Term)',    'rooms': 3, 'roommates': 2, 'budget': 45000, 'months': 24},
-        {'id': 'u18', 'name': 'Rose (Minimalist)',            'rooms': 1, 'roommates': 0, 'budget':  5000, 'months':  6},
-        {'id': 'u19', 'name': 'Sam (Social Butterfly)',       'rooms': 2, 'roommates': 4, 'budget': 14000, 'months': 12},
-        {'id': 'u20', 'name': 'Tina (Midrange Short)',        'rooms': 2, 'roommates': 1, 'budget': 12000, 'months':  4},
-        {'id': 'u21', 'name': 'Uma (Spacious)',               'rooms': 3, 'roommates': 1, 'budget': 22000, 'months': 12},
-        {'id': 'u22', 'name': 'Victor (Large Group)',         'rooms': 4, 'roommates': 4, 'budget': 35000, 'months': 10},
-        {'id': 'u23', 'name': 'Wendy (Two Roommates)',        'rooms': 2, 'roommates': 2, 'budget': 15000, 'months':  8},
-        {'id': 'u24', 'name': 'Xavier (High End)',            'rooms': 4, 'roommates': 1, 'budget': 60000, 'months': 18},
-        {'id': 'u25', 'name': 'Yara (Economical Long)',       'rooms': 1, 'roommates': 2, 'budget':  8000, 'months': 24},
-        {'id': 'u26', 'name': 'Zack (Max Roommates)',         'rooms': 3, 'roommates': 5, 'budget': 20000, 'months': 12},
-        {'id': 'u27', 'name': 'Anna (Starter)',               'rooms': 1, 'roommates': 1, 'budget':  7000, 'months':  6},
-        {'id': 'u28', 'name': 'Ben (Work Travel)',            'rooms': 1, 'roommates': 3, 'budget': 10000, 'months':  5},
-        {'id': 'u29', 'name': 'Cara (Calm)',                  'rooms': 2, 'roommates': 0, 'budget': 11000, 'months': 12},
-        {'id': 'u30', 'name': 'Dan (Music)',                  'rooms': 2, 'roommates': 3, 'budget': 13000, 'months': 11},
-        {'id': 'u31', 'name': 'Ella (Graduate)',              'rooms': 1, 'roommates': 2, 'budget':  9000, 'months': 10},
-        {'id': 'u32', 'name': 'Finn (Long Lease)',            'rooms': 2, 'roommates': 1, 'budget': 12500, 'months': 24},
-        {'id': 'u33', 'name': 'Gia (Family Sized)',           'rooms': 4, 'roommates': 3, 'budget': 40000, 'months': 24},
-        {'id': 'u34', 'name': 'Hugo (Big Budget Group)',      'rooms': 3, 'roommates': 4, 'budget': 50000, 'months': 12},
-        {'id': 'u35', 'name': 'Ivy (Compact Duo)',            'rooms': 1, 'roommates': 1, 'budget':  8500, 'months':  9},
+    # Generate deterministic UUIDs for sample users (using uuid5 with a namespace)
+    namespace = uuid.UUID('12345678-1234-5678-1234-567812345678')
+    
+    users_data = [
+        {'num': 1,  'name': 'Alice (Budget Student)',      'rooms': 1, 'roommates': 1, 'budget':  8000, 'months': 12},
+        {'num': 2,  'name': 'Bob (Shared Apartment)',       'rooms': 2, 'roommates': 2, 'budget': 12000, 'months':  6},
+        {'num': 3,  'name': 'Charlie (Luxury Seeker)',      'rooms': 4, 'roommates': 2, 'budget': 60000, 'months': 12},
+        {'num': 4,  'name': 'Dave (Professional)',          'rooms': 2, 'roommates': 1, 'budget': 15000, 'months':  9},
+        {'num': 5,  'name': 'Eve (Solo Living)',            'rooms': 1, 'roommates': 0, 'budget': 11000, 'months': 24},
+        {'num': 6,  'name': 'Frank (Budget Conscious)',     'rooms': 1, 'roommates': 1, 'budget':  9000, 'months': 12},
+        {'num': 7,  'name': 'Grace (Short Term)',           'rooms': 2, 'roommates': 1, 'budget': 14000, 'months':  3},
+        {'num': 8,  'name': 'Henry (Family Space)',         'rooms': 3, 'roommates': 3, 'budget': 25000, 'months': 18},
+        {'num': 9,  'name': 'Irene (Long Term Saver)',      'rooms': 1, 'roommates': 0, 'budget':  7000, 'months': 36},
+        {'num': 10, 'name': 'Jack (Flexible)',              'rooms': 2, 'roommates': 2, 'budget': 13000, 'months':  9},
+        {'num': 11, 'name': 'Kate (High Budget Solo)',      'rooms': 2, 'roommates': 0, 'budget': 25000, 'months': 12},
+        {'num': 12, 'name': 'Liam (Short Stay)',            'rooms': 1, 'roommates': 1, 'budget':  9000, 'months':  3},
+        {'num': 13, 'name': 'Mia (Big Group Seeker)',       'rooms': 4, 'roommates': 5, 'budget': 30000, 'months': 12},
+        {'num': 14, 'name': 'Noah (Family Style)',          'rooms': 3, 'roommates': 3, 'budget': 28000, 'months': 18},
+        {'num': 15, 'name': 'Olivia (Remote Worker)',       'rooms': 2, 'roommates': 1, 'budget': 16000, 'months': 12},
+        {'num': 16, 'name': 'Paul (Frugal)',                'rooms': 1, 'roommates': 2, 'budget':  6000, 'months':  6},
+        {'num': 17, 'name': 'Quinn (Premium Long Term)',    'rooms': 3, 'roommates': 2, 'budget': 45000, 'months': 24},
+        {'num': 18, 'name': 'Rose (Minimalist)',            'rooms': 1, 'roommates': 0, 'budget':  5000, 'months':  6},
+        {'num': 19, 'name': 'Sam (Social Butterfly)',       'rooms': 2, 'roommates': 4, 'budget': 14000, 'months': 12},
+        {'num': 20, 'name': 'Tina (Midrange Short)',        'rooms': 2, 'roommates': 1, 'budget': 12000, 'months':  4},
+        {'num': 21, 'name': 'Uma (Spacious)',               'rooms': 3, 'roommates': 1, 'budget': 22000, 'months': 12},
+        {'num': 22, 'name': 'Victor (Large Group)',         'rooms': 4, 'roommates': 4, 'budget': 35000, 'months': 10},
+        {'num': 23, 'name': 'Wendy (Two Roommates)',        'rooms': 2, 'roommates': 2, 'budget': 15000, 'months':  8},
+        {'num': 24, 'name': 'Xavier (High End)',            'rooms': 4, 'roommates': 1, 'budget': 60000, 'months': 18},
+        {'num': 25, 'name': 'Yara (Economical Long)',       'rooms': 1, 'roommates': 2, 'budget':  8000, 'months': 24},
+        {'num': 26, 'name': 'Zack (Max Roommates)',         'rooms': 3, 'roommates': 5, 'budget': 20000, 'months': 12},
+        {'num': 27, 'name': 'Anna (Starter)',               'rooms': 1, 'roommates': 1, 'budget':  7000, 'months':  6},
+        {'num': 28, 'name': 'Ben (Work Travel)',            'rooms': 1, 'roommates': 3, 'budget': 10000, 'months':  5},
+        {'num': 29, 'name': 'Cara (Calm)',                  'rooms': 2, 'roommates': 0, 'budget': 11000, 'months': 12},
+        {'num': 30, 'name': 'Dan (Music)',                  'rooms': 2, 'roommates': 3, 'budget': 13000, 'months': 11},
+        {'num': 31, 'name': 'Ella (Graduate)',              'rooms': 1, 'roommates': 2, 'budget':  9000, 'months': 10},
+        {'num': 32, 'name': 'Finn (Long Lease)',            'rooms': 2, 'roommates': 1, 'budget': 12500, 'months': 24},
+        {'num': 33, 'name': 'Gia (Family Sized)',           'rooms': 4, 'roommates': 3, 'budget': 40000, 'months': 24},
+        {'num': 34, 'name': 'Hugo (Big Budget Group)',      'rooms': 3, 'roommates': 4, 'budget': 50000, 'months': 12},
+        {'num': 35, 'name': 'Ivy (Compact Duo)',            'rooms': 1, 'roommates': 1, 'budget':  8500, 'months':  9},
     ]
-
+    
+    # Generate deterministic UUIDs and create user dictionary with id
+    users = []
+    for user_data in users_data:
+        user_id = str(uuid.uuid5(namespace, f"user_{user_data['num']}"))
+        user = {
+            'id': user_id,
+            'name': user_data['name'],
+            'rooms': user_data['rooms'],
+            'roommates': user_data['roommates'],
+            'budget': user_data['budget'],
+            'months': user_data['months']
+        }
+        users.append(user)
+    
+    # Store mapping for setup_sample_groups to use
+    global _SAMPLE_USER_IDS
+    _SAMPLE_USER_IDS = {i+1: user['id'] for i, user in enumerate(users)}
+    
     return users
+
+# Global to store sample user ID mapping
+_SAMPLE_USER_IDS = {}
 
 
 def create_user_interactive() -> Optional[Dict]:
     """
     Interactive user creation using questionary prompts.
     
+    Generates a UUID (Universally Unique Identifier) for the user.
+    UUID format: 8-4-4-4-12 hexadecimal characters (e.g., "550e8400-e29b-41d4-a716-446655440000")
+    
     Returns:
         dict: User data with preferences, or None if cancelled
     """
     try:
+        # Generate a new UUID
+        default_uuid = str(uuid.uuid4())
+        
+        print("\n💡 UUID Info: A universally unique identifier in format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
+        print(f"   Generated UUID for you: {default_uuid}")
+        print("   (UUID ensures no ID conflicts in the system)")
+        
         user_id = questionary.text(
-            "Enter user ID:",
-            default=f"user_{random.randint(1000, 9999)}"
+            "Enter user ID (UUID format recommended, press Enter to use generated one):",
+            default=default_uuid
         ).ask()
 
         if not user_id:
             return None
+        
+        # Validate UUID format (with warning if not UUID, but allow it)
+        try:
+            uuid.UUID(user_id)  # This will raise ValueError if invalid
+        except ValueError:
+            print("⚠️  Warning: Not a standard UUID format. This may cause ID conflicts.")
+            confirm = questionary.confirm(
+                "Continue with this ID anyway?",
+                default=False
+            ).ask()
+            if not confirm:
+                return None
 
         name = questionary.text(
             "Enter name:",
-            default=f"User {user_id}"
+            default="New User"
         ).ask()
 
         rooms = questionary.text(
@@ -217,7 +269,7 @@ def repair_users_without_groups(session, caps: dict, use_weights: bool, weights:
             user_params = get_user_parameters(session, user_id)
             
             # Create single-member group
-            group_id = f'g_{user_id}'
+            group_id = user_id
             group_name = f"Group of {user_record['name'] or user_id}"
             
             # Create vector
@@ -278,6 +330,7 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
     
     Creates 6-8 groups with 2-5 members each from existing users.
     Call this after upsert_users() to organize users into groups.
+    Uses the UUID mapping created by sample_users().
     
     Args:
         session: Neo4j session
@@ -287,32 +340,44 @@ def setup_sample_groups(session, caps: dict, use_weights: bool, weights: dict):
     """
     from infrastructure.neo4j.group_ops import add_user_to_group
 
-    # Define group assignments (target_user is group owner, others join)
-    groups = [
-        {'owner': 'u1', 'members': ['u6', 'u27']},  # Budget students group
-        {'owner': 'u2', 'members': ['u10', 'u23']},  # Shared apartment seekers
-        {'owner': 'u3', 'members': ['u24']},  # Luxury seekers
-        {'owner': 'u4', 'members': ['u15', 'u32']},  # Professionals group
-        {'owner': 'u8', 'members': ['u14', 'u21']},  # Family-sized group
-        {'owner': 'u13', 'members': ['u19', 'u26', 'u34']},  # Big group seekers
-        {'owner': 'u17', 'members': ['u33']},  # Premium long-term
-        # Other users remain in single-person groups: u5, u7, u9, u11, u12, u16, u18, u20, u22, u25, u28, u29, u30, u31, u35
+    # Define group assignments using user numbers (will be mapped to UUIDs)
+    # (owner_num is group owner, member_nums join that group)
+    group_configs = [
+        {'owner': 1, 'members': [6, 27]},  # Budget students group
+        {'owner': 2, 'members': [10, 23]},  # Shared apartment seekers
+        {'owner': 3, 'members': [24]},  # Luxury seekers
+        {'owner': 4, 'members': [15, 32]},  # Professionals group
+        {'owner': 8, 'members': [14, 21]},  # Family-sized group
+        {'owner': 13, 'members': [19, 26, 34]},  # Big group seekers
+        {'owner': 17, 'members': [33]},  # Premium long-term
+        # Other users remain in single-person groups: 5, 7, 9, 11, 12, 16, 18, 20, 22, 25, 28, 29, 30, 31, 35
     ]
+
+    # Map user numbers to UUIDs
+    if not _SAMPLE_USER_IDS:
+        print("⚠️  Warning: Sample user IDs not found. Skipping group setup.")
+        return
 
     # All users should always have a group - no deletion of groups
 
     # Execute groupings
-    for group_config in groups:
-        target_group_id = f"g_{group_config['owner']}"
-        for member_id in group_config['members']:
-            add_user_to_group(
-                session,
-                member_id,
-                target_group_id,
-                caps=caps,
-                use_weights=use_weights,
-                weights=weights
-            )
+    for config in group_configs:
+        owner_uuid = _SAMPLE_USER_IDS.get(config['owner'])
+        if not owner_uuid:
+            continue
+            
+        target_group_id = owner_uuid
+        for member_num in config['members']:
+            member_uuid = _SAMPLE_USER_IDS.get(member_num)
+            if member_uuid:
+                add_user_to_group(
+                    session,
+                    member_uuid,
+                    target_group_id,
+                    caps=caps,
+                    use_weights=use_weights,
+                    weights=weights
+                )
 
 
 def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, weights: dict, group_probability: float = 0.4, leave_some_solo: float = 0.2):
@@ -364,7 +429,7 @@ def auto_group_users(session, users: List[Dict], caps: dict, use_weights: bool, 
                 members = sorted_users[i+1:i+group_size]
 
                 if members:  # Only create group if there are valid members
-                    target_group_id = f"g_{owner['id']}"
+                    target_group_id = owner['id']
                     for member in members:
                         try:
                             add_user_to_group(

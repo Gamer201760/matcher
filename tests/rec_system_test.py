@@ -331,7 +331,7 @@ class TestRecommendationService(unittest.TestCase):
         logger.info('✓ Created 2 users')
 
         # User 2 sends request to User 1's group
-        group_id = 'g_group_user_1'
+        group_id = 'group_user_1'
         self.service.send_request_to_group('group_user_2', group_id)
         logger.info(f'✓ User group_user_2 sent request to group {group_id}')
 
@@ -376,7 +376,7 @@ class TestRecommendationService(unittest.TestCase):
         logger.info('✓ Created 2 users')
 
         # User 2 sends request to User 1's group
-        group_id = 'g_approve_user_1'
+        group_id = 'approve_user_1'
         self.service.send_request_to_group('approve_user_2', group_id)
         logger.info('✓ Request sent')
 
@@ -423,7 +423,7 @@ class TestRecommendationService(unittest.TestCase):
         logger.info(f'✓ Created {len(users)} users')
 
         # Users 2, 3, 4 send requests to User 1's group
-        group_id = 'g_capacity_user_1'
+        group_id = 'capacity_user_1'
         for i in range(2, 5):
             self.service.send_request_to_group(f'capacity_user_{i}', group_id)
         logger.info('✓ Requests sent')
@@ -461,7 +461,7 @@ class TestRecommendationService(unittest.TestCase):
         logger.info('✓ Created 3 users')
 
         # Users 2 and 3 join User 1's group
-        group_id = 'g_leave_user_1'
+        group_id = 'leave_user_1'
         for i in range(2, 4):
             self.service.send_request_to_group(f'leave_user_{i}', group_id)
             self.service.approve_request(
@@ -487,7 +487,7 @@ class TestRecommendationService(unittest.TestCase):
                 result = session.run(check_query, user_id='leave_user_2')
                 record = result.single()
                 self.assertIsNotNone(record)
-                self.assertEqual(record['group_id'], 'g_leave_user_2')
+                self.assertEqual(record['group_id'], 'leave_user_2')
 
         # Verify original group now has 2 members
         group, members = self.service.get_group(group_id)
@@ -513,7 +513,7 @@ class TestRecommendationService(unittest.TestCase):
         logger.info('✓ Created 3 users')
 
         # Form a group
-        group_id = 'g_info_user_1'
+        group_id = 'info_user_1'
         for i in range(2, 4):
             self.service.send_request_to_group(f'info_user_{i}', group_id)
             self.service.approve_request(

@@ -64,7 +64,7 @@ class GroupRecommendationRepository:
         """
         with self.driver.session() as session:
             # Database stores groups with 'g_' prefix
-            db_group_id = f'g_{group_id}'
+            db_group_id = group_id
 
             # Get the group's members and calculate average parameters
             members = get_group_member_parameters(session, db_group_id)

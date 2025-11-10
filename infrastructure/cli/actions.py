@@ -104,7 +104,7 @@ def action_get_recommendations(
         )
 
         # Find similar groups
-        exclude_id = f'g_{current_user_id}'
+        exclude_id = current_user_id
         recommendations = find_similar(
             session, query_vec, top_k=10, exclude_id=exclude_id
         )
@@ -135,7 +135,7 @@ def action_get_recommendations(
                     statistics=get_parameter_statistics(),
                     weights=weights if use_weights else None
                 )
-                exclude_id = f'g_{current_user_id}'
+                exclude_id = current_user_id
                 recommendations = find_similar(
                     session, query_vec, top_k=10, exclude_id=exclude_id
                 )
@@ -179,7 +179,7 @@ def action_join_group(
         )
 
         # Find similar groups
-        exclude_id = f'g_{current_user_id}'
+        exclude_id = current_user_id
         recommendations = find_similar(
             session, query_vec, top_k=10, exclude_id=exclude_id
         )
@@ -775,7 +775,7 @@ def action_delete_my_group(
                 console.print(f'[cyan]   Parameters: {user_params}[/cyan]')
 
                 # Create new single-member group
-                new_group_id = f'g_{member_id}'
+                new_group_id = member_id
                 new_group_name = f'Group of {member_id}'
                 
                 console.print(f'[cyan]   New group ID will be: {new_group_id}[/cyan]')
@@ -868,7 +868,7 @@ def action_delete_my_group(
             # Check if we need to create a group for the owner
             owner_id = None
             for member_id in member_ids:
-                new_group_id = f'g_{member_id}'
+                new_group_id = member_id
                 if new_group_id == current_group['id']:
                     owner_id = member_id
                     console.print(f'[cyan]🔍 DEBUG: Creating group for owner: {owner_id}[/cyan]')
@@ -928,7 +928,7 @@ def action_delete_my_group(
             successfully_moved = []
             for member_id in member_ids:
                 try:
-                    new_group_id = f'g_{member_id}'
+                    new_group_id = member_id
                     
                     console.print(f'[cyan]🔍 DEBUG: Switching {member_id}[/cyan]')
                     console.print(f'[cyan]   From group: {current_group["id"]}[/cyan]')

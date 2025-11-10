@@ -183,7 +183,7 @@ Join a Group → Рекомендации отображены
 
 ### 6. Управление группами
 - **Вступление**: Параметры группы = среднее всех участников
-- **Выход**: Создаётся новая группа g_{user_id} только для этого пользователя
+- **Выход**: Создаётся новая группа с ID = user_id только для этого пользователя
 - **Просмотр**: Таблица участников + средние параметры
 
 ## Навигация
@@ -372,7 +372,7 @@ Join → Recalculate group parameters → Update vector
 
 ### 6. Group Management
 - **Joining**: Group parameters = average of all members
-- **Leaving**: New group g_{user_id} created for that user only
+- **Leaving**: New group with ID = user_id created for that user only
 - **Viewing**: Member table + average parameters
 
 ## Navigation
