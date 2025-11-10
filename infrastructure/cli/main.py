@@ -24,6 +24,13 @@ from infrastructure.neo4j import (
     get_driver,
 )
 from infrastructure.config import GROUP_PARAMETER_WEIGHTS
+from repository.form_repository import FormRepository
+from repository.group_recommendation_repository import GroupRecommendationRepository
+from repository.group_repository import GroupRepository
+from repository.group_request_repository import GroupRequestRepository
+from usecase.form import FormService
+from usecase.group import FindGroupService, GroupService
+from usecase.group_query import GroupQuery
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 repo_system_dir = os.path.dirname(current_dir)
@@ -63,15 +70,33 @@ def run():
                 logger.info('Setting up database constraints and indexes...')
                 ensure_constraints_and_index(session, dims=len(PARAMETERS))
 
+                # Initialize repositories
+                form_repo = FormRepository(driver)
+                group_repo = GroupRepository(driver)
+                recommendation_repo = GroupRecommendationRepository(driver)
+                request_repo = GroupRequestRepository(driver)
+
+                # Initialize usecases
+                form_service = FormService(form_repo, group_repo)
+                find_group_service = FindGroupService(group_repo, recommendation_repo)
+                group_service = GroupService(group_repo, request_repo)
+                group_query = GroupQuery(group_repo)
+
                 # Startup menu
-                current_user_id = startup_menu(session, caps, use_weights, weights)
+                current_user_id = startup_menu(
+                    session, caps, use_weights, weights,
+                    form_service, group_service, find_group_service, group_query
+                )
 
                 if not current_user_id:
                     console.print('[yellow]No user selected. Exiting.[/yellow]\n')
                     return
 
                 # Run main menu loop
-                main_menu(session, current_user_id, caps, use_weights, weights)
+                main_menu(
+                    session, current_user_id, caps, use_weights, weights,
+                    form_service, group_service, find_group_service, group_query
+                )
 
     except KeyboardInterrupt:
         console.print('\n\n[yellow]Interrupted by user. Exiting...[/yellow]\n')

@@ -5,6 +5,7 @@ Contains the main menu loop and startup configuration menu.
 """
 
 from typing import Optional
+from uuid import UUID
 
 import questionary
 
@@ -36,28 +37,37 @@ from infrastructure.cli.utils import (
 )
 from infrastructure.neo4j import clean_db, upsert_users
 from infrastructure.neo4j.group_ops import get_group_by_user_id
+from usecase.form import FormService
+from usecase.group import FindGroupService, GroupService
+from usecase.group_query import GroupQuery
 
 
 def main_menu(
-    session, current_user_id: str, caps: dict, use_weights: bool, weights: dict
-) -> str:
+    session, current_user_id: UUID, caps: dict, use_weights: bool, weights: dict,
+    form_service: FormService, group_service: GroupService,
+    find_group_service: FindGroupService, group_query: GroupQuery
+) -> UUID:
     """
     Main menu loop - runs until user exits.
 
     Args:
         session: Neo4j session
-        current_user_id: Current user ID
+        current_user_id: Current user ID (UUID)
         caps: Normalization caps
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
+        form_service: FormService usecase
+        group_service: GroupService usecase
+        find_group_service: FindGroupService usecase
+        group_query: GroupQuery usecase
 
     Returns:
-        str: Current user ID (may have changed via switch user)
+        UUID: Current user ID (may have changed via switch user)
     """
     while True:
         # Show current user context with name
         user_query = 'MATCH (u:User {id: $user_id}) RETURN u.name as name'
-        result = session.run(user_query, user_id=current_user_id)
+        result = session.run(user_query, user_id=str(current_user_id))
         user_record = result.single()
         user_name = user_record['name'] if user_record else 'Unknown'
 
@@ -67,7 +77,7 @@ def main_menu(
 
         # Check if user is in a group
 
-        current_group = get_group_by_user_id(session, current_user_id)
+        current_group = get_group_by_user_id(session, str(current_user_id))
         is_in_multi_person_group = (
             current_group is not None and current_group.get('member_count', 0) > 1
         )
@@ -107,20 +117,23 @@ def main_menu(
 
         if choice == '🔍 Get Recommendations':
             action_get_recommendations(
-                session, current_user_id, caps, use_weights, weights
+                session, current_user_id, caps, use_weights, weights, find_group_service
             )
 
         elif choice == '🤝 Join a Group':
-            action_join_group(session, current_user_id, caps, use_weights, weights)
+            action_join_group(session, current_user_id, caps, use_weights, weights,
+                             find_group_service, group_service)
 
         elif choice == '🚪 Leave My Group':
-            action_leave_group(session, current_user_id, caps, use_weights, weights)
+            action_leave_group(session, current_user_id, caps, use_weights, weights,
+                             form_service, group_query)
 
         elif choice == '💥 Dissolve My Group':
-            action_delete_my_group(session, current_user_id, caps, use_weights, weights)
+            action_delete_my_group(session, current_user_id, caps, use_weights, weights,
+                                  group_query)
 
         elif choice == '👁️  View My Group':
-            action_view_my_group(session, current_user_id)
+            action_view_my_group(session, current_user_id, group_query)
 
         elif choice == '🌳 View All Groups (Tree)':
             action_view_all_groups(session, show_parameters=True)
@@ -142,7 +155,7 @@ def main_menu(
 
         elif choice == '🗑️  Delete My Account':
             new_user_id = action_delete_my_account(
-                session, current_user_id, caps, use_weights, weights
+                session, current_user_id, caps, use_weights, weights, form_service
             )
             if new_user_id:
                 current_user_id = new_user_id
@@ -177,8 +190,8 @@ def main_menu(
 
 def select_user_with_details(
     session, caps: dict, use_weights: bool, weights: dict
-) -> Optional[str]:
-    """Select user showing their parameters and group status."""
+) -> Optional[UUID]:
+    """Select user showing their parameters and group status. Returns UUID or None."""
     # Get users with full details from Parameter nodes
     query = """
         MATCH (u:User)
@@ -242,18 +255,20 @@ def select_user_with_details(
     if 'Create New User' in choice:
         return action_create_new_user_main(session, caps, use_weights, weights)
 
-    # Extract user ID from choice (find matching user)
+    # Extract user ID from choice (find matching user) and convert to UUID
     # Note: choices[0] is "Create New User", so user choices start at index 1
     for i, user in enumerate(users):
         if choices[i + 1] == choice:  # +1 because choices[0] is "Create New User"
-            return user['id']
+            return UUID(user['id'])
 
     return None
 
 
 def startup_menu(
-    session, caps: dict, use_weights: bool, weights: dict
-) -> Optional[str]:
+    session, caps: dict, use_weights: bool, weights: dict,
+    form_service: FormService, group_service: GroupService,
+    find_group_service: FindGroupService, group_query: GroupQuery
+) -> Optional[UUID]:
     """
     Improved startup flow.
 
@@ -262,9 +277,13 @@ def startup_menu(
         caps: Normalization caps
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
+        form_service: FormService usecase
+        group_service: GroupService usecase
+        find_group_service: FindGroupService usecase
+        group_query: GroupQuery usecase
 
     Returns:
-        str: User ID to start with, or None
+        UUID: User ID to start with, or None
     """
     # Ask about database cleanup
     clean = questionary.confirm('Clean database before starting?', default=False).ask()

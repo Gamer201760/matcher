@@ -6,10 +6,12 @@ getting recommendations, switching users, etc.
 """
 
 from typing import Optional
+from uuid import UUID
 
 import questionary
 from rich.table import Table
 
+from entity.parameters import Parameters
 from infrastructure.cli.displays import (
     console,
     display_error,
@@ -42,6 +44,9 @@ from infrastructure.neo4j.connection import ensure_constraints_and_index, get_dr
 from infrastructure.neo4j.group_ops import get_group_member_parameters
 from recommendation import create_vector
 from recommendation.statistics import update_statistics
+from usecase.form import FormService
+from usecase.group import FindGroupService, GroupService
+from usecase.group_query import GroupQuery
 import os
 
 
@@ -74,40 +79,39 @@ def update_parameter_statistics_action():
 
 
 def action_get_recommendations(
-    session, current_user_id: str, caps: dict, use_weights: bool, weights: dict
+    session, current_user_id: UUID, caps: dict, use_weights: bool, weights: dict,
+    find_group_service: FindGroupService
 ):
     """
     Flow: Get and display recommendations for current user with auto-retry on index errors.
 
     Args:
         session: Neo4j session
-        current_user_id: Current user ID
+        current_user_id: Current user ID (UUID)
         caps: Normalization caps (deprecated, kept for compatibility)
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
+        find_group_service: FindGroupService usecase
     """
     try:
-        # Get user data
-        user_params = get_user_parameters(session, current_user_id)
-
-        if not user_params:
-            display_error(f'User {current_user_id} not found in database.')
-            return
-
-        # Create query vector
-        group_values = {p: user_params.get(p, 0) for p in PARAMETERS}
-        query_vec = create_vector(
-            group_values, 
-            PARAMETERS, 
-            statistics=get_parameter_statistics(),
-            weights=weights if use_weights else None
-        )
-
-        # Find similar groups
-        exclude_id = current_user_id
-        recommendations = find_similar(
-            session, query_vec, top_k=10, exclude_id=exclude_id
-        )
+        # Use the usecase to get recommendations
+        recommendations_with_scores = find_group_service.execute(current_user_id)
+        
+        # Convert to the format expected by display_recommendations
+        # The FindGroupService returns List[Tuple[Group, float]]
+        recommendations = []
+        for group, score in recommendations_with_scores:
+            recommendations.append({
+                'id': str(group.id),
+                'score': score,
+                'rooms': group.parameters.rooms_count,
+                'roommates': group.parameters.roommates_count,
+                'budget': group.parameters.budget,
+                'months': group.parameters.lease_duration
+            })
+        
+        # Get user params for display
+        user_params = get_user_parameters(session, str(current_user_id))
 
         # Display recommendations with current user info
         display_recommendations(recommendations, session, current_user=user_params)
@@ -127,18 +131,18 @@ def action_get_recommendations(
                 ensure_constraints_and_index(session, dims=len(PARAMETERS))
                 display_info('Retrying...')
                 # Retry the operation
-                user_params = get_user_parameters(session, current_user_id)
-                group_values = {p: user_params.get(p, 0) for p in PARAMETERS}
-                query_vec = create_vector(
-                    group_values, 
-                    PARAMETERS, 
-                    statistics=get_parameter_statistics(),
-                    weights=weights if use_weights else None
-                )
-                exclude_id = current_user_id
-                recommendations = find_similar(
-                    session, query_vec, top_k=10, exclude_id=exclude_id
-                )
+                recommendations_with_scores = find_group_service.execute(current_user_id)
+                recommendations = []
+                for group, score in recommendations_with_scores:
+                    recommendations.append({
+                        'id': str(group.id),
+                        'score': score,
+                        'rooms': group.parameters.rooms_count,
+                        'roommates': group.parameters.roommates_count,
+                        'budget': group.parameters.budget,
+                        'months': group.parameters.lease_duration
+                    })
+                user_params = get_user_parameters(session, str(current_user_id))
                 display_recommendations(
                     recommendations, session, current_user=user_params
                 )
@@ -149,40 +153,39 @@ def action_get_recommendations(
 
 
 def action_join_group(
-    session, current_user_id: str, caps: dict, use_weights: bool, weights: dict
+    session, current_user_id: UUID, caps: dict, use_weights: bool, weights: dict,
+    find_group_service: FindGroupService, group_service: GroupService
 ):
     """
     Flow: Show recommendations and let user join one.
 
     Args:
         session: Neo4j session
-        current_user_id: Current user ID
+        current_user_id: Current user ID (UUID)
         caps: Normalization caps
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
+        find_group_service: FindGroupService usecase
+        group_service: GroupService usecase (for future request-based joining)
     """
     try:
-        # Get user data
-        user_params = get_user_parameters(session, current_user_id)
-
-        if not user_params:
-            display_error(f'User {current_user_id} not found in database.')
-            return
-
-        # Create query vector
-        group_values = {p: user_params.get(p, 0) for p in PARAMETERS}
-        query_vec = create_vector(
-            group_values, 
-            PARAMETERS, 
-            statistics=get_parameter_statistics(),
-            weights=weights if use_weights else None
-        )
-
-        # Find similar groups
-        exclude_id = current_user_id
-        recommendations = find_similar(
-            session, query_vec, top_k=10, exclude_id=exclude_id
-        )
+        # Get recommendations using usecase
+        recommendations_with_scores = find_group_service.execute(current_user_id)
+        
+        # Convert to display format
+        recommendations = []
+        for group, score in recommendations_with_scores:
+            recommendations.append({
+                'id': str(group.id),
+                'score': score,
+                'rooms': group.parameters.rooms_count,
+                'roommates': group.parameters.roommates_count,
+                'budget': group.parameters.budget,
+                'months': group.parameters.lease_duration
+            })
+        
+        # Get user data for checks
+        user_params = get_user_parameters(session, str(current_user_id))
 
         if not recommendations:
             display_warning('No groups available to join.')
@@ -266,7 +269,7 @@ def action_join_group(
             # Join group
             success = add_user_to_group(
                 session,
-                current_user_id,
+                str(current_user_id),
                 target_group_id,
                 caps=caps,
                 use_weights=use_weights,
@@ -287,21 +290,24 @@ def action_join_group(
 
 
 def action_leave_group(
-    session, current_user_id: str, caps: dict, use_weights: bool, weights: dict
+    session, current_user_id: UUID, caps: dict, use_weights: bool, weights: dict,
+    form_service: FormService, group_query: GroupQuery
 ):
     """
     Flow: Leave current group.
 
     Args:
         session: Neo4j session
-        current_user_id: Current user ID
+        current_user_id: Current user ID (UUID)
         caps: Normalization caps
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
+        form_service: FormService usecase
+        group_query: GroupQuery usecase
     """
     try:
         # Check current group
-        current_group = get_group_by_user_id(session, current_user_id)
+        current_group = get_group_by_user_id(session, str(current_user_id))
 
         if not current_group:
             display_warning('You are not in any group.')
@@ -319,10 +325,10 @@ def action_leave_group(
             display_info('Leave cancelled.')
             return
 
-        # Leave group
+        # Leave group (still using infrastructure for now, as FormService.delete does more than just leave)
         new_group_id = remove_user_from_group(
             session,
-            current_user_id,
+            str(current_user_id),
             caps=caps,
             use_weights=use_weights,
             weights=weights,
@@ -339,7 +345,7 @@ def action_leave_group(
         display_error(f'Failed to leave group: {e}')
 
 
-def action_switch_user(session) -> Optional[str]:
+def action_switch_user(session) -> Optional[UUID]:
     """
     Flow: Switch to different user.
 
@@ -347,10 +353,10 @@ def action_switch_user(session) -> Optional[str]:
         session: Neo4j session
 
     Returns:
-        str: New user ID or None if cancelled
+        UUID: New user ID or None if cancelled
     """
     try:
-        # Get all users
+        # Get all users (returns List[Tuple[UUID, str]])
         users = get_all_user_ids(session)
 
         if not users:
@@ -366,8 +372,9 @@ def action_switch_user(session) -> Optional[str]:
         if choice == 'Cancel' or not choice:
             return None
 
-        # Extract user ID from choice
-        user_id = choice.split('(')[1].rstrip(')')
+        # Extract user ID from choice and convert back to UUID
+        user_id_str = choice.split('(')[1].rstrip(')')
+        user_id = UUID(user_id_str)
         display_success(f'Switched to user: {user_id}')
         return user_id
 
@@ -376,17 +383,18 @@ def action_switch_user(session) -> Optional[str]:
         return None
 
 
-def action_view_my_group(session, current_user_id: str):
+def action_view_my_group(session, current_user_id: UUID, group_query: GroupQuery):
     """
     Flow: Show current user's group details.
 
     Args:
         session: Neo4j session
-        current_user_id: Current user ID
+        current_user_id: Current user ID (UUID)
+        group_query: GroupQuery usecase
     """
     try:
-        # Get current group
-        current_group = get_group_by_user_id(session, current_user_id)
+        # Get current group (using infrastructure for now, as GroupQuery.get needs group_id not user_id)
+        current_group = get_group_by_user_id(session, str(current_user_id))
 
         if not current_group:
             display_warning('You are not in any group.')
@@ -523,7 +531,7 @@ def action_clean_database(session):
 
 def action_create_new_user(
     session, caps: dict, use_weights: bool, weights: dict
-) -> Optional[str]:
+) -> Optional[UUID]:
     """
     Flow: Create a new user interactively (manual entry).
 
@@ -534,7 +542,7 @@ def action_create_new_user(
         weights: Parameter weights
 
     Returns:
-        str: New user ID or None
+        UUID: New user ID or None
     """
     try:
         user_data = create_user_interactive()
@@ -547,7 +555,7 @@ def action_create_new_user(
             session, [user_data], caps=caps, use_weights=use_weights, weights=weights
         )
         display_success(f"User {user_data['id']} created successfully!")
-        return user_data['id']
+        return user_data['id']  # Already a UUID
 
     except Exception as e:
         display_error(f'Failed to create user: {e}')
@@ -556,7 +564,7 @@ def action_create_new_user(
 
 def action_create_new_user_main(
     session, caps: dict, use_weights: bool, weights: dict
-) -> Optional[str]:
+) -> Optional[UUID]:
     """
     Main menu version with manual/random choice.
 
@@ -567,7 +575,7 @@ def action_create_new_user_main(
         weights: Parameter weights
 
     Returns:
-        str: New user ID or None
+        UUID: New user ID or None
     """
     try:
         choice = questionary.select(
@@ -596,7 +604,7 @@ def action_create_new_user_main(
                 weights=weights,
             )
             display_success(f"User {user_data['id']} created with random parameters!")
-            return user_data['id']
+            return user_data['id']  # Already a UUID
     except Exception as e:
         display_error(f'Failed to create user: {e}')
         return None
@@ -619,20 +627,22 @@ def action_rebuild_indexes(session):
 
 
 def action_delete_my_account(
-    session, current_user_id: str, caps: dict, use_weights: bool, weights: dict
-) -> Optional[str]:
+    session, current_user_id: UUID, caps: dict, use_weights: bool, weights: dict,
+    form_service: FormService
+) -> Optional[UUID]:
     """
     Flow: Delete current user account and switch to another user or create a new one.
 
     Args:
         session: Neo4j session
-        current_user_id: Current user ID to delete
+        current_user_id: Current user ID to delete (UUID)
         caps: Normalization caps
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
+        form_service: FormService usecase
 
     Returns:
-        str: New user ID after deletion, or None if cancelled
+        UUID: New user ID after deletion, or None if cancelled
     """
     try:
         # Import here to avoid circular dependency
@@ -645,7 +655,7 @@ def action_delete_my_account(
         )
 
         # Get user's group info before deletion
-        current_group = get_group_by_user_id(session, current_user_id)
+        current_group = get_group_by_user_id(session, str(current_user_id))
         if current_group and current_group.get('member_count', 0) > 1:
             display_info(
                 f"You are currently in a group with {current_group['member_count']} members. "
@@ -666,12 +676,12 @@ def action_delete_my_account(
             f'Type "{current_user_id}" to confirm deletion:',
         ).ask()
 
-        if final_confirm != current_user_id:
+        if final_confirm != str(current_user_id):
             display_warning('Confirmation failed. Account deletion cancelled.')
             return current_user_id
 
-        # Delete the user
-        delete_user_form(session, current_user_id)
+        # Delete the user (using infrastructure for now, as FormService.delete has complex logic)
+        delete_user_form(session, str(current_user_id))
         display_success(f'Account {current_user_id} has been permanently deleted.')
 
         # Now prompt user to select another user or create a new one
@@ -690,21 +700,23 @@ def action_delete_my_account(
 
 
 def action_delete_my_group(
-    session, current_user_id: str, caps: dict, use_weights: bool, weights: dict
+    session, current_user_id: UUID, caps: dict, use_weights: bool, weights: dict,
+    group_query: GroupQuery
 ):
     """
     Flow: Delete current group and separate all members into single-member groups.
 
     Args:
         session: Neo4j session
-        current_user_id: Current user ID
+        current_user_id: Current user ID (UUID)
         caps: Normalization caps
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
+        group_query: GroupQuery usecase
     """
     try:
         # Check current group
-        current_group = get_group_by_user_id(session, current_user_id)
+        current_group = get_group_by_user_id(session, str(current_user_id))
 
         if not current_group:
             display_warning('You are not in any group.')

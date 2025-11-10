@@ -4,7 +4,7 @@ Utility functions for the interactive CLI.
 Contains helper functions for user generation, database queries, and interactive input.
 """
 import random
-import uuid
+from uuid import UUID, uuid4
 from typing import Dict, List, Optional
 
 import questionary
@@ -40,7 +40,7 @@ def generate_fake_users(count: int) -> List[Dict]:
     users = []
     for i in range(count):
         # Generate UUID for each user
-        user_id = str(uuid.uuid4())
+        user_id = str(uuid4())
         name = random.choice(names) if i < len(names) else names[i % len(names)]
 
         # Ensure no 0 values - all parameters must be > 0
@@ -107,7 +107,7 @@ def sample_users() -> List[Dict]:
     # Generate random UUIDs and create user dictionary with id
     users = []
     for user_data in users_data:
-        user_id = str(uuid.uuid4())
+        user_id = str(uuid4())
         user = {
             'id': user_id,
             'name': user_data['name'],
@@ -140,23 +140,23 @@ def create_user_interactive() -> Optional[Dict]:
     """
     try:
         # Generate a new UUID
-        default_uuid = str(uuid.uuid4())
+        default_uuid = uuid4()
         
         print("\n💡 UUID Info: A universally unique identifier in format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
         print(f"   Generated UUID for you: {default_uuid}")
         print("   (UUID ensures no ID conflicts in the system)")
         
-        user_id = questionary.text(
+        user_id_str = questionary.text(
             "Enter user ID (UUID format recommended, press Enter to use generated one):",
-            default=default_uuid
+            default=str(default_uuid)
         ).ask()
 
-        if not user_id:
+        if not user_id_str:
             return None
         
         # Validate UUID format (with warning if not UUID, but allow it)
         try:
-            uuid.UUID(user_id)  # This will raise ValueError if invalid
+            user_id = UUID(user_id_str)  # This will raise ValueError if invalid
         except ValueError:
             print("⚠️  Warning: Not a standard UUID format. This may cause ID conflicts.")
             confirm = questionary.confirm(
@@ -164,6 +164,15 @@ def create_user_interactive() -> Optional[Dict]:
                 default=False
             ).ask()
             if not confirm:
+                return None
+            # If user confirms, use the string as-is but try to create a valid UUID
+            # For non-UUID strings, we'll need to keep them as strings in the dict
+            # but the CLI will expect UUID objects, so this is a special case
+            try:
+                user_id = UUID(user_id_str)
+            except:
+                # Cannot convert to UUID, return None to reject
+                print("⚠️  Cannot proceed with non-UUID format in UUID-based system.")
                 return None
 
         name = questionary.text(
@@ -218,11 +227,11 @@ def get_all_user_ids(session) -> List[tuple]:
         session: Neo4j session
         
     Returns:
-        list: List of tuples (user_id, name)
+        list: List of tuples (user_id as UUID, name)
     """
     query = "MATCH (u:User) RETURN u.id as id, u.name as name ORDER BY u.id"
     result = session.run(query)
-    return [(record['id'], record['name'] or record['id']) for record in result]
+    return [(UUID(record['id']), record['name'] or record['id']) for record in result]
 
 
 def repair_users_without_groups(session, caps: dict, use_weights: bool, weights: dict):
