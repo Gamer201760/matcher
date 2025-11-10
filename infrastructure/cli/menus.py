@@ -303,6 +303,10 @@ def startup_menu(
             auto_group_users(session, users, caps, use_weights, weights)
 
         console.print(f'[green]✓ Created {len(users)} users[/green]')
+        
+        # Update statistics after user generation
+        from infrastructure.cli.actions import update_parameter_statistics_action
+        update_parameter_statistics_action()
 
     # Repair any users without groups (safety check after creation)
     repaired = repair_users_without_groups(session, caps, use_weights, weights)

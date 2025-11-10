@@ -51,12 +51,10 @@ class TestCLIDisplayFunctions(unittest.TestCase):
             users = sample_users()
             caps = {'budget': 200000, 'months': 36}
             use_weights = True
-            from infrastructure.user_vector_utils import (
-                group_parameter_weights,
-            )
+            from infrastructure.config import GROUP_PARAMETER_WEIGHTS
 
-            upsert_users(session, users, caps=caps, use_weights=use_weights, weights=group_parameter_weights)
-            setup_sample_groups(session, caps, use_weights, group_parameter_weights)
+            upsert_users(session, users, caps=caps, use_weights=use_weights, weights=GROUP_PARAMETER_WEIGHTS)
+            setup_sample_groups(session, caps, use_weights, GROUP_PARAMETER_WEIGHTS)
 
     @classmethod
     def tearDownClass(cls):
@@ -170,10 +168,8 @@ class TestCLIUtilityFunctions(unittest.TestCase):
                 {'id': 'test2', 'name': 'Test 2', 'rooms': 2, 'roommates': 1, 'budget': 15000, 'months': 6}
             ]
             caps = {'budget': 200000, 'months': 36}
-            from infrastructure.user_vector_utils import (
-                group_parameter_weights,
-            )
-            upsert_users(session, users, caps=caps, use_weights=True, weights=group_parameter_weights)
+            from infrastructure.config import GROUP_PARAMETER_WEIGHTS
+            upsert_users(session, users, caps=caps, use_weights=True, weights=GROUP_PARAMETER_WEIGHTS)
 
             # Get user IDs
             user_ids = get_all_user_ids(session)
@@ -186,14 +182,12 @@ class TestCLIUtilityFunctions(unittest.TestCase):
             # Create sample users
             users = sample_users()
             caps = {'budget': 200000, 'months': 36}
-            from infrastructure.user_vector_utils import (
-                group_parameter_weights,
-            )
+            from infrastructure.config import GROUP_PARAMETER_WEIGHTS
 
-            upsert_users(session, users, caps=caps, use_weights=True, weights=group_parameter_weights)
+            upsert_users(session, users, caps=caps, use_weights=True, weights=GROUP_PARAMETER_WEIGHTS)
 
             # Group them
-            setup_sample_groups(session, caps, True, group_parameter_weights)
+            setup_sample_groups(session, caps, True, GROUP_PARAMETER_WEIGHTS)
 
             # Verify groups were created (check that g_u1 has members)
             from infrastructure.neo4j.group_ops import get_group_info

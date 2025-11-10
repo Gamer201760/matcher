@@ -10,18 +10,14 @@ from uuid import UUID
 from neo4j import Driver
 
 from entity.group import Group
-from infrastructure.config import PARAMETERS
+from infrastructure.config import PARAMETERS, PARAMETER_STATISTICS, GROUP_PARAMETER_WEIGHTS
 from infrastructure.logging_utils import setup_logger
 from infrastructure.neo4j import (
     find_similar,
     get_group_info,
     get_group_member_parameters,
 )
-from infrastructure.user_vector_utils import (
-    create_group_vector_with_weights,
-    create_user_vector,
-    group_parameter_weights,
-)
+from recommendation import create_vector
 from repository.group_dto import db_group_to_group
 
 logger = setup_logger()
@@ -42,15 +38,14 @@ class GroupRecommendationRepository:
         Initialize GroupRecommendationRepository with search configuration.
 
         Args:
-            caps: Normalization caps for vector creation
+            caps: Deprecated (kept for compatibility)
             use_weights: Whether to use weighted vectors
             weights: Parameter weights for group vector creation
             top_k: Number of recommendations to return
         """
         self.driver = driver
-        self.caps = caps or {'budget': 200000, 'months': 36}
         self.use_weights = use_weights
-        self.weights = weights or group_parameter_weights
+        self.weights = weights or GROUP_PARAMETER_WEIGHTS
         self.top_k = top_k
 
     def execute(self, group_id: UUID) -> list[tuple[Group, float]]:
@@ -81,12 +76,12 @@ class GroupRecommendationRepository:
             avg_params = self._calculate_average_parameters(members)
 
             # Create query vector
-            if self.use_weights:
-                query_vector = create_group_vector_with_weights(
-                    avg_params, PARAMETERS, self.weights, self.caps
-                )
-            else:
-                query_vector = create_user_vector(avg_params, PARAMETERS, self.caps)
+            query_vector = create_vector(
+                avg_params, 
+                PARAMETERS, 
+                statistics=PARAMETER_STATISTICS,
+                weights=self.weights if self.use_weights else None
+            )
 
             # Find similar groups
             similar_groups = find_similar(

@@ -28,8 +28,8 @@ from infrastructure.cli.utils import (
     sample_users,
     setup_sample_groups,
 )
+from infrastructure.config import PARAMETERS, PARAMETER_STATISTICS
 from infrastructure.neo4j import (
-    PARAMETERS,
     add_user_to_group,
     clean_db,
     find_similar,
@@ -38,12 +38,39 @@ from infrastructure.neo4j import (
     remove_user_from_group,
     upsert_users,
 )
-from infrastructure.neo4j.connection import ensure_constraints_and_index
+from infrastructure.neo4j.connection import ensure_constraints_and_index, get_driver
 from infrastructure.neo4j.group_ops import get_group_member_parameters
-from infrastructure.user_vector_utils import (
-    create_group_vector_with_weights,
-    create_user_vector,
-)
+from recommendation import create_vector
+from recommendation.statistics import update_statistics
+import os
+
+
+def update_parameter_statistics_action():
+    """Update parameter statistics from current user data."""
+    try:
+        from infrastructure.config import get_normalizer
+        import infrastructure.config as config
+        
+        driver = get_driver(
+            os.getenv('NEO4J_URI', ''),
+            os.getenv('NEO4J_USERNAME', ''),
+            os.getenv('NEO4J_PASSWORD', ''),
+        )
+        
+        # Get the configured normalizer
+        normalizer = get_normalizer()
+        statistics, user_count = update_statistics(driver, PARAMETERS, normalizer)
+        
+        if statistics and user_count >= 10:
+            # Update the config module's statistics
+            config.PARAMETER_STATISTICS = statistics
+            display_success(f'✓ Statistics updated from {user_count} users ({config.NORMALIZATION_METHOD} method)')
+        elif user_count < 10:
+            display_info(f'Using default statistics (only {user_count} users, need at least 10)')
+        else:
+            display_warning('Could not calculate statistics, using defaults')
+    except Exception as e:
+        display_warning(f'Failed to update statistics: {e}')
 
 
 def action_get_recommendations(
@@ -55,7 +82,7 @@ def action_get_recommendations(
     Args:
         session: Neo4j session
         current_user_id: Current user ID
-        caps: Normalization caps
+        caps: Normalization caps (deprecated, kept for compatibility)
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
     """
@@ -69,12 +96,12 @@ def action_get_recommendations(
 
         # Create query vector
         group_values = {p: user_params.get(p, 0) for p in PARAMETERS}
-        if use_weights:
-            query_vec = create_group_vector_with_weights(
-                group_values, PARAMETERS, weights, caps
-            )
-        else:
-            query_vec = create_user_vector(group_values, PARAMETERS, caps)
+        query_vec = create_vector(
+            group_values, 
+            PARAMETERS, 
+            statistics=PARAMETER_STATISTICS,
+            weights=weights if use_weights else None
+        )
 
         # Find similar groups
         exclude_id = f'g_{current_user_id}'
@@ -446,12 +473,14 @@ def action_create_fake_users(session, caps: dict, use_weights: bool, weights: di
             )
 
             # Group sample users for realistic testing
-
             setup_sample_groups(session, caps, use_weights, weights)
 
             display_success(
                 f'Created {len(users)} sample users and organized them into groups!'
             )
+            
+            # Update statistics after user generation
+            update_parameter_statistics_action()
             return
 
         # Insert users (for random users)
@@ -459,6 +488,9 @@ def action_create_fake_users(session, caps: dict, use_weights: bool, weights: di
             session, users, caps=caps, use_weights=use_weights, weights=weights
         )
         display_success(f'Created {len(users)} users successfully!')
+        
+        # Update statistics after user generation
+        update_parameter_statistics_action()
 
     except Exception as e:
         display_error(f'Failed to create users: {e}')

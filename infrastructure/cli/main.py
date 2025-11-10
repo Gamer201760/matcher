@@ -23,7 +23,7 @@ from infrastructure.neo4j import (
     ensure_constraints_and_index,
     get_driver,
 )
-from infrastructure.user_vector_utils import group_parameter_weights
+from infrastructure.config import GROUP_PARAMETER_WEIGHTS
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 repo_system_dir = os.path.dirname(current_dir)
@@ -50,7 +50,7 @@ def run():
     # Configuration
     caps = {'budget': 200000, 'months': 36}
     use_weights = True
-    weights = group_parameter_weights
+    weights = GROUP_PARAMETER_WEIGHTS
 
     try:
         with get_driver(
