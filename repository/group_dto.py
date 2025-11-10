@@ -30,6 +30,7 @@ def db_group_to_group(db_dict: dict, group_id: UUID) -> Group:
         budget=params_dict.get('budget', 0),
         room_count=params_dict.get('rooms', 0),
         roommates_count=params_dict.get('roommates', 0),
+        month=params_dict.get('month', 0),
         age=0,
         smoking=False,
         alko=False,
