@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "grpcio>=1.75.1",
+    "grpcio-reflection>=1.75.1",
     "grpclib>=0.4.8",
     "neo4j>=6.0.2",
     "numpy>=2.3.4",
@@ -13,16 +14,16 @@ dependencies = [
     "questionary>=2.1.1",
     "rich>=14.2.0",
     "scipy>=1.16.2",
+    "grpcio-tools>=1.75.1",
+    "types-grpcio>=1.0.0.20251001",
 ]
 
 [dependency-groups]
 dev = [
-    "grpcio-tools>=1.75.1",
     "mypy>=1.18.2",
     "mypy-protobuf>=3.6.0",
     "pytest>=8.4.2",
     "ruff>=0.13.3",
-    "types-grpcio>=1.0.0.20251001",
 ]
 
 [tool.pytest.ini_options]
