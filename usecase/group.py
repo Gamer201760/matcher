@@ -2,7 +2,7 @@ from typing import List, Tuple
 from uuid import UUID
 
 from entity.errors import DomainError, NotFoundError
-from entity.group import Group
+from entity.group import Group, GroupRequest
 
 from .interface import (
     GroupRecomendationRepository,
@@ -40,6 +40,9 @@ class GroupService:
     ):
         self._group_repo = group_repo
         self._request_repo = request_repo
+
+    def get_requests(self, group_id: UUID) -> list[GroupRequest]:
+        return self._request_repo.get_all(group_id)
 
     def send_join_request(self, user_id: UUID, group_id: UUID):
         """Пользователь отправляет запрос на вступление в группу."""

@@ -5,6 +5,9 @@ from entity.form import Form
 from entity.group import Group, GroupRequest
 from entity.parameters import Parameters
 
+# Если объект не найден делать raise NotFoundError - лежит в entity.errors
+# Если нужна кастомная ошибка делать raise DomainError() и передавать в аргументы строку с ошибкой
+
 
 class FormRepository(Protocol):
     def create(self, form: Form) -> UUID: ...
