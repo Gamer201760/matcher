@@ -109,10 +109,7 @@ def to_proto_form(form: Form) -> pb2.Form:
 
 
 def from_proto_form(proto: pb2.Form) -> Form:
-    # Note: Form constructor may need adjustment if IDs are generated server-side
-    from entity.form import Form as FormEntity
-
-    return FormEntity(
+    return Form(
         id=UUID(proto.id),
         user_id=UUID(proto.user_id),
         parameters=from_proto_parameters(proto.parameters),
@@ -122,7 +119,18 @@ def from_proto_form(proto: pb2.Form) -> Form:
     )
 
 
-def to_proto_group(group: Group, score: float) -> pb2.GroupWithScore:
+def to_proto_group(group: Group) -> pb2.Group:
+    return pb2.Group(
+        id=str(group.id),
+        owner_id=str(group.owner_id),
+        parameters=to_proto_parameters(group.parameters),
+        max_users=group.max_users,
+        created_at=datetime_to_timestamp(group.created_at),
+        updated_at=datetime_to_timestamp(group.updated_at),
+    )
+
+
+def to_proto_group_with_score(group: Group, score: float) -> pb2.GroupWithScore:
     return pb2.GroupWithScore(
         group=pb2.Group(
             id=str(group.id),
@@ -137,10 +145,7 @@ def to_proto_group(group: Group, score: float) -> pb2.GroupWithScore:
 
 
 def from_proto_group(proto: pb2.Group) -> Group:
-    # Note: Group constructor may need adjustment
-    from entity.group import Group as GroupEntity
-
-    return GroupEntity(
+    return Group(
         id=UUID(proto.id),
         owner_id=UUID(proto.owner_id),
         parameters=from_proto_parameters(proto.parameters),

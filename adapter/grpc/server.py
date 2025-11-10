@@ -13,7 +13,12 @@ from usecase.group import (
 )
 from usecase.group_query import GroupQuery
 
-from .mapper import from_proto_parameters, to_proto_form, to_proto_group
+from .mapper import (
+    from_proto_parameters,
+    to_proto_form,
+    to_proto_group,
+    to_proto_group_with_score,
+)
 
 
 class FormServicer(pb2_grpc.FormServiceServicer):
@@ -117,7 +122,7 @@ class FindGroupServicer(pb2_grpc.FindGroupServiceServicer):
             user_id = UUID(request.user_id)
             groups = self.service.execute(user_id)
             return pb2.FindGroupsResponse(
-                groups=[to_proto_group(g[0], g[1]) for g in groups]
+                groups=[to_proto_group_with_score(g[0], g[1]) for g in groups]
             )
         except NotFoundError as e:
             context.abort(grpc.StatusCode.NOT_FOUND, str(e))
