@@ -14,11 +14,8 @@ from ..logging_utils import (
     log_vector_operation,
     setup_logger,
 )
-from ..user_vector_utils import (
-    create_group_vector_with_weights,
-    create_user_vector,
-    group_parameter_weights,
-)
+from ..config import PARAMETER_STATISTICS, GROUP_PARAMETER_WEIGHTS
+from recommendation import create_vector
 
 # Setup logger
 logger = setup_logger('roommate_db', 'INFO')
@@ -83,14 +80,14 @@ def add_user_to_group(
 
             # Update group parameters and vector
             group_values = {p: new_group_params.get(p, 0) for p in PARAMETERS}
-            weights = weights or group_parameter_weights
+            weights = weights or GROUP_PARAMETER_WEIGHTS
 
-            if use_weights:
-                new_vector = create_group_vector_with_weights(
-                    group_values, PARAMETERS, weights, caps
-                )
-            else:
-                new_vector = create_user_vector(group_values, PARAMETERS, caps)
+            new_vector = create_vector(
+                group_values, 
+                PARAMETERS, 
+                statistics=PARAMETER_STATISTICS,
+                weights=weights if use_weights else None
+            )
 
             # Update the group in database
             update_group_query = """
@@ -181,7 +178,7 @@ def remove_user_from_group(
         ValueError: If user is not in a group or is already in a single-member group
     """
     try:
-        weights = weights or group_parameter_weights
+        weights = weights or GROUP_PARAMETER_WEIGHTS
 
         # Import here to avoid circular dependency
         from .user_ops import get_user_parameters
@@ -254,11 +251,12 @@ def remove_user_from_group(
             # Create new group vector
             group_values = {p: new_group_params.get(p, 0) for p in PARAMETERS}
             if use_weights:
-                new_vector = create_group_vector_with_weights(
-                    group_values, PARAMETERS, weights, caps
+                new_vector = create_vector(
+                    group_values, 
+                    PARAMETERS, 
+                    statistics=PARAMETER_STATISTICS,
+                    weights=weights if use_weights else None
                 )
-            else:
-                new_vector = create_user_vector(group_values, PARAMETERS, caps)
 
             # Update group properties and GroupParameter nodes in place
             update_group_query = """
@@ -331,11 +329,12 @@ def remove_user_from_group(
 
         # Create vector for new single-member group
         if use_weights:
-            new_user_vector = create_group_vector_with_weights(
-                user_params, PARAMETERS, weights, caps
+            new_user_vector = create_vector(
+                user_params, 
+                PARAMETERS, 
+                statistics=PARAMETER_STATISTICS,
+                weights=weights if use_weights else None
             )
-        else:
-            new_user_vector = create_user_vector(user_params, PARAMETERS, caps)
 
         # Create new group and establish relationship in a single atomic query
         create_new_group_query = """
@@ -610,11 +609,12 @@ def update_group_parameters(
     # Create new group vector
     group_values = {p: parameters_dict.get(p, 0) for p in PARAMETERS}
     if use_weights:
-        new_vector = create_group_vector_with_weights(
-            group_values, PARAMETERS, weights, caps
+        new_vector = create_vector(
+            group_values, 
+            PARAMETERS, 
+            statistics=PARAMETER_STATISTICS,
+            weights=weights if use_weights else None
         )
-    else:
-        new_vector = create_user_vector(group_values, PARAMETERS, caps)
 
     # Update group properties and GroupParameter nodes
     update_query = """

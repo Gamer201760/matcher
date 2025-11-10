@@ -7,19 +7,14 @@ This module handles:
 - Test database and simulation functions
 """
 
-from ..config import PARAMETERS
+from ..config import PARAMETERS, PARAMETER_STATISTICS, GROUP_PARAMETER_WEIGHTS
 from ..logging_utils import (
     log_neo4j_query,
     log_similarity_results,
     log_vector_operation,
     setup_logger,
 )
-from ..user_vector_utils import (
-    create_group_vector_with_weights,
-    create_user_vector,
-    euclidean_distance,
-    group_parameter_weights,
-)
+from recommendation import create_vector, euclidean_distance
 
 # Setup logger
 logger = setup_logger('roommate_db', 'INFO')
@@ -63,20 +58,22 @@ def find_similar_local(
     users, query_user, caps=None, use_weights=False, weights=None, top_k=5
 ):
     """Find similar groups using local computation (fallback method)."""
-    weights = weights or group_parameter_weights
+    weights = weights or GROUP_PARAMETER_WEIGHTS
     query_user_id = query_user.get('id')
     query_group_id = f'g_{query_user_id}'
 
     logger.debug(
         f'Computing local similarity for group {query_group_id} against {len(users)} groups'
     )
-    logger.debug(f'Using weights: {use_weights}, caps: {caps}')
+    logger.debug(f'Using weights: {use_weights}')
 
     group_values = {p: query_user.get(p) for p in PARAMETERS}
-    if use_weights:
-        qvec = create_group_vector_with_weights(group_values, PARAMETERS, weights, caps)
-    else:
-        qvec = create_user_vector(group_values, PARAMETERS, caps)
+    qvec = create_vector(
+        group_values, 
+        PARAMETERS, 
+        statistics=PARAMETER_STATISTICS,
+        weights=weights if use_weights else None
+    )
 
     log_vector_operation(
         logger, 'Generated group query vector', len(qvec), query_group_id
@@ -90,10 +87,12 @@ def find_similar_local(
             continue
 
         values = {p: u.get(p) for p in PARAMETERS}
-        if use_weights:
-            uvec = create_group_vector_with_weights(values, PARAMETERS, weights, caps)
-        else:
-            uvec = create_user_vector(values, PARAMETERS, caps)
+        uvec = create_vector(
+            values, 
+            PARAMETERS, 
+            statistics=PARAMETER_STATISTICS,
+            weights=weights if use_weights else None
+        )
 
         # euclidean_distance returns distance; convert to similarity
         distance = euclidean_distance(qvec, uvec)
@@ -123,14 +122,14 @@ def find_similar_users(
         session: Neo4j session
         user_id: Query user ID
         top_k: Number of similar users to return
-        caps: Normalization caps
+        caps: Deprecated (kept for compatibility)
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
 
     Returns:
         list: List of dicts with user_id and score
     """
-    weights = weights or group_parameter_weights
+    weights = weights or GROUP_PARAMETER_WEIGHTS
 
     # Import here to avoid circular dependency
     from .group_ops import get_group_info
@@ -140,12 +139,12 @@ def find_similar_users(
     user_params = get_user_parameters(session, user_id)
     group_values = {p: user_params.get(p, 0) for p in PARAMETERS}
 
-    if use_weights:
-        query_vec = create_group_vector_with_weights(
-            group_values, PARAMETERS, weights, caps
-        )
-    else:
-        query_vec = create_user_vector(group_values, PARAMETERS, caps)
+    query_vec = create_vector(
+        group_values, 
+        PARAMETERS, 
+        statistics=PARAMETER_STATISTICS,
+        weights=weights if use_weights else None
+    )
 
     # Find similar groups
     exclude_group_id = f'g_{user_id}'

@@ -14,11 +14,8 @@ from ..logging_utils import (
     log_vector_operation,
     setup_logger,
 )
-from ..user_vector_utils import (
-    create_group_vector_with_weights,
-    create_user_vector,
-    group_parameter_weights,
-)
+from ..config import PARAMETER_STATISTICS, GROUP_PARAMETER_WEIGHTS
+from recommendation import create_vector
 
 # Setup logger
 logger = setup_logger('roommate_db', 'INFO')
@@ -58,11 +55,11 @@ def clear_users(session):
 
 def upsert_users(session, users, caps=None, use_weights=False, weights=None):
     """Insert or update users along with their single-member groups and parameters."""
-    weights = weights or group_parameter_weights
+    weights = weights or GROUP_PARAMETER_WEIGHTS
     rows = []
 
     logger.debug(f'Processing {len(users)} users for database upsert')
-    logger.debug(f'Using weights: {use_weights}, Vector caps: {caps}')
+    logger.debug(f'Using weights: {use_weights}')
 
     for u in users:
         # Single-member group id and name
@@ -73,10 +70,11 @@ def upsert_users(session, users, caps=None, use_weights=False, weights=None):
         param_list = [{'name': p, 'value': u.get(p)} for p in PARAMETERS]
 
         group_values = {p: u.get(p) for p in PARAMETERS}
-        gvec = (
-            create_group_vector_with_weights(group_values, PARAMETERS, weights, caps)
-            if use_weights
-            else create_user_vector(group_values, PARAMETERS, caps)
+        gvec = create_vector(
+            group_values, 
+            PARAMETERS, 
+            statistics=PARAMETER_STATISTICS,
+            weights=weights if use_weights else None
         )
 
         log_vector_operation(logger, 'Created group vector', len(gvec), group_id)
@@ -171,11 +169,6 @@ def delete_user_form(session, user_id):
     """
     # Import here to avoid circular dependency
     from ..config import PARAMETERS
-    from ..user_vector_utils import (
-        create_group_vector_with_weights,
-        create_user_vector,
-        group_parameter_weights,
-    )
     
     # Step 1: Check if user is in a multi-member group
     check_group_query = """
@@ -229,12 +222,14 @@ def delete_user_form(session, user_id):
                 if values:
                     new_group_params[param] = sum(values) / len(values)
             
-            # Create new group vector (use default weights)
-            weights = group_parameter_weights
-            caps = {'budget': 200000, 'months': 36, 'rooms': 10, 'roommates': 10}
+            # Create new group vector
+            weights = GROUP_PARAMETER_WEIGHTS
             group_values = {p: new_group_params.get(p, 0) for p in PARAMETERS}
-            new_vector = create_group_vector_with_weights(
-                group_values, PARAMETERS, weights, caps
+            new_vector = create_vector(
+                group_values, 
+                PARAMETERS, 
+                statistics=PARAMETER_STATISTICS,
+                weights=weights
             )
             
             # Update group properties and GroupParameter nodes

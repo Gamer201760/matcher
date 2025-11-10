@@ -189,11 +189,8 @@ def repair_users_without_groups(session, caps: dict, use_weights: bool, weights:
         int: Number of users repaired
     """
     from infrastructure.neo4j.user_ops import get_user_parameters
-    from infrastructure.user_vector_utils import (
-        create_group_vector_with_weights,
-        create_user_vector,
-        group_parameter_weights,
-    )
+    from recommendation import create_vector
+    from infrastructure.config import PARAMETER_STATISTICS, GROUP_PARAMETER_WEIGHTS
     from infrastructure.config import PARAMETERS
     
     # Find users without groups
@@ -210,7 +207,7 @@ def repair_users_without_groups(session, caps: dict, use_weights: bool, weights:
     
     print(f'⚠️  Found {len(users_without_groups)} user(s) without groups. Repairing...')
     
-    weights = weights or group_parameter_weights
+    weights = weights or GROUP_PARAMETER_WEIGHTS
     repaired = 0
     
     for user_record in users_without_groups:
@@ -224,12 +221,12 @@ def repair_users_without_groups(session, caps: dict, use_weights: bool, weights:
             group_name = f"Group of {user_record['name'] or user_id}"
             
             # Create vector
-            if use_weights:
-                group_vector = create_group_vector_with_weights(
-                    user_params, PARAMETERS, weights, caps
-                )
-            else:
-                group_vector = create_user_vector(user_params, PARAMETERS, caps)
+            group_vector = create_vector(
+                user_params, 
+                PARAMETERS, 
+                statistics=PARAMETER_STATISTICS,
+                weights=weights if use_weights else None
+            )
             
             # Create group and link user
             repair_query = """
