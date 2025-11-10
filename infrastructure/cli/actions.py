@@ -48,18 +48,23 @@ import os
 def update_parameter_statistics_action():
     """Update parameter statistics from current user data."""
     try:
+        from infrastructure.config import get_normalizer
+        import infrastructure.config as config
+        
         driver = get_driver(
             os.getenv('NEO4J_URI', ''),
             os.getenv('NEO4J_USERNAME', ''),
             os.getenv('NEO4J_PASSWORD', ''),
         )
-        statistics, user_count = update_statistics(driver, PARAMETERS)
+        
+        # Get the configured normalizer
+        normalizer = get_normalizer()
+        statistics, user_count = update_statistics(driver, PARAMETERS, normalizer)
         
         if statistics and user_count >= 10:
             # Update the config module's statistics
-            import infrastructure.config as config
             config.PARAMETER_STATISTICS = statistics
-            display_success(f'✓ Statistics updated from {user_count} users')
+            display_success(f'✓ Statistics updated from {user_count} users ({config.NORMALIZATION_METHOD} method)')
         elif user_count < 10:
             display_info(f'Using default statistics (only {user_count} users, need at least 10)')
         else:

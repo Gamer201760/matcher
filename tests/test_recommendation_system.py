@@ -6,36 +6,41 @@ Tests normalization, vector operations, and statistics without Neo4j.
 import pytest
 import numpy as np
 from unittest.mock import Mock, MagicMock
-from recommendation.normalization import normalize_parameter, DEFAULT_STATISTICS
+from recommendation.ZSCORE_NORMALIZATION import ZScoreNormalization, DEFAULT_ZSCORE_STATISTICS
+from recommendation.PERCENTILE_NORMALIZATION import PercentileNormalization, DEFAULT_PERCENTILE_STATISTICS
 from recommendation.vector_ops import create_vector, euclidean_distance
 from recommendation.statistics import calculate_parameter_statistics
 
 
-class TestNormalization:
+class TestZScoreNormalization:
     """Test Z-score + sigmoid normalization."""
+    
+    def setup_method(self):
+        """Setup normalizer for each test."""
+        self.normalizer = ZScoreNormalization()
     
     def test_normalize_with_default_statistics(self):
         """Test normalization uses default statistics when none provided."""
         # Budget with default stats: mean=30000, std=20000
-        result = normalize_parameter(30000, 'budget')
+        result = self.normalizer.normalize(30000, 'budget')
         assert 0.4 < result < 0.6  # Z-score=0 → sigmoid=0.5
     
     def test_normalize_above_mean(self):
         """Test values above mean return > 0.5."""
         stats = {'mean': 100, 'std': 10}
-        result = normalize_parameter(110, 'test_param', stats)
+        result = self.normalizer.normalize(110, 'test_param', stats)
         assert result > 0.5
     
     def test_normalize_below_mean(self):
         """Test values below mean return < 0.5."""
         stats = {'mean': 100, 'std': 10}
-        result = normalize_parameter(90, 'test_param', stats)
+        result = self.normalizer.normalize(90, 'test_param', stats)
         assert result < 0.5
     
     def test_normalize_zero_std(self):
         """Test handling of zero standard deviation."""
         stats = {'mean': 100, 'std': 0}
-        result = normalize_parameter(100, 'test_param', stats)
+        result = self.normalizer.normalize(100, 'test_param', stats)
         assert result == 0.5
     
     def test_normalize_extreme_values(self):
@@ -43,25 +48,102 @@ class TestNormalization:
         stats = {'mean': 0, 'std': 1}
         
         # Very large positive z-score
-        result_high = normalize_parameter(10, 'test_param', stats)
+        result_high = self.normalizer.normalize(10, 'test_param', stats)
         assert 0 < result_high < 1
         assert result_high > 0.99
         
         # Very large negative z-score
-        result_low = normalize_parameter(-10, 'test_param', stats)
+        result_low = self.normalizer.normalize(-10, 'test_param', stats)
         assert 0 < result_low < 1
         assert result_low < 0.01
     
     def test_default_statistics_exist(self):
         """Test all expected parameters have default statistics."""
-        assert 'rooms' in DEFAULT_STATISTICS
-        assert 'roommates' in DEFAULT_STATISTICS
-        assert 'budget' in DEFAULT_STATISTICS
-        assert 'months' in DEFAULT_STATISTICS
+        assert 'rooms' in DEFAULT_ZSCORE_STATISTICS
+        assert 'roommates' in DEFAULT_ZSCORE_STATISTICS
+        assert 'budget' in DEFAULT_ZSCORE_STATISTICS
+        assert 'months' in DEFAULT_ZSCORE_STATISTICS
         
-        for param, stats in DEFAULT_STATISTICS.items():
+        for param, stats in DEFAULT_ZSCORE_STATISTICS.items():
             assert 'mean' in stats
             assert 'std' in stats
+    
+    def test_statistics_type(self):
+        """Test strategy returns correct statistics type."""
+        assert self.normalizer.get_statistics_type() == 'mean_std'
+
+
+class TestPercentileNormalization:
+    """Test percentile-based normalization."""
+    
+    def setup_method(self):
+        """Setup normalizer for each test."""
+        self.normalizer = PercentileNormalization()
+    
+    def test_normalize_at_median(self):
+        """Test value at median returns ~0.5."""
+        # Percentiles: [0, 10, 20, ..., 100]
+        percentiles = np.linspace(0, 100, 101)
+        stats = {'percentiles': percentiles}
+        
+        # Value 50 should be at 50th percentile
+        result = self.normalizer.normalize(50, 'test_param', stats)
+        assert 0.45 < result < 0.55
+    
+    def test_normalize_minimum_value(self):
+        """Test minimum value returns ~0."""
+        percentiles = np.array([10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+        stats = {'percentiles': percentiles}
+        
+        result = self.normalizer.normalize(5, 'test_param', stats)
+        assert result == 0.0
+    
+    def test_normalize_maximum_value(self):
+        """Test maximum value returns 1.0."""
+        percentiles = np.array([10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+        stats = {'percentiles': percentiles}
+        
+        result = self.normalizer.normalize(110, 'test_param', stats)
+        assert result == 1.0
+    
+    def test_outlier_handling(self):
+        """Test that extreme outliers don't break the system."""
+        # Normal range: 10-100, with one outlier at 1M
+        percentiles = np.linspace(10, 100, 101)
+        stats = {'percentiles': percentiles}
+        
+        # 1M is way beyond the range - should just return 1.0
+        result = self.normalizer.normalize(1_000_000, 'test_param', stats)
+        assert result == 1.0
+        
+        # Value still works for normal users
+        result_normal = self.normalizer.normalize(50, 'test_param', stats)
+        assert 0.4 < result_normal < 0.6
+    
+    def test_percentile_precision(self):
+        """Test percentile calculation precision."""
+        # Create percentiles for budget: 5k to 60k
+        percentiles = np.linspace(5000, 60000, 101)
+        stats = {'percentiles': percentiles}
+        
+        # 30k is roughly middle
+        result = self.normalizer.normalize(30000, 'budget', stats)
+        assert 0.40 < result < 0.50
+    
+    def test_default_statistics_exist(self):
+        """Test all expected parameters have default percentile statistics."""
+        assert 'rooms' in DEFAULT_PERCENTILE_STATISTICS
+        assert 'roommates' in DEFAULT_PERCENTILE_STATISTICS
+        assert 'budget' in DEFAULT_PERCENTILE_STATISTICS
+        assert 'months' in DEFAULT_PERCENTILE_STATISTICS
+        
+        for param, stats in DEFAULT_PERCENTILE_STATISTICS.items():
+            assert 'percentiles' in stats
+            assert len(stats['percentiles']) > 0
+    
+    def test_statistics_type(self):
+        """Test strategy returns correct statistics type."""
+        assert self.normalizer.get_statistics_type() == 'percentiles'
 
 
 class TestVectorOperations:
@@ -159,8 +241,8 @@ class TestVectorOperations:
 class TestStatistics:
     """Test statistics calculation with mocked Neo4j."""
     
-    def test_calculate_statistics_sufficient_data(self):
-        """Test statistics calculation with sufficient data."""
+    def test_calculate_statistics_zscore_method(self):
+        """Test statistics calculation for Z-score method."""
         # Mock session
         mock_session = Mock()
         
@@ -171,12 +253,11 @@ class TestStatistics:
             for i in range(20)
         ]
         
-        mock_result = Mock()
-        mock_result.data.return_value = mock_data
-        mock_session.run.return_value = [Mock(data=lambda: d) for d in mock_data]
+        mock_session.run.return_value = [Mock(data=lambda d=d: d) for d in mock_data]
         
+        normalizer = ZScoreNormalization()
         parameters = ['rooms', 'roommates', 'budget', 'months']
-        statistics = calculate_parameter_statistics(mock_session, parameters)
+        statistics = calculate_parameter_statistics(mock_session, parameters, normalizer)
         
         assert statistics is not None
         assert 'rooms' in statistics
@@ -186,6 +267,31 @@ class TestStatistics:
             if param in statistics:
                 assert 'mean' in statistics[param]
                 assert 'std' in statistics[param]
+    
+    def test_calculate_statistics_percentile_method(self):
+        """Test statistics calculation for percentile method."""
+        # Mock session
+        mock_session = Mock()
+        
+        # Mock data: 20 users
+        mock_data = [
+            {'rooms': i % 4 + 1, 'roommates': i % 5 + 1, 
+             'budget': 10000 + i * 1000, 'months': [6, 12, 24][i % 3]}
+            for i in range(20)
+        ]
+        
+        mock_session.run.return_value = [Mock(data=lambda d=d: d) for d in mock_data]
+        
+        normalizer = PercentileNormalization()
+        parameters = ['rooms', 'roommates', 'budget', 'months']
+        statistics = calculate_parameter_statistics(mock_session, parameters, normalizer)
+        
+        assert statistics is not None
+        
+        for param in ['rooms', 'roommates', 'budget', 'months']:
+            if param in statistics:
+                assert 'percentiles' in statistics[param]
+                assert len(statistics[param]['percentiles']) == 101
     
     def test_calculate_statistics_insufficient_data(self):
         """Test statistics returns None with insufficient data."""
@@ -197,10 +303,11 @@ class TestStatistics:
             for _ in range(5)
         ]
         
-        mock_session.run.return_value = [Mock(data=lambda: d) for d in mock_data]
+        mock_session.run.return_value = [Mock(data=lambda d=d: d) for d in mock_data]
         
+        normalizer = ZScoreNormalization()
         parameters = ['rooms', 'roommates', 'budget', 'months']
-        statistics = calculate_parameter_statistics(mock_session, parameters)
+        statistics = calculate_parameter_statistics(mock_session, parameters, normalizer)
         
         # Should return None or empty dict
         assert statistics is None or not statistics
@@ -210,13 +317,14 @@ class TestStatistics:
         mock_session = Mock()
         mock_session.run.return_value = []
         
+        normalizer = ZScoreNormalization()
         parameters = ['rooms', 'roommates', 'budget', 'months']
-        statistics = calculate_parameter_statistics(mock_session, parameters)
+        statistics = calculate_parameter_statistics(mock_session, parameters, normalizer)
         
         assert statistics is None
     
     def test_calculate_statistics_outlier_filtering(self):
-        """Test that outliers are filtered (5% on each end)."""
+        """Test that outliers are filtered (5% on each end) for Z-score method."""
         mock_session = Mock()
         
         # Create data with clear outliers
@@ -247,8 +355,9 @@ class TestStatistics:
         
         mock_session.run.return_value = [Mock(data=lambda d=d: d) for d in mock_data]
         
+        normalizer = ZScoreNormalization()
         parameters = ['budget']
-        statistics = calculate_parameter_statistics(mock_session, parameters)
+        statistics = calculate_parameter_statistics(mock_session, parameters, normalizer)
         
         assert statistics is not None
         # Mean should be close to 100, not affected by outliers
@@ -258,19 +367,42 @@ class TestStatistics:
 class TestIntegration:
     """Integration tests for the full recommendation pipeline."""
     
-    def test_full_pipeline_similarity(self):
-        """Test complete pipeline: create vectors and compute similarity."""
+    def test_full_pipeline_similarity_zscore(self):
+        """Test complete pipeline with Z-score: create vectors and compute similarity."""
         # User preferences
         user1 = {'rooms': 2, 'roommates': 1, 'budget': 15000, 'months': 12}
         user2 = {'rooms': 2, 'roommates': 1, 'budget': 16000, 'months': 12}
         user3 = {'rooms': 4, 'roommates': 4, 'budget': 50000, 'months': 36}
         
         parameters = ['rooms', 'roommates', 'budget', 'months']
+        normalizer = ZScoreNormalization()
         
         # Create vectors
-        vec1 = create_vector(user1, parameters)
-        vec2 = create_vector(user2, parameters)
-        vec3 = create_vector(user3, parameters)
+        vec1 = create_vector(user1, parameters, normalizer=normalizer)
+        vec2 = create_vector(user2, parameters, normalizer=normalizer)
+        vec3 = create_vector(user3, parameters, normalizer=normalizer)
+        
+        # Calculate distances
+        dist_1_2 = euclidean_distance(vec1, vec2)
+        dist_1_3 = euclidean_distance(vec1, vec3)
+        
+        # User1 should be closer to User2 than User3
+        assert dist_1_2 < dist_1_3
+    
+    def test_full_pipeline_similarity_percentile(self):
+        """Test complete pipeline with percentile: create vectors and compute similarity."""
+        # User preferences
+        user1 = {'rooms': 2, 'roommates': 1, 'budget': 15000, 'months': 12}
+        user2 = {'rooms': 2, 'roommates': 1, 'budget': 16000, 'months': 12}
+        user3 = {'rooms': 4, 'roommates': 4, 'budget': 50000, 'months': 36}
+        
+        parameters = ['rooms', 'roommates', 'budget', 'months']
+        normalizer = PercentileNormalization()
+        
+        # Create vectors
+        vec1 = create_vector(user1, parameters, normalizer=normalizer)
+        vec2 = create_vector(user2, parameters, normalizer=normalizer)
+        vec3 = create_vector(user3, parameters, normalizer=normalizer)
         
         # Calculate distances
         dist_1_2 = euclidean_distance(vec1, vec2)
@@ -302,16 +434,31 @@ class TestIntegration:
         # Weighted distance should be larger due to rooms difference
         assert dist_weighted > dist_unweighted
     
-    def test_normalization_consistency(self):
-        """Test that normalization produces consistent results."""
+    def test_normalization_consistency_zscore(self):
+        """Test that Z-score normalization produces consistent results."""
+        normalizer = ZScoreNormalization()
         value = 12
         param = 'months'
         stats = {'mean': 12, 'std': 6}
         
         # Multiple calls should return same result
-        result1 = normalize_parameter(value, param, stats)
-        result2 = normalize_parameter(value, param, stats)
-        result3 = normalize_parameter(value, param, stats)
+        result1 = normalizer.normalize(value, param, stats)
+        result2 = normalizer.normalize(value, param, stats)
+        result3 = normalizer.normalize(value, param, stats)
+        
+        assert result1 == result2 == result3
+    
+    def test_normalization_consistency_percentile(self):
+        """Test that percentile normalization produces consistent results."""
+        normalizer = PercentileNormalization()
+        value = 50
+        param = 'budget'
+        stats = {'percentiles': np.linspace(0, 100, 101)}
+        
+        # Multiple calls should return same result
+        result1 = normalizer.normalize(value, param, stats)
+        result2 = normalizer.normalize(value, param, stats)
+        result3 = normalizer.normalize(value, param, stats)
         
         assert result1 == result2 == result3
     

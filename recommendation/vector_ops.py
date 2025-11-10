@@ -1,10 +1,9 @@
 """Vector creation and distance calculation for recommendation system."""
 
 from math import sqrt
-from .normalization import normalize_parameter
 
 
-def create_vector(values, parameters, statistics=None, weights=None):
+def create_vector(values, parameters, statistics=None, weights=None, normalizer=None):
     """
     Create normalized vector with optional importance weights.
     
@@ -13,16 +12,22 @@ def create_vector(values, parameters, statistics=None, weights=None):
         parameters: Ordered list of parameter names
         statistics: Dict of parameter statistics for normalization
         weights: Optional importance weights (applied after normalization)
+        normalizer: NormalizationStrategy instance (defaults to configured strategy)
     
     Returns:
         List of normalized (and optionally weighted) values
     """
+    # Import here to avoid circular dependency
+    if normalizer is None:
+        from infrastructure.config import get_normalizer
+        normalizer = get_normalizer()
+    
     vector = []
     for param in parameters:
         if param in values:
             # Extract parameter-specific statistics
             param_stats = statistics.get(param) if statistics else None
-            normalized = normalize_parameter(values[param], param, param_stats)
+            normalized = normalizer.normalize(values[param], param, param_stats)
             
             # Apply importance weight if provided
             if weights and param in weights:
@@ -51,4 +56,3 @@ def euclidean_distance(vec1, vec2):
     # Normalize by maximum possible distance
     max_distance = sqrt(len(vec1))
     return min(1.0, distance / max_distance)
-

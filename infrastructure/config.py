@@ -103,10 +103,13 @@ FAKE_USER_ROOMMATES_RANGE = (1, 5)
 AUTO_GROUP_PROBABILITY = 0.4
 
 # ============================================================================
-# PARAMETER STATISTICS
+# NORMALIZATION CONFIGURATION
 # ============================================================================
 
-# Default statistics for Z-score normalization (used when insufficient user data)
+# Normalization method: 'ZSCORE' or 'PERCENTILE'
+NORMALIZATION_METHOD = 'ZSCORE'
+
+# Parameter statistics (structure depends on normalization method)
 # Updated dynamically by calling update_statistics() after user generation
 PARAMETER_STATISTICS = {
     'rooms': {'mean': 2.5, 'std': 1.0},
@@ -114,6 +117,27 @@ PARAMETER_STATISTICS = {
     'budget': {'mean': 30000, 'std': 20000},
     'months': {'mean': 12, 'std': 8},
 }
+
+
+def get_normalizer():
+    """
+    Get the configured normalization strategy instance.
+    
+    Returns:
+        NormalizationStrategy: Instance of the configured normalizer
+    
+    Raises:
+        ValueError: If NORMALIZATION_METHOD is unknown
+    """
+    from recommendation.ZSCORE_NORMALIZATION import ZScoreNormalization
+    from recommendation.PERCENTILE_NORMALIZATION import PercentileNormalization
+    
+    if NORMALIZATION_METHOD == 'ZSCORE':
+        return ZScoreNormalization()
+    elif NORMALIZATION_METHOD == 'PERCENTILE':
+        return PercentileNormalization()
+    else:
+        raise ValueError(f"Unknown normalization method: {NORMALIZATION_METHOD}")
 
 # ============================================================================
 # LOGGING SETTINGS
