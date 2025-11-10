@@ -60,13 +60,11 @@ def sample_users() -> List[Dict]:
     """
     Generate a diverse set of test users for recommendation testing.
     
-    Uses deterministic UUIDs based on user numbers for consistent grouping.
+    Uses random UUIDs for each user.
     
     Returns:
         list: List of 35 predefined test users with varied preferences
     """
-    # Generate deterministic UUIDs for sample users (using uuid5 with a namespace)
-    namespace = uuid.UUID('12345678-1234-5678-1234-567812345678')
     
     users_data = [
         {'num': 1,  'name': 'Alice (Budget Student)',      'rooms': 1, 'roommates': 1, 'budget':  8000, 'months': 12},
@@ -106,10 +104,10 @@ def sample_users() -> List[Dict]:
         {'num': 35, 'name': 'Ivy (Compact Duo)',            'rooms': 1, 'roommates': 1, 'budget':  8500, 'months':  9},
     ]
     
-    # Generate deterministic UUIDs and create user dictionary with id
+    # Generate random UUIDs and create user dictionary with id
     users = []
     for user_data in users_data:
-        user_id = str(uuid.uuid5(namespace, f"user_{user_data['num']}"))
+        user_id = str(uuid.uuid4())
         user = {
             'id': user_id,
             'name': user_data['name'],

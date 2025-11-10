@@ -34,12 +34,10 @@ from infrastructure.neo4j import (
 # Setup logger
 logger = setup_logger('test_service', 'INFO')
 
-# Helper function to generate deterministic UUIDs for testing
-_test_namespace = uuid.UUID('00000000-0000-0000-0000-000000000000')
-
+# Helper function to generate UUIDs for testing
 def test_uuid(name: str) -> str:
-    """Generate deterministic UUID for testing based on name"""
-    return str(uuid.uuid5(_test_namespace, name))
+    """Generate UUID for testing"""
+    return str(uuid.uuid4())
 
 
 class TestRecommendationService(unittest.TestCase):
