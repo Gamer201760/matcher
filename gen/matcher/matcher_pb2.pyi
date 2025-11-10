@@ -411,6 +411,37 @@ class FindGroupsResponse(google.protobuf.message.Message):
 global___FindGroupsResponse = FindGroupsResponse
 
 @typing.final
+class GetReqeustsRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    GROUP_ID_FIELD_NUMBER: builtins.int
+    group_id: builtins.str
+    def __init__(
+        self,
+        *,
+        group_id: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["group_id", b"group_id"]) -> None: ...
+
+global___GetReqeustsRequest = GetReqeustsRequest
+
+@typing.final
+class GetReqeustsResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    REQUESTS_FIELD_NUMBER: builtins.int
+    @property
+    def requests(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___GroupRequest]: ...
+    def __init__(
+        self,
+        *,
+        requests: collections.abc.Iterable[global___GroupRequest] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["requests", b"requests"]) -> None: ...
+
+global___GetReqeustsResponse = GetReqeustsResponse
+
+@typing.final
 class SendJoinRequestRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 

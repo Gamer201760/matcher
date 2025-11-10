@@ -18,6 +18,7 @@ from .mapper import (
     to_proto_form,
     to_proto_group,
     to_proto_group_with_score,
+    to_proto_request,
 )
 
 
@@ -135,6 +136,20 @@ class FindGroupServicer(pb2_grpc.FindGroupServiceServicer):
 class GroupServicer(pb2_grpc.GroupServiceServicer):
     def __init__(self, service: GroupService):
         self.service = service
+
+    def GetReqeusts(self, request: pb2.GetReqeustsRequest, context):
+        try:
+            group_id = UUID(request.group_id)
+            requests = self.service.get_requests(group_id)
+            return pb2.GetReqeustsResponse(
+                requests=[to_proto_request(r) for r in requests]
+            )
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except DomainError as e:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
 
     def SendJoinRequest(self, request, context):
         try:

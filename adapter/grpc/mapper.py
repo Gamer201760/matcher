@@ -5,7 +5,7 @@ from google.protobuf.timestamp_pb2 import Timestamp
 
 import gen.matcher.matcher_pb2 as pb2
 from entity.form import Form
-from entity.group import Group
+from entity.group import Group, GroupRequest
 from entity.parameters import Parameters, Point, Sex, UserType
 
 
@@ -107,6 +107,15 @@ def to_proto_form(form: Form) -> pb2.Form:
         active=form.active,
         created_at=datetime_to_timestamp(form.created_at),
         updated_at=datetime_to_timestamp(form.updated_at),
+    )
+
+
+def to_proto_request(request: GroupRequest) -> pb2.GroupRequest:
+    return pb2.GroupRequest(
+        id=str(request.id),
+        group_id=str(request.id),
+        user_id=str(request.user_id),
+        created_at=datetime_to_timestamp(request.created_at),
     )
 
 
