@@ -5,11 +5,11 @@ This repository provides group CRUD operations, member management,
 and parameter calculations using Neo4j database functions.
 """
 
-from typing import Optional
 from uuid import UUID
 
 from neo4j import Driver
 
+from entity.errors import DomainError, NotFoundError
 from entity.form import Form
 from entity.group import Group
 from entity.parameters import Parameters
@@ -73,7 +73,7 @@ class GroupRepository:
             'Groups are created automatically via user/form creation.'
         )
 
-    def get(self, group_id: UUID) -> Optional[Group]:
+    def get(self, group_id: UUID) -> Group:
         """
         Retrieve a group by ID.
 
@@ -89,11 +89,11 @@ class GroupRepository:
             db_group = get_group_info(session, db_group_id)
 
             if not db_group:
-                return None
+                raise NotFoundError(group_id)
 
             return db_group_to_group(db_group, group_id)
 
-    def get_by_user_id(self, user_id: UUID) -> Optional[Group]:
+    def get_by_user_id(self, user_id: UUID) -> Group:
         """
         Get the group that a user is a member of.
 
@@ -107,17 +107,17 @@ class GroupRepository:
             db_group = get_group_by_user_id(session, str(user_id))
 
             if not db_group:
-                return None
+                raise NotFoundError(user_id)
 
             # Extract group_id from the returned group info
             group_id_str = db_group.get('id')
             if not group_id_str:
-                return None
+                raise DomainError('db group not found id')
 
             # Parse group ID using robust helper
             return db_group_to_group(db_group, self._parse_group_id(group_id_str))
 
-    def get_by_owner_id(self, owner_id: UUID) -> Optional[Group]:
+    def get_by_owner_id(self, owner_id: UUID) -> Group:
         """
         Get the group owned by a specific user.
 
@@ -131,11 +131,11 @@ class GroupRepository:
             db_group = get_group_by_owner_id(session, str(owner_id))
 
             if not db_group:
-                return None
+                raise NotFoundError(owner_id)
 
             group_id_str = db_group.get('id')
             if not group_id_str:
-                return None
+                raise DomainError('db group not found id')
 
             return db_group_to_group(db_group, self._parse_group_id(group_id_str))
 

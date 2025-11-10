@@ -24,6 +24,7 @@ class Parameters:
     budget: int
     room_count: int
     roommates_count: int
+    month: int
     age: int
     smoking: bool
     alko: bool

@@ -85,6 +85,7 @@ class Parameters(google.protobuf.message.Message):
     BUDGET_FIELD_NUMBER: builtins.int
     ROOM_COUNT_FIELD_NUMBER: builtins.int
     ROOMMATES_COUNT_FIELD_NUMBER: builtins.int
+    MONTH_FIELD_NUMBER: builtins.int
     AGE_FIELD_NUMBER: builtins.int
     SMOKING_FIELD_NUMBER: builtins.int
     ALKO_FIELD_NUMBER: builtins.int
@@ -97,6 +98,7 @@ class Parameters(google.protobuf.message.Message):
     budget: builtins.int
     room_count: builtins.int
     roommates_count: builtins.int
+    month: builtins.int
     age: builtins.int
     smoking: builtins.bool
     alko: builtins.bool
@@ -118,6 +120,7 @@ class Parameters(google.protobuf.message.Message):
         budget: builtins.int = ...,
         room_count: builtins.int = ...,
         roommates_count: builtins.int = ...,
+        month: builtins.int = ...,
         age: builtins.int = ...,
         smoking: builtins.bool = ...,
         alko: builtins.bool = ...,
@@ -127,7 +130,7 @@ class Parameters(google.protobuf.message.Message):
         description: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["geo", b"geo"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["age", b"age", "alko", b"alko", "budget", b"budget", "description", b"description", "geo", b"geo", "name", b"name", "pet", b"pet", "photos", b"photos", "room_count", b"room_count", "roommates_count", b"roommates_count", "sex", b"sex", "smoking", b"smoking", "surname", b"surname", "user_type", b"user_type"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["age", b"age", "alko", b"alko", "budget", b"budget", "description", b"description", "geo", b"geo", "month", b"month", "name", b"name", "pet", b"pet", "photos", b"photos", "room_count", b"room_count", "roommates_count", b"roommates_count", "sex", b"sex", "smoking", b"smoking", "surname", b"surname", "user_type", b"user_type"]) -> None: ...
 
 global___Parameters = Parameters
 
