@@ -10,11 +10,11 @@ Current limitations:
 - This implementation maps the overlapping fields and uses defaults for others
 """
 
-from typing import Optional
 from uuid import UUID
 
 from neo4j import Driver
 
+from entity.errors import NotFoundError
 from entity.form import Form
 from entity.parameters import Parameters
 from infrastructure.neo4j import (
@@ -71,7 +71,7 @@ class FormRepository:
 
         return form.user_id
 
-    def get_by_user_id(self, user_id: UUID) -> Optional[Form]:
+    def get_by_user_id(self, user_id: UUID) -> Form:
         """
         Retrieve a form by user ID.
 
@@ -85,7 +85,7 @@ class FormRepository:
             db_form = get_user_form(session, str(user_id))
 
             if not db_form:
-                return None
+                raise NotFoundError(user_id)
 
             return db_form_to_form(db_form, user_id)
 

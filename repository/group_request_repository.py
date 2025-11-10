@@ -5,11 +5,11 @@ This repository handles the lifecycle of group join requests:
 creation, retrieval, listing, and deletion.
 """
 
-from typing import Optional
 from uuid import UUID, uuid4
 
 from neo4j import Driver
 
+from entity.errors import NotFoundError
 from entity.group import GroupRequest
 from infrastructure.neo4j import (
     create_join_request_with_id,
@@ -52,7 +52,7 @@ class GroupRequestRepository:
 
         return request_id
 
-    def get(self, request_id: UUID) -> Optional[GroupRequest]:
+    def get(self, request_id: UUID) -> GroupRequest:
         """
         Get a single join request by ID.
 
@@ -66,7 +66,7 @@ class GroupRequestRepository:
             db_request = get_join_request(session, str(request_id))
 
             if not db_request:
-                return None
+                raise NotFoundError(request_id)
 
             return db_request_to_group_request(db_request)
 
