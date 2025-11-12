@@ -6,12 +6,6 @@ from entity.parameters import Parameters
 
 
 @dataclass
-class GroupMembers:
-    group_id: UUID
-    form_id: UUID
-
-
-@dataclass
 class GroupRequest:
     id: UUID
     group_id: UUID
