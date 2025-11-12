@@ -10,7 +10,11 @@ from uuid import UUID
 from neo4j import Driver
 
 from entity.group import Group
-from infrastructure.config import PARAMETERS, get_parameter_statistics, GROUP_PARAMETER_WEIGHTS
+from infrastructure.config import (
+    GROUP_PARAMETER_WEIGHTS,
+    PARAMETERS,
+    get_parameter_statistics,
+)
 from infrastructure.logging_utils import setup_logger
 from infrastructure.neo4j import (
     find_similar,
@@ -77,10 +81,10 @@ class GroupRecommendationRepository:
 
             # Create query vector
             query_vector = create_vector(
-                avg_params, 
-                PARAMETERS, 
+                avg_params,
+                PARAMETERS,
                 statistics=get_parameter_statistics(),
-                weights=self.weights if self.use_weights else None
+                weights=self.weights if self.use_weights else None,
             )
 
             # Find similar groups

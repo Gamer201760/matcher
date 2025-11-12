@@ -7,14 +7,15 @@ This module handles:
 - Test database and simulation functions
 """
 
-from ..config import PARAMETERS, get_parameter_statistics, GROUP_PARAMETER_WEIGHTS
+from recommendation import create_vector, euclidean_distance
+
+from ..config import GROUP_PARAMETER_WEIGHTS, PARAMETERS, get_parameter_statistics
 from ..logging_utils import (
     log_neo4j_query,
     log_similarity_results,
     log_vector_operation,
     setup_logger,
 )
-from recommendation import create_vector, euclidean_distance
 
 # Setup logger
 logger = setup_logger('roommate_db', 'INFO')
@@ -69,10 +70,10 @@ def find_similar_local(
 
     group_values = {p: query_user.get(p) for p in PARAMETERS}
     qvec = create_vector(
-        group_values, 
-        PARAMETERS, 
+        group_values,
+        PARAMETERS,
         statistics=get_parameter_statistics(),
-        weights=weights if use_weights else None
+        weights=weights if use_weights else None,
     )
 
     log_vector_operation(
@@ -88,10 +89,10 @@ def find_similar_local(
 
         values = {p: u.get(p) for p in PARAMETERS}
         uvec = create_vector(
-            values, 
-            PARAMETERS, 
+            values,
+            PARAMETERS,
             statistics=get_parameter_statistics(),
-            weights=weights if use_weights else None
+            weights=weights if use_weights else None,
         )
 
         # euclidean_distance returns distance; convert to similarity
@@ -140,10 +141,10 @@ def find_similar_users(
     group_values = {p: user_params.get(p, 0) for p in PARAMETERS}
 
     query_vec = create_vector(
-        group_values, 
-        PARAMETERS, 
+        group_values,
+        PARAMETERS,
         statistics=get_parameter_statistics(),
-        weights=weights if use_weights else None
+        weights=weights if use_weights else None,
     )
 
     # Find similar groups

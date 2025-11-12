@@ -137,7 +137,7 @@ class FormRepository:
         with self.driver.session() as session:
             delete_user_form(session, str(user_id))
 
-    def _form_to_db_dict(self, form: Form) -> dict:
+    def _form_to_db_dict(self, form: Form) -> dict:  # Вынести в dto
         """
         Convert Form entity to database dictionary format.
 
