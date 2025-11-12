@@ -6,6 +6,7 @@ This module handles:
 - User parameter management
 - Form data retrieval
 """
+from uuid import uuid4
 
 from ..config import PARAMETERS
 from ..logging_utils import (
@@ -74,7 +75,7 @@ def upsert_users(session, users, caps=None, use_weights=False, weights=None):
         rows = []
         for u in batch:
             # Single-member group id and name
-            group_id = u['id']
+            group_id = str(uuid4())
             group_name = f"Group of {u.get('name') or u['id']}"
 
             # Prepare parameter list as separate nodes (user and group)

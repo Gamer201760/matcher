@@ -7,6 +7,7 @@ This module handles:
 - Group parameter calculations
 - Member addition and removal
 """
+from uuid import uuid4
 
 from recommendation import create_vector
 
@@ -324,7 +325,7 @@ def remove_user_from_group(
             logger.info(f'✓ Deleted empty group {current_group_id}')
 
         # Step 5: Create new single-member group for the user
-        new_group_id = user_id
+        new_group_id = str(uuid4())
         new_group_name = f'Group of {user_id}'
 
         # Create vector for new single-member group
