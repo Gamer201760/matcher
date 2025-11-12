@@ -31,7 +31,6 @@ class FormService:
         """
         self._form_repo.create(
             Form(
-                id=uuid4(),
                 user_id=user_id,
                 parameters=parameters,
             )
@@ -39,7 +38,6 @@ class FormService:
 
         # group_id = self._group_repo.create(
         #     Group(
-        #         id=uuid4(),
         #         max_users=parameters.roommates_count + 1,
         #         owner_id=user_id,
         #         parameters=parameters,

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from entity.parameters import Parameters
 
@@ -16,10 +16,10 @@ class GroupRequest:
 
 @dataclass
 class Group:
-    id: UUID
     owner_id: UUID
     parameters: Parameters
     max_users: int  # С учётом владельца группы
+    id: UUID = field(default_factory=uuid4)
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
 

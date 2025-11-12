@@ -81,7 +81,7 @@ class TestGroupRecommendationRepository(unittest.TestCase):
             description='Test user',
         )
 
-        return Form(id=user_id, user_id=user_id, parameters=parameters)
+        return Form(user_id=user_id, parameters=parameters)
 
     def test_01_execute_basic_recommendation(self):
         """Test basic recommendation for a single-member group."""

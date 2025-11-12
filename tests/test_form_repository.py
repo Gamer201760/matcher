@@ -88,7 +88,7 @@ def test_form():
             description='Looking for a quiet roommate',
         )
 
-        return Form(id=user_id, user_id=user_id, parameters=parameters)
+        return Form(user_id=user_id, parameters=parameters)
 
     return _create_form
 

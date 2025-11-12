@@ -605,8 +605,6 @@ def update_group_parameters(
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
     """
-    weights = weights or group_parameter_weights
-
     # Create new group vector
     group_values = {p: parameters_dict.get(p, 0) for p in PARAMETERS}
     if use_weights:

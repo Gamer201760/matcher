@@ -38,7 +38,6 @@ def db_form_to_form(db_dict: dict, user_id: UUID) -> Form:
     )
 
     return Form(
-        id=user_id,  # Using user_id as form id
         user_id=user_id,
         parameters=parameters,
         active=True,  # Assume active if exists
