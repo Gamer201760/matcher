@@ -8,14 +8,14 @@ This module handles:
 - Member addition and removal
 """
 
-from ..config import PARAMETERS
+from recommendation import create_vector
+
+from ..config import GROUP_PARAMETER_WEIGHTS, PARAMETERS, get_parameter_statistics
 from ..logging_utils import (
     log_neo4j_query,
     log_vector_operation,
     setup_logger,
 )
-from ..config import get_parameter_statistics, GROUP_PARAMETER_WEIGHTS
-from recommendation import create_vector
 
 # Setup logger
 logger = setup_logger('roommate_db', 'INFO')
@@ -83,10 +83,10 @@ def add_user_to_group(
             weights = weights or GROUP_PARAMETER_WEIGHTS
 
             new_vector = create_vector(
-                group_values, 
-                PARAMETERS, 
+                group_values,
+                PARAMETERS,
                 statistics=get_parameter_statistics(),
-                weights=weights if use_weights else None
+                weights=weights if use_weights else None,
             )
 
             # Update the group in database
@@ -252,10 +252,10 @@ def remove_user_from_group(
             group_values = {p: new_group_params.get(p, 0) for p in PARAMETERS}
             if use_weights:
                 new_vector = create_vector(
-                    group_values, 
-                    PARAMETERS, 
+                    group_values,
+                    PARAMETERS,
                     statistics=get_parameter_statistics(),
-                    weights=weights if use_weights else None
+                    weights=weights if use_weights else None,
                 )
 
             # Update group properties and GroupParameter nodes in place
@@ -330,10 +330,10 @@ def remove_user_from_group(
         # Create vector for new single-member group
         if use_weights:
             new_user_vector = create_vector(
-                user_params, 
-                PARAMETERS, 
+                user_params,
+                PARAMETERS,
                 statistics=get_parameter_statistics(),
-                weights=weights if use_weights else None
+                weights=weights if use_weights else None,
             )
 
         # Create new group and establish relationship in a single atomic query
@@ -610,10 +610,10 @@ def update_group_parameters(
     group_values = {p: parameters_dict.get(p, 0) for p in PARAMETERS}
     if use_weights:
         new_vector = create_vector(
-            group_values, 
-            PARAMETERS, 
+            group_values,
+            PARAMETERS,
             statistics=get_parameter_statistics(),
-            weights=weights if use_weights else None
+            weights=weights if use_weights else None,
         )
 
     # Update group properties and GroupParameter nodes
