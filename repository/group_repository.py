@@ -84,9 +84,7 @@ class GroupRepository:
             Group entity if found, None otherwise
         """
         with self.driver.session() as session:
-            # Database stores groups with 'g_' prefix
-            db_group_id = group_id
-            db_group = get_group_info(session, db_group_id)
+            db_group = get_group_info(session, group_id)
 
             if not db_group:
                 raise NotFoundError(group_id)
@@ -155,11 +153,9 @@ class GroupRepository:
         }
 
         with self.driver.session() as session:
-            # Database stores groups with 'g_' prefix
-            db_group_id = group_id
             update_group_parameters(
                 session,
-                db_group_id,
+                group_id,
                 params_dict,
                 caps=self.caps,
                 use_weights=self.use_weights,
@@ -174,9 +170,7 @@ class GroupRepository:
             group_id: Group ID to delete
         """
         with self.driver.session() as session:
-            # Database stores groups with 'g_' prefix
-            db_group_id = group_id
-            delete_group(session, db_group_id)
+            delete_group(session, group_id)
 
     def delete_by_owner_id(self, owner_id: UUID) -> None:
         """
@@ -199,9 +193,7 @@ class GroupRepository:
             list[Form]: List of member forms
         """
         with self.driver.session() as session:
-            # Database stores groups with 'g_' prefix
-            db_group_id = group_id
-            db_members = list_group_members(session, db_group_id)
+            db_members = list_group_members(session, group_id)
 
             forms = []
             for member_dict in db_members:
@@ -221,9 +213,7 @@ class GroupRepository:
             int: Number of members
         """
         with self.driver.session() as session:
-            # Database stores groups with 'g_' prefix
-            db_group_id = group_id
-            return count_group_members(session, db_group_id)
+            return count_group_members(session, group_id)
 
     def add_user(self, user_id: UUID, group_id: UUID) -> None:
         """
@@ -234,12 +224,10 @@ class GroupRepository:
             group_id: Target group ID
         """
         with self.driver.session() as session:
-            # Database stores groups with 'g_' prefix
-            db_group_id = group_id
             success = add_user_to_group(
                 session,
                 str(user_id),
-                db_group_id,
+                str(group_id),
                 caps=self.caps,
                 use_weights=self.use_weights,
                 weights=self.weights,
@@ -283,11 +271,9 @@ class GroupRepository:
             group_id: Group ID to recalculate
         """
         with self.driver.session() as session:
-            # Database stores groups with 'g_' prefix
-            db_group_id = group_id
 
             # Get all member parameters
-            members = get_group_member_parameters(session, db_group_id)
+            members = get_group_member_parameters(session, group_id)
 
             if not members:
                 raise ValueError(
@@ -315,7 +301,7 @@ class GroupRepository:
             # Update group with calculated parameters
             update_group_parameters(
                 session,
-                db_group_id,
+                group_id,
                 avg_params,
                 caps=self.caps,
                 use_weights=self.use_weights,
@@ -353,15 +339,8 @@ class GroupRepository:
         if not group_id_str:
             raise ValueError('Empty group ID')  # TODO: refactor to internal error
 
-        # Remove 'g_' prefix if present
-        clean_id = (
-            group_id_str.replace('g_', '', 1)
-            if group_id_str.startswith('g_')
-            else group_id_str
-        )
-
         try:
-            return UUID(clean_id)
+            return UUID(group_id_str)
         except ValueError as e:
             raise ValueError(
                 f'Invalid group ID format: {group_id_str}'

@@ -75,13 +75,10 @@ def db_request_to_group_request(db_dict: dict) -> GroupRequest:
     if isinstance(user_id, str):
         user_id = UUID(user_id)
 
-    # Parse group ID - remove 'g_' prefix if present
+    # Parse group ID
     group_id = db_dict['group_id']
     if isinstance(group_id, str):
-        clean_group_id = (
-            group_id.replace('g_', '', 1) if group_id.startswith('g_') else group_id
-        )
-        group_id = UUID(clean_group_id)
+        group_id = UUID(group_id)
 
     created_at = datetime.now()  # TODO: refactor
     if isinstance(db_dict['timestamp'], neo4j.time.DateTime):

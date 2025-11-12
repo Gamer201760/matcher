@@ -67,11 +67,8 @@ class GroupRecommendationRepository:
             list[Group]: List of recommended groups, sorted by similarity
         """
         with self.driver.session() as session:
-            # Database stores groups with 'g_' prefix
-            db_group_id = str(group_id)
-
             # Get the group's members and calculate average parameters
-            members = get_group_member_parameters(session, db_group_id)
+            members = get_group_member_parameters(session, str(group_id))
 
             if not members:
                 return []
@@ -89,7 +86,7 @@ class GroupRecommendationRepository:
 
             # Find similar groups
             similar_groups = find_similar(
-                session, query_vector, top_k=self.top_k, exclude_id=db_group_id
+                session, query_vector, top_k=self.top_k, exclude_id=str(group_id)
             )
 
             # Convert to Group entities
@@ -100,14 +97,9 @@ class GroupRecommendationRepository:
                 # Get full group info
                 db_group = get_group_info(session, similar_group_id)
                 if db_group:
-                    # Parse group ID robustly
+                    # Parse group ID
                     try:
-                        clean_id = (
-                            similar_group_id.replace('g_', '', 1)
-                            if similar_group_id.startswith('g_')
-                            else similar_group_id
-                        )
-                        parsed_id = UUID(clean_id)
+                        parsed_id = UUID(similar_group_id)
                     except ValueError:  # TODO: refactor to internal error
                         # Skip groups with invalid IDs
                         logger.warning(
