@@ -75,6 +75,8 @@ class FormService:
             # TODO: начало транзакции
             self._form_repo.update_parameters_by_user_id(user_id, parameters)
             group = self._group_repo.get_by_owner_id(user_id)
+            #? What if user is not owner of the group?
+            #* raise not found error
             if self._group_repo.count_members(group.id) == 1:
                 self._group_repo.update_parameters(group.id, parameters)
                 self._group_repo.calculate_params(group.id)
@@ -95,8 +97,10 @@ class FormService:
         # TODO: начало транзакции
         group = self._group_repo.get_by_user_id(user_id)
         members = self._group_repo.list_members(group.id)
-        if len(members) == 0:
-            raise DomainError('Количество участников группы равно 0')
+
+        # if len(members) == 0:
+        #     raise DomainError('Количество участников группы равно 0')
+        #* Never happens
 
         if len(members) > 1:
             self._group_repo.rm_user(user_id, group.id)

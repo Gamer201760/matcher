@@ -38,7 +38,8 @@ def find_similar(session, vector, exclude_id, top_k=5):
         'indexName': 'group_vec_index',
         'k': top_k,
         'vector': vector,
-        'excludeId': exclude_id,
+        'excludeId': exclude_id, #? What does exclude_id do?
+                                 #? Should other parameters be excluded?
     }
     log_neo4j_query(
         logger,

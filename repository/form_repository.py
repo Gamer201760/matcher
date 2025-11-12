@@ -42,6 +42,7 @@ class FormRepository:
             use_weights: Whether to use weighted vectors
             weights: Parameter weights for group vector creation
         """
+        #TODO: Get rid of caps, they are no longer used by rec system
         self.driver = driver
         self.caps = caps or {'budget': 200000, 'months': 36}
         self.use_weights = use_weights
