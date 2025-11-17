@@ -7,6 +7,7 @@ This module handles:
 - Group parameter calculations
 - Member addition and removal
 """
+
 from uuid import uuid4
 
 from recommendation import create_vector
@@ -607,13 +608,12 @@ def update_group_parameters(
     """
     # Create new group vector
     group_values = {p: parameters_dict.get(p, 0) for p in PARAMETERS}
-    if use_weights:
-        new_vector = create_vector(
-            group_values,
-            PARAMETERS,
-            statistics=get_parameter_statistics(),
-            weights=weights if use_weights else None,
-        )
+    new_vector = create_vector(
+        group_values,
+        PARAMETERS,
+        statistics=get_parameter_statistics(),
+        weights=weights if use_weights else None,
+    )
 
     # Update group properties and GroupParameter nodes
     update_query = """
@@ -647,7 +647,13 @@ def update_group_parameters(
 
 
 def create_empty_group(
-    session, group_id, group_name, parameters_dict, embedding, use_weights=False, weights=None
+    session,
+    group_id,
+    group_name,
+    parameters_dict,
+    embedding,
+    use_weights=False,
+    weights=None,
 ):
     """
     Create an empty group in the database without any members.
@@ -716,7 +722,7 @@ def create_empty_group(
         logger,
         'Created empty group vector',
         len(embedding) if embedding else 0,
-        group_id
+        group_id,
     )
 
     return group_id
