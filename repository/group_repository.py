@@ -111,7 +111,7 @@ class GroupRepository:
             Group entity if found, None otherwise
         """
         with self.driver.session() as session:
-            db_group = get_group_info(session, group_id)
+            db_group = get_group_info(session, str(group_id))
 
             if not db_group:
                 raise NotFoundError(group_id)
@@ -182,7 +182,7 @@ class GroupRepository:
         with self.driver.session() as session:
             update_group_parameters(
                 session,
-                group_id,
+                str(group_id),
                 params_dict,
                 caps=self.caps,
                 use_weights=self.use_weights,
@@ -197,7 +197,7 @@ class GroupRepository:
             group_id: Group ID to delete
         """
         with self.driver.session() as session:
-            delete_group(session, group_id)
+            delete_group(session, str(group_id))
 
     def delete_by_owner_id(self, owner_id: UUID) -> None:
         """
@@ -220,7 +220,7 @@ class GroupRepository:
             list[Form]: List of member forms
         """
         with self.driver.session() as session:
-            db_members = list_group_members(session, group_id)
+            db_members = list_group_members(session, str(group_id))
 
             forms = []
             for member_dict in db_members:
@@ -240,7 +240,7 @@ class GroupRepository:
             int: Number of members
         """
         with self.driver.session() as session:
-            return count_group_members(session, group_id)
+            return count_group_members(session, str(group_id))
 
     def add_user(self, user_id: UUID, group_id: UUID) -> None:
         """
@@ -300,7 +300,7 @@ class GroupRepository:
         with self.driver.session() as session:
 
             # Get all member parameters
-            members = get_group_member_parameters(session, group_id)
+            members = get_group_member_parameters(session, str(group_id))
 
             if not members:
                 raise ValueError(
@@ -322,13 +322,13 @@ class GroupRepository:
                 avg_params['months'] += member.get('months', 0)
 
             count = len(members)
-            for key, _ in avg_params:
+            for key in avg_params:
                 avg_params[key] = avg_params[key] / count
 
             # Update group with calculated parameters
             update_group_parameters(
                 session,
-                group_id,
+                str(group_id),
                 avg_params,
                 caps=self.caps,
                 use_weights=self.use_weights,

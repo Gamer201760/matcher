@@ -42,7 +42,11 @@ def db_group_to_group(db_dict: dict, group_id: UUID) -> Group:
 
     # Extract owner_id - in current impl, first member is typically owner
     members = db_dict.get('members', [])
-    owner_id = UUID(members[0]['id']) if members else group_id
+    if members:
+        member_id = members[0]['id']
+        owner_id = UUID(member_id) if isinstance(member_id, str) else member_id
+    else:
+        owner_id = group_id
 
     # Extract max_users from roommates parameter
     max_users = params_dict.get('roommates', 4)
