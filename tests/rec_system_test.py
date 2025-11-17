@@ -52,10 +52,11 @@ class TestRecommendationService(unittest.TestCase):
 
         # Check Neo4j connection
         logger.info('🔍 Checking Neo4j database connection...')
-        if not check_neo4j_connection():
-            logger.error('❌ NEO4J DATABASE CONNECTION FAILED')
-            logger.error('Make sure Neo4j is running and .env is configured correctly')
-            raise RuntimeError('Neo4j connection failed. Cannot run tests.')
+        with get_driver() as driver:
+            if not check_neo4j_connection(driver):
+                logger.error('❌ NEO4J DATABASE CONNECTION FAILED')
+                logger.error('Make sure Neo4j is running and .env is configured correctly')
+                raise RuntimeError('Neo4j connection failed. Cannot run tests.')
 
         logger.info('✅ Neo4j connection verified')
 

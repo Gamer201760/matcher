@@ -4,6 +4,7 @@ Unit tests for GroupRepository
 Tests group operations, membership management, and parameter calculations.
 """
 
+import os
 import unittest
 from uuid import uuid4
 
@@ -15,6 +16,7 @@ from infrastructure.neo4j.connection import (
 from infrastructure.neo4j.user_ops import clear_users
 
 from entity.form import Form
+from entity.group import Group
 from entity.parameters import Parameters, Sex, UserType
 from entity.point import Point
 from repository.form_repository import FormRepository
@@ -27,34 +29,43 @@ class TestGroupRepository(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test environment once before all tests."""
+        # Create driver with credentials from environment variables
+        cls.driver = get_driver(
+            os.getenv('NEO4J_URI', 'bolt://localhost:7687'),
+            os.getenv('NEO4J_USERNAME', 'neo4j'),
+            os.getenv('NEO4J_PASSWORD', '123456789'),
+        )
+        
         # Check Neo4j connection
-        if not check_neo4j_connection():
+        if not check_neo4j_connection(cls.driver):
             raise RuntimeError("Neo4j database is not available")
+        
+        # Initialize database constraints and indexes
+        with cls.driver.session() as session:
+            ensure_constraints_and_index(session, dims=4)
 
-        # Initialize database
-        with get_driver() as driver:
-            with driver.session() as session:
-                ensure_constraints_and_index(session, dims=4)
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up after all tests."""
+        if hasattr(cls, 'driver'):
+            cls.driver.close()
 
     def setUp(self):
         """Set up before each test."""
         # Clear database before each test
-        with get_driver() as driver:
-            with driver.session() as session:
-                clear_users(session)
+        with self.driver.session() as session:
+            clear_users(session)
 
-        # Create repository instances
-        self.repo = GroupRepository()
-        self.form_repo = FormRepository()
+        # Create repository instances with shared driver
+        self.repo = GroupRepository(self.driver)
+        self.form_repo = FormRepository(self.driver)
 
     def tearDown(self):
         """Clean up after each test."""
-        if hasattr(self, 'repo'):
-            self.repo.close()
-        if hasattr(self, 'form_repo'):
-            self.form_repo.close()
+        # Note: Don't close the driver here, it's shared across tests
+        pass
 
-    def _create_test_form(self, user_id=None, budget=50000, rooms=2, roommates=1) -> Form:
+    def _create_test_form(self, user_id=None, budget=50000, rooms=2, roommates=1, month=12) -> Form:
         """Helper to create a test form."""
         if user_id is None:
             user_id = uuid4()
@@ -67,6 +78,7 @@ class TestGroupRepository(unittest.TestCase):
             budget=budget,
             room_count=rooms,
             roommates_count=roommates,
+            month=month,
             age=25,
             smoking=False,
             alko=False,
@@ -81,6 +93,175 @@ class TestGroupRepository(unittest.TestCase):
             user_id=user_id,
             parameters=parameters
         )
+
+    def _create_test_group(self, group_id=None, budget=50000, rooms=2, roommates=1, month=12) -> Group:
+        """Helper to create a test group entity."""
+        owner_id = uuid4()
+        
+        parameters = Parameters(
+            name="Test Group",
+            surname="",
+            geo=Point(55.7558, 37.6173),
+            photos=[],
+            budget=budget,
+            room_count=rooms,
+            roommates_count=roommates,
+            month=month,
+            age=0,
+            smoking=False,
+            alko=False,
+            pet=False,
+            sex=Sex.MALE,
+            user_type=UserType.STUDENT,
+            description="Test group"
+        )
+
+        # Create group with or without explicit ID
+        if group_id is not None:
+            group = Group(
+                id=group_id,
+                owner_id=owner_id,
+                parameters=parameters,
+                max_users=roommates + 1  # max_users includes owner
+            )
+        else:
+            # Don't pass id parameter to let dataclass default_factory generate it
+            group = Group(
+                owner_id=owner_id,
+                parameters=parameters,
+                max_users=roommates + 1  # max_users includes owner
+            )
+        
+        return group
+
+    def test_00_create_empty_group(self):
+        """Test creating an empty group without members."""
+        # Create a group entity
+        group = self._create_test_group(budget=60000, rooms=3, roommates=2, month=12)
+        
+        # Create the group in database
+        created_group_id = self.repo.create(group)
+        
+        # Verify group was created
+        self.assertIsNotNone(created_group_id)
+        self.assertEqual(created_group_id, group.id)
+        
+        # Retrieve the group
+        retrieved_group = self.repo.get(created_group_id)
+        self.assertIsNotNone(retrieved_group)
+        self.assertEqual(retrieved_group.id, created_group_id)
+        self.assertEqual(retrieved_group.parameters.budget, 60000)
+        self.assertEqual(retrieved_group.parameters.room_count, 3)
+        self.assertEqual(retrieved_group.parameters.roommates_count, 2)
+        
+        # Verify group has no members
+        member_count = self.repo.count_members(created_group_id)
+        self.assertEqual(member_count, 0)
+        
+        print(f"✓ Created empty group {created_group_id} with no members")
+
+    def test_00a_create_empty_group_with_auto_id(self):
+        """Test creating an empty group without specifying ID (auto-generated)."""
+        # Create a group entity without specifying ID
+        group = self._create_test_group(group_id=None, budget=45000, rooms=2, roommates=3)
+        
+        # Create the group in database
+        created_group_id = self.repo.create(group)
+        
+        # Verify group was created with an ID
+        self.assertIsNotNone(created_group_id)
+        
+        # Retrieve the group
+        retrieved_group = self.repo.get(created_group_id)
+        self.assertIsNotNone(retrieved_group)
+        self.assertEqual(retrieved_group.parameters.budget, 45000)
+        self.assertEqual(retrieved_group.parameters.room_count, 2)
+        
+        # Verify group has no members
+        member_count = self.repo.count_members(created_group_id)
+        self.assertEqual(member_count, 0)
+        
+        print(f"✓ Created empty group {created_group_id} with auto-generated ID")
+
+    def test_00b_create_empty_group_then_add_user(self):
+        """Test creating an empty group and then adding a user to it."""
+        # Create an empty group
+        group = self._create_test_group(budget=55000, rooms=2, roommates=2)
+        created_group_id = self.repo.create(group)
+        
+        # Verify it's empty
+        self.assertEqual(self.repo.count_members(created_group_id), 0)
+        
+        # Create a user
+        form = self._create_test_form(budget=50000, rooms=2, roommates=1)
+        self.form_repo.create(form)
+        
+        # Add user to the empty group
+        self.repo.add_user(form.user_id, created_group_id)
+        
+        # Verify user was added
+        member_count = self.repo.count_members(created_group_id)
+        self.assertEqual(member_count, 1)
+        
+        # Verify user is in the correct group
+        user_group = self.repo.get_by_user_id(form.user_id)
+        self.assertEqual(user_group.id, created_group_id)
+        
+        print(f"✓ Created empty group {created_group_id} and added user to it")
+
+    def test_00c_create_multiple_empty_groups(self):
+        """Test creating multiple empty groups."""
+        # Create three empty groups
+        group1 = self._create_test_group(budget=30000, rooms=1, roommates=1)
+        group2 = self._create_test_group(budget=60000, rooms=2, roommates=2)
+        group3 = self._create_test_group(budget=90000, rooms=3, roommates=3)
+        
+        id1 = self.repo.create(group1)
+        id2 = self.repo.create(group2)
+        id3 = self.repo.create(group3)
+        
+        # Verify all were created
+        self.assertIsNotNone(id1)
+        self.assertIsNotNone(id2)
+        self.assertIsNotNone(id3)
+        
+        # Verify they're different
+        self.assertNotEqual(id1, id2)
+        self.assertNotEqual(id2, id3)
+        self.assertNotEqual(id1, id3)
+        
+        # Verify all are empty
+        self.assertEqual(self.repo.count_members(id1), 0)
+        self.assertEqual(self.repo.count_members(id2), 0)
+        self.assertEqual(self.repo.count_members(id3), 0)
+        
+        # Verify parameters are correct
+        retrieved1 = self.repo.get(id1)
+        retrieved2 = self.repo.get(id2)
+        retrieved3 = self.repo.get(id3)
+        
+        self.assertEqual(retrieved1.parameters.budget, 30000)
+        self.assertEqual(retrieved2.parameters.budget, 60000)
+        self.assertEqual(retrieved3.parameters.budget, 90000)
+        
+        print(f"✓ Created 3 empty groups with different parameters")
+
+    def test_00d_create_empty_group_with_zero_params(self):
+        """Test creating an empty group with zero/default parameters."""
+        # Create a group with zero parameters
+        group = self._create_test_group(budget=0, rooms=0, roommates=0, month=0)
+        created_group_id = self.repo.create(group)
+        
+        # Verify group was created
+        self.assertIsNotNone(created_group_id)
+        
+        # Retrieve and verify
+        retrieved_group = self.repo.get(created_group_id)
+        self.assertIsNotNone(retrieved_group)
+        self.assertEqual(retrieved_group.parameters.budget, 0)
+        self.assertEqual(retrieved_group.parameters.room_count, 0)
+        
+        print(f"✓ Created empty group {created_group_id} with zero parameters")
 
     def test_01_get_group_by_user_id(self):
         """Test getting a group by user ID."""
