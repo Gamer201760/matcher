@@ -646,6 +646,82 @@ def update_group_parameters(
     logger.info(f'✓ Updated parameters for group {group_id}')
 
 
+def create_empty_group(
+    session, group_id, group_name, parameters_dict, embedding, use_weights=False, weights=None
+):
+    """
+    Create an empty group in the database without any members.
+
+    Args:
+        session: Neo4j session
+        group_id: Group ID (string)
+        group_name: Name of the group
+        parameters_dict: Dict with parameter values (rooms, roommates, budget, months)
+        embedding: Pre-computed embedding vector for the group
+        use_weights: Whether to use weighted vectors (for logging purposes)
+        weights: Parameter weights (for logging purposes)
+
+    Returns:
+        str: The created group_id
+    """
+    # Create parameter list for GroupParameter nodes
+    parameters_list = [
+        {'name': p, 'value': parameters_dict.get(p, 0)} for p in PARAMETERS
+    ]
+
+    # Create empty group query (no MEMBER_OF relationships)
+    create_group_query = """
+        MERGE (g:Group {id: $group_id})
+        SET g.name = $group_name,
+            g.rooms = $rooms,
+            g.roommates = $roommates,
+            g.budget = $budget,
+            g.months = $months,
+            g.embedding = $embedding
+        WITH g
+        UNWIND $param_list AS param
+        MERGE (gp:GroupParameter {groupId: $group_id, name: param.name})
+        SET gp.value = param.value
+        MERGE (g)-[:HAS_PARAMETER]->(gp)
+        WITH DISTINCT g
+        RETURN g.id as created_group_id
+    """
+
+    log_neo4j_query(
+        logger,
+        create_group_query,
+        group_id=group_id,
+        group_name=group_name,
+        param_list_count=len(parameters_list),
+    )
+
+    result = session.run(
+        create_group_query,
+        group_id=group_id,
+        group_name=group_name,
+        rooms=parameters_dict.get('rooms', 0),
+        roommates=parameters_dict.get('roommates', 0),
+        budget=parameters_dict.get('budget', 0),
+        months=parameters_dict.get('months', 0),
+        embedding=embedding,
+        param_list=parameters_list,
+    )
+
+    record = result.single()
+    if not record:
+        raise RuntimeError(f'Failed to create group {group_id}')
+
+    logger.info(f'✓ Created empty group {group_id} with name "{group_name}"')
+    log_vector_operation(
+        logger,
+        'Created empty group vector',
+        len(embedding) if embedding else 0,
+        group_id
+    )
+
+    return group_id
+
+
 def change_group_owner(session, group_id, new_owner_id):
     """
     Transfer ownership of a group to a new owner.

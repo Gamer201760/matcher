@@ -5,7 +5,7 @@ This repository provides group CRUD operations, member management,
 and parameter calculations using Neo4j database functions.
 """
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from neo4j import Driver
 
@@ -13,10 +13,12 @@ from entity.errors import DomainError, NotFoundError
 from entity.form import Form
 from entity.group import Group
 from entity.parameters import Parameters
+from infrastructure.config import PARAMETERS, get_parameter_statistics
 from infrastructure.neo4j import (
     add_user_to_group,
     change_group_owner,
     count_group_members,
+    create_empty_group,
     delete_group,
     delete_group_by_owner,
     get_group_by_owner_id,
@@ -27,6 +29,7 @@ from infrastructure.neo4j import (
     remove_user_from_group,
     update_group_parameters,
 )
+from recommendation import create_vector
 from repository.form_dto import db_form_to_form
 from repository.group_dto import db_group_to_group
 
@@ -54,10 +57,7 @@ class GroupRepository:
 
     def create(self, group: Group) -> UUID:
         """
-        Create a new group in the database.
-
-        Note: In current implementation, groups are created automatically
-        when users are created. This method is primarily for explicit group creation.
+        Create a new empty group in the database without any members.
 
         Args:
             group: Group entity to create
@@ -65,13 +65,40 @@ class GroupRepository:
         Returns:
             UUID: The group_id of the created group
         """
-        # TODO: Implement explicit group creation when needed
-        # For now, groups are created via user creation (single-member groups)
-        # or via join operations (multi-member groups)
-        raise NotImplementedError(
-            'Explicit group creation not yet implemented. '
-            'Groups are created automatically via user/form creation.'
+        # Use group.id or generate a new UUID if not set
+        group_id = group.id if group.id else uuid4()
+        group_id_str = str(group_id)
+        group_name = f'Group {group_id_str[:8]}'
+
+        # Extract parameters from group.parameters
+        params_dict = {
+            'rooms': group.parameters.room_count,
+            'roommates': group.max_users - 1,  # max_users includes owner, roommates doesn't
+            'budget': group.parameters.budget,
+            'months': group.parameters.month,
+        }
+
+        # Create vector for the group
+        group_vector = create_vector(
+            params_dict,
+            PARAMETERS,
+            statistics=get_parameter_statistics(),
+            weights=self.weights if self.use_weights else None,
         )
+
+        # Delegate to infrastructure layer to create the group
+        with self.driver.session() as session:
+            create_empty_group(
+                session,
+                group_id_str,
+                group_name,
+                params_dict,
+                group_vector,
+                use_weights=self.use_weights,
+                weights=self.weights,
+            )
+
+            return group_id
 
     def get(self, group_id: UUID) -> Group:
         """
