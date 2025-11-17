@@ -1,3 +1,4 @@
+from logging import getLogger
 from uuid import UUID
 
 import grpc
@@ -20,6 +21,8 @@ from .mapper import (
     to_proto_group_with_score,
     to_proto_request,
 )
+
+logger = getLogger(__name__)
 
 
 class FormServicer(pb2_grpc.FormServiceServicer):
@@ -130,6 +133,7 @@ class FindGroupServicer(pb2_grpc.FindGroupServiceServicer):
         except DomainError as e:
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
+            logger.error('Internal', exc_info=e)
             context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
 
 

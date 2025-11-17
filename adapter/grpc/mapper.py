@@ -60,16 +60,17 @@ def timestamp_to_datetime(timestamp: Timestamp) -> datetime:
 
 
 def to_proto_parameters(params: Parameters) -> pb2.Parameters:
+    # TODO: check why store in float?
     return pb2.Parameters(
         name=params.name,
         surname=params.surname,
         geo=pb2.Point(lat=params.geo.lat, lon=params.geo.lon),
         photos=params.photos,
-        budget=params.budget,
-        room_count=params.room_count,
-        roommates_count=params.roommates_count,
-        age=params.age,
-        month=params.month,
+        budget=int(params.budget),
+        room_count=int(params.room_count),
+        roommates_count=int(params.roommates_count),
+        age=int(params.age),
+        month=int(params.month),
         smoking=params.smoking,
         alko=params.alko,
         pet=params.pet,
