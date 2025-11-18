@@ -94,6 +94,15 @@ class GroupQueryServicer(pb2_grpc.GroupQueryServiceServicer):
         except Exception as e:
             context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
 
+    def GetGroupByUser(self, request, context):
+        try:
+            group = self.query.get_by_user_id(UUID(request.user_id))
+            return to_proto_group(group)
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
     def DeleteGroup(self, request, context):
         try:
             owner_id = UUID(request.owner_id)

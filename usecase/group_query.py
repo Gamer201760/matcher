@@ -12,6 +12,9 @@ class GroupQuery:
     def get(self, group_id: UUID) -> Group:
         return self.repo.get(group_id)
 
+    def get_by_user_id(self, user_id: UUID) -> Group:
+        return self.repo.get_by_user_id(user_id)
+
     def delete(self, owner_id: UUID) -> None:
         # TODO: Добавить каскадное удаление из группы всех участников
         self.repo.delete_by_owner_id(owner_id)
