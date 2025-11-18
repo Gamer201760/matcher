@@ -133,7 +133,7 @@ class FindGroupServicer(pb2_grpc.FindGroupServiceServicer):
         except DomainError as e:
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
-            logger.error('Internal', exc_info=e)
+            logger.error(str(e), exc_info=e)
             context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
 
 
