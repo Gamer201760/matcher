@@ -1,4 +1,5 @@
 from datetime import datetime
+from logging import getLogger
 from uuid import UUID
 
 import neo4j
@@ -6,6 +7,8 @@ import neo4j
 from entity.group import Group, GroupRequest
 from entity.parameters import Parameters, Sex, UserType
 from entity.point import Point
+
+logger = getLogger(__name__)
 
 
 def db_group_to_group(db_dict: dict, group_id: UUID) -> Group:
@@ -21,17 +24,18 @@ def db_group_to_group(db_dict: dict, group_id: UUID) -> Group:
     """
     # Extract parameters
     params_dict = db_dict.get('parameters', {})
+    logger.debug(params_dict)
 
     parameters = Parameters(
         name=db_dict.get('name', ''),
         surname='',
         geo=Point(0.0, 0.0),
         photos=[],
-        budget=params_dict.get('budget', 0),
-        room_count=params_dict.get('rooms', 0),
-        roommates_count=params_dict.get('roommates', 0),
-        month=params_dict.get('month', 0),
-        age=0,
+        budget=int(params_dict.get('budget', 0)),
+        room_count=int(params_dict.get('rooms', 0)),
+        roommates_count=int(params_dict.get('roommates', 0)),
+        month=int(params_dict.get('month', 0)),
+        age=1,
         smoking=False,
         alko=False,
         pet=False,
@@ -49,13 +53,13 @@ def db_group_to_group(db_dict: dict, group_id: UUID) -> Group:
         owner_id = group_id
 
     # Extract max_users from roommates parameter
-    max_users = params_dict.get('roommates', 4)
+    max_users = int(params_dict.get('roommates', 4))
 
     return Group(
         id=group_id,
         owner_id=owner_id,
         parameters=parameters,
-        max_users=int(max_users),
+        max_users=max_users,
     )
 
 

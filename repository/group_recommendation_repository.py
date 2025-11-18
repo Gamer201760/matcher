@@ -110,6 +110,8 @@ class GroupRecommendationRepository:
                     group_entity = db_group_to_group(db_group, parsed_id)
                     result_groups.append((group_entity, similar.get('score', 0)))
 
+            logger.debug(result_groups)
+
             return result_groups
 
     def _calculate_average_parameters(self, members: list[dict]) -> dict:
