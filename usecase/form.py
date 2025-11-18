@@ -1,3 +1,4 @@
+from logging import getLogger
 from uuid import UUID
 
 from entity.errors import DomainError, NotFoundError
@@ -6,6 +7,8 @@ from entity.group import Group
 from entity.parameters import Parameters
 
 from .interface import FormRepository, GroupRepository
+
+logger = getLogger(__name__)
 
 
 class FormService:
@@ -72,14 +75,16 @@ class FormService:
         """
         try:
             # TODO: начало транзакции
+            logger.debug('start update')
             self._form_repo.update_parameters_by_user_id(user_id, parameters)
+
+            logger.debug('update')
             group = self._group_repo.get_by_owner_id(user_id)
-            # ? What if user is not owner of the group?
-            # * raise not found error
+            logger.debug(f'group {group}')
+
             if self._group_repo.count_members(group.id) == 1:
                 self._group_repo.update_parameters(group.id, parameters)
                 self._group_repo.calculate_params(group.id)
-            # TODO: конец транзакции
 
         except NotFoundError:
             raise DomainError(

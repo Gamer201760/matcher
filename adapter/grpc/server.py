@@ -56,6 +56,7 @@ class FormServicer(pb2_grpc.FormServiceServicer):
         try:
             user_id = UUID(request.user_id)
             parameters = from_proto_parameters(request.parameters)
+            logger.debug(f'update request {parameters}')
             self.service.update(user_id, parameters)
             return Empty()
         except NotFoundError as e:
@@ -63,6 +64,7 @@ class FormServicer(pb2_grpc.FormServiceServicer):
         except DomainError as e:
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
+            logger.error(str(e), exc_info=e)
             context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
 
     def DeleteForm(self, request, context):

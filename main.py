@@ -75,7 +75,7 @@ def main():
     logger.info('gRPC server started on port 50051')
 
     # Ожидание завершения
-    server.wait_for_termination(timeout=1)
+    server.wait_for_termination()
 
 
 if __name__ == '__main__':

@@ -14,7 +14,7 @@ from uuid import UUID
 
 from neo4j import Driver
 
-from entity.errors import NotFoundError
+from entity.errors import DomainError, NotFoundError
 from entity.form import Form
 from entity.parameters import Parameters
 from infrastructure.neo4j import (
@@ -42,7 +42,7 @@ class FormRepository:
             use_weights: Whether to use weighted vectors
             weights: Parameter weights for group vector creation
         """
-        #TODO: Get rid of caps, they are no longer used by rec system
+        # TODO: Get rid of caps, they are no longer used by rec system
         self.driver = driver
         self.caps = caps or {'budget': 200000, 'months': 36}
         self.use_weights = use_weights
@@ -103,14 +103,12 @@ class FormRepository:
         # Get existing form to preserve id and metadata
         existing_form = self.get_by_user_id(user_id)
         if not existing_form:
-            raise ValueError(
-                f'Form not found for user {user_id}'
-            )  # TODO: refactor to internal error
+            raise DomainError(f'Form not found for user {user_id}')
 
         # Create updated form
         updated_form = Form(
             id=existing_form.id,
-            user_id=user_id,
+            user_id=existing_form.user_id,
             parameters=parameters,
             active=existing_form.active,
             created_at=existing_form.created_at,

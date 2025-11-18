@@ -73,7 +73,8 @@ class GroupRepository:
         # Extract parameters from group.parameters
         params_dict = {
             'rooms': group.parameters.room_count,
-            'roommates': group.max_users - 1,  # max_users includes owner, roommates doesn't
+            'roommates': group.max_users
+            - 1,  # max_users includes owner, roommates doesn't
             'budget': group.parameters.budget,
             'months': group.parameters.month,
         }
@@ -92,6 +93,7 @@ class GroupRepository:
                 session,
                 group_id_str,
                 group_name,
+                str(group.owner_id),
                 params_dict,
                 group_vector,
                 use_weights=self.use_weights,
@@ -176,7 +178,7 @@ class GroupRepository:
             'rooms': parameters.room_count,
             'roommates': parameters.roommates_count,
             'budget': parameters.budget,
-            'months': 12,  # Default value
+            'months': parameters.month,
         }
 
         with self.driver.session() as session:
@@ -298,7 +300,6 @@ class GroupRepository:
             group_id: Group ID to recalculate
         """
         with self.driver.session() as session:
-
             # Get all member parameters
             members = get_group_member_parameters(session, str(group_id))
 

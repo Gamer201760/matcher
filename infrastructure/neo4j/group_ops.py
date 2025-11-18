@@ -643,13 +643,14 @@ def update_group_parameters(
         embedding=new_vector,
     )
 
-    logger.info(f'✓ Updated parameters for group {group_id}')
+    logger.info(f'Updated parameters for group {group_id}')
 
 
 def create_empty_group(
     session,
     group_id,
     group_name,
+    owner_id,
     parameters_dict,
     embedding,
     use_weights=False,
@@ -680,6 +681,7 @@ def create_empty_group(
         MERGE (g:Group {id: $group_id})
         SET g.name = $group_name,
             g.rooms = $rooms,
+            g.owner_id = $owner_id,
             g.roommates = $roommates,
             g.budget = $budget,
             g.months = $months,
@@ -703,6 +705,7 @@ def create_empty_group(
 
     result = session.run(
         create_group_query,
+        owner_id=owner_id,
         group_id=group_id,
         group_name=group_name,
         rooms=parameters_dict.get('rooms', 0),

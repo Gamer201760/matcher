@@ -6,17 +6,17 @@ This module handles:
 - User parameter management
 - Form data retrieval
 """
+
 from uuid import uuid4
 
-from ..config import PARAMETERS
+from recommendation import create_vector
+
+from ..config import GROUP_PARAMETER_WEIGHTS, PARAMETERS, get_parameter_statistics
 from ..logging_utils import (
     log_database_stats,
     log_neo4j_query,
-    log_vector_operation,
     setup_logger,
 )
-from ..config import get_parameter_statistics, GROUP_PARAMETER_WEIGHTS
-from recommendation import create_vector
 
 # Setup logger
 logger = setup_logger('roommate_db', 'INFO')
@@ -57,36 +57,38 @@ def clear_users(session):
 def upsert_users(session, users, caps=None, use_weights=False, weights=None):
     """Insert or update users along with their single-member groups and parameters."""
     weights = weights or GROUP_PARAMETER_WEIGHTS
-    
+
     total_users = len(users)
     logger.info(f'Starting bulk upsert of {total_users} users')
     logger.debug(f'Using weights: {use_weights}')
-    
+
     # Process in batches to avoid overwhelming Neo4j
     BATCH_SIZE = 100  # Process 100 users at a time
     total_created = 0
-    
+
     for batch_num, i in enumerate(range(0, total_users, BATCH_SIZE), 1):
-        batch = users[i:i + BATCH_SIZE]
+        batch = users[i : i + BATCH_SIZE]
         batch_size = len(batch)
-        
-        logger.info(f'Processing batch {batch_num}/{(total_users + BATCH_SIZE - 1) // BATCH_SIZE}: users {i+1}-{i+batch_size} of {total_users}')
-        
+
+        logger.info(
+            f'Processing batch {batch_num}/{(total_users + BATCH_SIZE - 1) // BATCH_SIZE}: users {i + 1}-{i + batch_size} of {total_users}'
+        )
+
         rows = []
         for u in batch:
             # Single-member group id and name
             group_id = str(uuid4())
-            group_name = f"Group of {u.get('name') or u['id']}"
+            group_name = f'Group of {u.get("name") or u["id"]}'
 
             # Prepare parameter list as separate nodes (user and group)
             param_list = [{'name': p, 'value': u.get(p)} for p in PARAMETERS]
 
             group_values = {p: u.get(p) for p in PARAMETERS}
             gvec = create_vector(
-                group_values, 
-                PARAMETERS, 
+                group_values,
+                PARAMETERS,
                 statistics=get_parameter_statistics(),
-                weights=weights if use_weights else None
+                weights=weights if use_weights else None,
             )
 
             rows.append(
@@ -133,11 +135,16 @@ def upsert_users(session, users, caps=None, use_weights=False, weights=None):
 
         batch_count = result.single()['created']
         total_created += batch_count
-        logger.info(f'✓ Batch {batch_num} complete: {batch_count} groups created ({total_created}/{total_users} total)')
+        logger.info(
+            f'✓ Batch {batch_num} complete: {batch_count} groups created ({total_created}/{total_users} total)'
+        )
 
-    logger.info(f'✓ All {total_created} groups upserted successfully (and linked to users)')
+    logger.info(
+        f'✓ All {total_created} groups upserted successfully (and linked to users)'
+    )
     log_database_stats(
-        logger, {'groups_created': total_created, 'group_vectors_generated': total_users}
+        logger,
+        {'groups_created': total_created, 'group_vectors_generated': total_users},
     )
 
 
@@ -170,7 +177,7 @@ def get_user_form(session, user_id):
 def delete_user_form(session, user_id):
     """
     Delete a user and all associated data (parameters, group, relationships).
-    
+
     Handles two scenarios:
     1. User in multi-member group: Remove user and update remaining group
     2. User in single-member group: Delete both user and group with all parameters
@@ -181,7 +188,7 @@ def delete_user_form(session, user_id):
     """
     # Import here to avoid circular dependency
     from ..config import PARAMETERS
-    
+
     # Step 1: Check if user is in a multi-member group
     check_group_query = """
         MATCH (u:User {id: $user_id})-[:MEMBER_OF]->(g:Group)
@@ -190,7 +197,7 @@ def delete_user_form(session, user_id):
     """
     result = session.run(check_group_query, user_id=user_id)
     record = result.single()
-    
+
     if not record:
         logger.warning(f'User {user_id} is not in any group, deleting user only')
         # Just delete the user and their parameters
@@ -199,7 +206,7 @@ def delete_user_form(session, user_id):
             DETACH DELETE p
         """
         session.run(delete_params_query, user_id=user_id)
-        
+
         delete_user_query = """
             MATCH (u:User {id: $user_id})
             DETACH DELETE u
@@ -207,43 +214,48 @@ def delete_user_form(session, user_id):
         session.run(delete_user_query, user_id=user_id)
         logger.info(f'✓ Deleted user {user_id} (no group found)')
         return
-    
+
     group_id = record['group_id']
     member_count = record['member_count']
-    
+
     if member_count > 1:
         # Multi-member group: Remove user and update group
-        logger.debug(f'User {user_id} is in multi-member group {group_id} with {member_count} members')
-        
+        logger.debug(
+            f'User {user_id} is in multi-member group {group_id} with {member_count} members'
+        )
+
         # Step 2: Delete the MEMBER_OF relationship
         delete_relationship_query = """
             MATCH (u:User {id: $user_id})-[r:MEMBER_OF]->(g:Group {id: $group_id})
             DELETE r
         """
         session.run(delete_relationship_query, user_id=user_id, group_id=group_id)
-        
+
         # Step 3: Get remaining group members and update group
         from .group_ops import get_group_member_parameters
+
         remaining_members = get_group_member_parameters(session, group_id)
-        
+
         if remaining_members:
             # Calculate new averaged parameters for the remaining group
             new_group_params = {}
             for param in PARAMETERS:
-                values = [member[param] for member in remaining_members if param in member]
+                values = [
+                    member[param] for member in remaining_members if param in member
+                ]
                 if values:
                     new_group_params[param] = sum(values) / len(values)
-            
+
             # Create new group vector
             weights = GROUP_PARAMETER_WEIGHTS
             group_values = {p: new_group_params.get(p, 0) for p in PARAMETERS}
             new_vector = create_vector(
-                group_values, 
-                PARAMETERS, 
+                group_values,
+                PARAMETERS,
                 statistics=get_parameter_statistics(),
-                weights=weights
+                weights=weights,
             )
-            
+
             # Update group properties and GroupParameter nodes
             update_group_query = """
                 MATCH (g:Group {id: $group_id})
@@ -282,14 +294,14 @@ def delete_user_form(session, user_id):
         """
         session.run(delete_group_query, user_id=user_id)
         logger.info(f'✓ Deleted group {group_id} and its parameters')
-    
+
     # Step 4: Delete user's parameters
     delete_params_query = """
         MATCH (u:User {id: $user_id})-[:HAS_PARAMETER]->(p:Parameter)
         DETACH DELETE p
     """
     session.run(delete_params_query, user_id=user_id)
-    
+
     # Step 5: Delete user
     delete_user_query = """
         MATCH (u:User {id: $user_id})
