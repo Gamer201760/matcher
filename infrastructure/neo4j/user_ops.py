@@ -54,16 +54,76 @@ def clear_users(session):
     )
 
 
-def upsert_users(session, users):
-    """Insert or update users and their parameters."""
+def upsert_form(session, form: dict):
+    """
+    Insert or update a single form and its parameters.
     
-    logger.info(f'Starting upsert of {len(users)} users')
+    Args:
+        session: Neo4j session
+        form: Dictionary containing form data ready for database insertion
+              Expected to have 'id' (user_id), 'form_id', and all parameter fields
+    """
+    logger.info(f'Starting upsert of form {form.get("form_id")} for user {form.get("id")}')
     
-    rows = []
+    # Single query for one form with all metadata fields
+    upsert_query = """
+        MERGE (u:User {id: $id})
+        SET u.form_id = $form_id,
+            u.user_id = $user_id,
+            u.name = $name,
+            u.surname = $surname,
+            u.geo_lat = $geo_lat,
+            u.geo_lon = $geo_lon,
+            u.photos = $photos,
+            u.age = $age,
+            u.smoking = $smoking,
+            u.alko = $alko,
+            u.pet = $pet,
+            u.sex = $sex,
+            u.user_type = $user_type,
+            u.description = $description,
+            u.active = $active
+        WITH u
+        UNWIND $param_list AS param
+        MERGE (p:Parameter {userId: $id, name: param.name})
+        SET p.value = param.value
+        MERGE (u)-[:HAS_PARAMETER]->(p)
+        RETURN u.id as created_id
+    """
+    
+    log_neo4j_query(logger, upsert_query)
+    result = session.run(upsert_query, **form)
+    
+    created = result.single()
+    if created:
+        logger.info(f'✓ Upserted form {form.get("form_id")} for user {created["created_id"]} successfully')
+    else:
+        logger.warning(f'Failed to upsert form {form.get("form_id")}')
+
+
+# Backward compatibility: Allow bulk operations for CLI
+def upsert_users(session, users, caps=None, use_weights=False, weights=None):
+    """
+    Bulk insert or update users (for CLI and testing purposes).
+    
+    This is a wrapper around upsert_form for backward compatibility.
+    
+    Args:
+        session: Neo4j session
+        users: List of user dictionaries
+        caps: Deprecated parameter (kept for compatibility)
+        use_weights: Deprecated parameter (kept for compatibility)
+        weights: Deprecated parameter (kept for compatibility)
+    """
+    logger.info(f'Starting bulk upsert of {len(users)} users')
+    
     for user in users:
+        # Prepare each user as a form dict
         param_list = [{'name': p, 'value': user.get(p)} for p in PARAMETERS]
-        rows.append({
+        form_dict = {
             'id': user['id'],
+            'form_id': user.get('id'),  # For backward compatibility, form_id = id
+            'user_id': user.get('id'),
             'name': user.get('name', ''),
             'surname': user.get('surname', ''),
             'geo_lat': user.get('geo_lat', 0.0),
@@ -73,41 +133,15 @@ def upsert_users(session, users):
             'smoking': user.get('smoking', False),
             'alko': user.get('alko', False),
             'pet': user.get('pet', False),
-            'sex': user.get('sex', 1),  # Default to MALE
-            'user_type': user.get('user_type', 1),  # Default to STUDENT
+            'sex': user.get('sex', 1),
+            'user_type': user.get('user_type', 1),
             'description': user.get('description', ''),
-            'parameters': param_list,
-        })
+            'active': user.get('active', True),
+            'param_list': param_list,
+        }
+        upsert_form(session, form_dict)
     
-    # Single query for ALL users with metadata fields
-    upsert_query = """
-        UNWIND $rows AS row
-        MERGE (u:User {id: row.id})
-        SET u.name = row.name,
-            u.surname = row.surname,
-            u.geo_lat = row.geo_lat,
-            u.geo_lon = row.geo_lon,
-            u.photos = row.photos,
-            u.age = row.age,
-            u.smoking = row.smoking,
-            u.alko = row.alko,
-            u.pet = row.pet,
-            u.sex = row.sex,
-            u.user_type = row.user_type,
-            u.description = row.description
-        WITH u, row
-        UNWIND row.parameters AS param
-        MERGE (p:Parameter {userId: row.id, name: param.name})
-        SET p.value = param.value
-        MERGE (u)-[:HAS_PARAMETER]->(p)
-        RETURN count(DISTINCT u) as created
-    """
-    
-    log_neo4j_query(logger, upsert_query, rows_count=len(rows))
-    result = session.run(upsert_query, rows=rows)
-    
-    user_count = result.single()['created']
-    logger.info(f'✓ Upserted {user_count} users successfully')
+    logger.info(f'✓ Upserted {len(users)} users successfully')
 
 
 
@@ -125,6 +159,8 @@ def get_user_form(session, user_id):
     user_query = """
         MATCH (u:User {id: $user_id})
         RETURN u.id as id,
+               u.form_id as form_id,
+               u.user_id as user_id,
                u.name as name,
                u.surname as surname,
                u.geo_lat as geo_lat,
@@ -146,7 +182,9 @@ def get_user_form(session, user_id):
 
     # Convert record to dict with all metadata fields
     user_data = {
-        'id': record['id'],
+        'id': record['id'],  # User ID (for backward compatibility)
+        'form_id': record.get('form_id'),  # Form ID
+        'user_id': record.get('user_id'),  # User ID (explicit)
         'name': record['name'],
         'surname': record.get('surname', ''),
         'geo_lat': record.get('geo_lat', 0.0),

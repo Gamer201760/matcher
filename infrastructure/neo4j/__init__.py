@@ -63,7 +63,8 @@ from .user_ops import (
     delete_user_form,
     get_user_form,
     get_user_parameters,
-    upsert_users,
+    upsert_form,
+    upsert_users,  # Kept for CLI backward compatibility
 )
 
 __all__ = [
@@ -74,7 +75,8 @@ __all__ = [
     'check_neo4j_connection',
     # User ops
     'clear_users',
-    'upsert_users',
+    'upsert_form',
+    'upsert_users',  # For CLI backward compatibility
     'get_user_form',
     'delete_user_form',
     'get_user_parameters',

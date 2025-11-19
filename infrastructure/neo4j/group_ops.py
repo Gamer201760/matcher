@@ -29,7 +29,7 @@ def add_user_to_group(session, user_id, group_id):
     
     Args:
         session: Neo4j session
-        user_id: ID of user to add
+        user_id: User ID
         group_id: ID of group
     """
     add_query = """

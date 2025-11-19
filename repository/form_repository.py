@@ -20,9 +20,9 @@ from entity.parameters import Parameters
 from infrastructure.neo4j import (
     delete_user_form,
     get_user_form,
-    upsert_users,
+    upsert_form,
 )
-from repository.form_dto import db_form_to_form, parameters_to_db_dict
+from repository.form_dto import db_form_to_form, form_to_db_dict
 
 
 class FormRepository:
@@ -59,13 +59,10 @@ class FormRepository:
             UUID: The user_id of the created form
         """
         # Convert Form entity to database format using DTO
-        user_dict = parameters_to_db_dict(form.parameters, include_id=str(form.user_id))
+        form_dict = form_to_db_dict(form)
 
         with self.driver.session() as session:
-            upsert_users(
-                session,
-                [user_dict],
-            )
+            upsert_form(session, form_dict)
 
         return form.user_id
 
@@ -112,13 +109,10 @@ class FormRepository:
         )
 
         # Update in database using DTO
-        user_dict = parameters_to_db_dict(updated_form.parameters, include_id=str(updated_form.user_id))
+        form_dict = form_to_db_dict(updated_form)
 
         with self.driver.session() as session:
-            upsert_users(
-                session,
-                [user_dict],
-            )
+            upsert_form(session, form_dict)
 
     def delete_by_user_id(self, user_id: UUID) -> None:
         """

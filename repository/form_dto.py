@@ -26,6 +26,38 @@ PARAMETER_DB_MAPPING = {
 DB_PARAMETER_MAPPING = {v: k for k, v in PARAMETER_DB_MAPPING.items()}
 
 
+def form_to_db_dict(form: Form) -> dict:
+    """
+    Convert Form entity to database dictionary format.
+    
+    Properly maps Form fields:
+    - id: user_id (for backward compatibility with existing queries)
+    - form_id: form.id (the actual form UUID)
+    - user_id: user_id (redundant but explicit)
+    
+    Args:
+        form: Form entity to convert
+    
+    Returns:
+        dict: Database-compatible dictionary with all fields ready for insertion
+    """
+    # Get parameters as dict
+    db_dict = parameters_to_db_dict(form.parameters)
+    
+    # Add Form-specific fields
+    # For backward compatibility: id = user_id (all existing queries use this)
+    db_dict['id'] = str(form.user_id)  # User ID (backward compatible)
+    db_dict['form_id'] = str(form.id)  # Form ID (separate field)
+    db_dict['user_id'] = str(form.user_id)  # User ID (explicit)
+    db_dict['active'] = form.active
+    
+    # Prepare parameter list for Parameter nodes
+    param_list = [{'name': p, 'value': db_dict[p]} for p in PARAMETERS]
+    db_dict['param_list'] = param_list
+    
+    return db_dict
+
+
 def parameters_to_db_dict(parameters: Parameters, include_id: str = None) -> dict:
     """
     Convert Parameters entity to database dictionary format.
@@ -36,14 +68,14 @@ def parameters_to_db_dict(parameters: Parameters, include_id: str = None) -> dic
     
     Args:
         parameters: Parameters entity to convert
-        include_id: Optional ID to include in the dict (user_id or group_id)
+        include_id: Optional ID to include in the dict (user_id or group_id) - DEPRECATED, use form_to_db_dict for forms
     
     Returns:
         dict: Database-compatible dictionary with all fields
     """
     db_dict = {}
     
-    # Add ID if provided
+    # Add ID if provided (for backward compatibility)
     if include_id:
         db_dict['id'] = include_id
     
