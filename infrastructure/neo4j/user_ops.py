@@ -64,15 +64,37 @@ def upsert_users(session, users):
         param_list = [{'name': p, 'value': user.get(p)} for p in PARAMETERS]
         rows.append({
             'id': user['id'],
-            'name': user.get('name'),
+            'name': user.get('name', ''),
+            'surname': user.get('surname', ''),
+            'geo_lat': user.get('geo_lat', 0.0),
+            'geo_lon': user.get('geo_lon', 0.0),
+            'photos': user.get('photos', []),
+            'age': user.get('age', 0),
+            'smoking': user.get('smoking', False),
+            'alko': user.get('alko', False),
+            'pet': user.get('pet', False),
+            'sex': user.get('sex', 1),  # Default to MALE
+            'user_type': user.get('user_type', 1),  # Default to STUDENT
+            'description': user.get('description', ''),
             'parameters': param_list,
         })
     
-    # Single query for ALL users
+    # Single query for ALL users with metadata fields
     upsert_query = """
         UNWIND $rows AS row
         MERGE (u:User {id: row.id})
-        SET u.name = row.name
+        SET u.name = row.name,
+            u.surname = row.surname,
+            u.geo_lat = row.geo_lat,
+            u.geo_lon = row.geo_lon,
+            u.photos = row.photos,
+            u.age = row.age,
+            u.smoking = row.smoking,
+            u.alko = row.alko,
+            u.pet = row.pet,
+            u.sex = row.sex,
+            u.user_type = row.user_type,
+            u.description = row.description
         WITH u, row
         UNWIND row.parameters AS param
         MERGE (p:Parameter {userId: row.id, name: param.name})
@@ -98,11 +120,23 @@ def get_user_form(session, user_id):
         user_id: User ID
 
     Returns:
-        dict: User form data with id, name, and parameters, or None if not found
+        dict: User form data with id, name, metadata fields, and parameters, or None if not found
     """
     user_query = """
         MATCH (u:User {id: $user_id})
-        RETURN u.id as id, u.name as name
+        RETURN u.id as id,
+               u.name as name,
+               u.surname as surname,
+               u.geo_lat as geo_lat,
+               u.geo_lon as geo_lon,
+               u.photos as photos,
+               u.age as age,
+               u.smoking as smoking,
+               u.alko as alko,
+               u.pet as pet,
+               u.sex as sex,
+               u.user_type as user_type,
+               u.description as description
     """
     result = session.run(user_query, user_id=user_id)
     record = result.single()
@@ -110,9 +144,27 @@ def get_user_form(session, user_id):
     if not record:
         return None
 
+    # Convert record to dict with all metadata fields
+    user_data = {
+        'id': record['id'],
+        'name': record['name'],
+        'surname': record.get('surname', ''),
+        'geo_lat': record.get('geo_lat', 0.0),
+        'geo_lon': record.get('geo_lon', 0.0),
+        'photos': record.get('photos', []),
+        'age': record.get('age', 0),
+        'smoking': record.get('smoking', False),
+        'alko': record.get('alko', False),
+        'pet': record.get('pet', False),
+        'sex': record.get('sex', 1),
+        'user_type': record.get('user_type', 1),
+        'description': record.get('description', ''),
+    }
+    
+    # Get parameter node values (rooms, roommates, budget, months)
     params = get_user_parameters(session, user_id)
 
-    return {'id': record['id'], 'name': record['name'], **params}
+    return {**user_data, **params}
 
 
 def delete_user_form(session, user_id):

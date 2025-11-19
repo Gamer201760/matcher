@@ -5,8 +5,7 @@ from uuid import UUID
 import neo4j
 
 from entity.group import Group, GroupRequest
-from entity.parameters import Parameters, Sex, UserType
-from entity.point import Point
+from repository.form_dto import db_dict_to_parameters
 
 logger = getLogger(__name__)
 
@@ -22,27 +21,23 @@ def db_group_to_group(db_dict: dict, group_id: UUID) -> Group:
     Returns:
         Group: Group entity
     """
-    # Extract parameters
+    # Extract parameters from 'parameters' sub-dict (PARAMETERS fields)
     params_dict = db_dict.get('parameters', {})
     logger.debug(params_dict)
 
-    parameters = Parameters(
-        name=db_dict.get('name', ''),
-        surname='',
-        geo=Point(0.0, 0.0),
-        photos=[],
-        budget=int(params_dict.get('budget', 0)),
-        room_count=int(params_dict.get('rooms', 0)),
-        roommates_count=int(params_dict.get('roommates', 0)),
-        month=int(params_dict.get('month', 0)),
-        age=1,
-        smoking=False,
-        alko=False,
-        pet=False,
-        sex=Sex.MALE,
-        user_type=UserType.STUDENT,
-        description='',
-    )
+    # Merge PARAMETERS fields and metadata fields for DTO conversion
+    # The db_dict already contains metadata fields from get_group_info
+    # We need to add the PARAMETERS fields which are in the params_dict
+    merged_dict = {
+        **db_dict,  # Includes name, surname, geo_lat, geo_lon, photos, age, etc.
+        'rooms': params_dict.get('rooms', 0),
+        'roommates': params_dict.get('roommates', 0),
+        'budget': params_dict.get('budget', 0),
+        'months': params_dict.get('months', 0),
+    }
+    
+    # Use centralized DTO function to convert to Parameters
+    parameters = db_dict_to_parameters(merged_dict)
 
     # Extract owner_id - in current impl, first member is typically owner
     members = db_dict.get('members', [])
