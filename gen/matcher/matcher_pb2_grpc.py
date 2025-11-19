@@ -519,10 +519,10 @@ class GroupServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetReqeusts = channel.unary_unary(
-                '/matcher.GroupService/GetReqeusts',
-                request_serializer=matcher_dot_matcher__pb2.GetReqeustsRequest.SerializeToString,
-                response_deserializer=matcher_dot_matcher__pb2.GetReqeustsResponse.FromString,
+        self.GetRequests = channel.unary_unary(
+                '/matcher.GroupService/GetRequests',
+                request_serializer=matcher_dot_matcher__pb2.GetRequestsRequest.SerializeToString,
+                response_deserializer=matcher_dot_matcher__pb2.GetRequestsResponse.FromString,
                 _registered_method=True)
         self.SendJoinRequest = channel.unary_unary(
                 '/matcher.GroupService/SendJoinRequest',
@@ -545,7 +545,7 @@ class GroupServiceServicer(object):
     """Group Service
     """
 
-    def GetReqeusts(self, request, context):
+    def GetRequests(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -572,10 +572,10 @@ class GroupServiceServicer(object):
 
 def add_GroupServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'GetReqeusts': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetReqeusts,
-                    request_deserializer=matcher_dot_matcher__pb2.GetReqeustsRequest.FromString,
-                    response_serializer=matcher_dot_matcher__pb2.GetReqeustsResponse.SerializeToString,
+            'GetRequests': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRequests,
+                    request_deserializer=matcher_dot_matcher__pb2.GetRequestsRequest.FromString,
+                    response_serializer=matcher_dot_matcher__pb2.GetRequestsResponse.SerializeToString,
             ),
             'SendJoinRequest': grpc.unary_unary_rpc_method_handler(
                     servicer.SendJoinRequest,
@@ -605,7 +605,7 @@ class GroupService(object):
     """
 
     @staticmethod
-    def GetReqeusts(request,
+    def GetRequests(request,
             target,
             options=(),
             channel_credentials=None,
@@ -618,9 +618,9 @@ class GroupService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/matcher.GroupService/GetReqeusts',
-            matcher_dot_matcher__pb2.GetReqeustsRequest.SerializeToString,
-            matcher_dot_matcher__pb2.GetReqeustsResponse.FromString,
+            '/matcher.GroupService/GetRequests',
+            matcher_dot_matcher__pb2.GetRequestsRequest.SerializeToString,
+            matcher_dot_matcher__pb2.GetRequestsResponse.FromString,
             options,
             channel_credentials,
             insecure,

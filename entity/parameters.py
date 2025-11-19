@@ -20,6 +20,7 @@ class Parameters:
     name: str
     surname: str
     geo: Point
+    address: str
     photos: list[str]
     budget: int
     room_count: int

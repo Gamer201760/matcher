@@ -26,7 +26,7 @@ logger = setup_logger('roommate_db', 'INFO')
 def add_user_to_group(session, user_id, group_id):
     """
     Create a MEMBER_OF relationship between a user and a group.
-    
+
     Args:
         session: Neo4j session
         user_id: User ID
@@ -38,15 +38,15 @@ def add_user_to_group(session, user_id, group_id):
         MERGE (u)-[:MEMBER_OF]->(g)
         RETURN u.id as user_id, g.id as group_id
     """
-    
+
     log_neo4j_query(logger, add_query)
     result = session.run(add_query, user_id=user_id, group_id=group_id)
     record = result.single()
-    
+
     if not record:
         logger.error(f'Failed to add user {user_id} to group {group_id}')
         return False
-    
+
     logger.info(f'✓ User {user_id} added to group {group_id}')
     return True
 

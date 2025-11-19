@@ -93,6 +93,7 @@ class Parameters(google.protobuf.message.Message):
     SEX_FIELD_NUMBER: builtins.int
     USER_TYPE_FIELD_NUMBER: builtins.int
     DESCRIPTION_FIELD_NUMBER: builtins.int
+    ADDRESS_FIELD_NUMBER: builtins.int
     name: builtins.str
     surname: builtins.str
     budget: builtins.int
@@ -106,6 +107,7 @@ class Parameters(google.protobuf.message.Message):
     sex: global___Sex.ValueType
     user_type: global___UserType.ValueType
     description: builtins.str
+    address: builtins.str
     @property
     def geo(self) -> global___Point: ...
     @property
@@ -128,9 +130,10 @@ class Parameters(google.protobuf.message.Message):
         sex: global___Sex.ValueType = ...,
         user_type: global___UserType.ValueType = ...,
         description: builtins.str = ...,
+        address: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["geo", b"geo"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["age", b"age", "alko", b"alko", "budget", b"budget", "description", b"description", "geo", b"geo", "month", b"month", "name", b"name", "pet", b"pet", "photos", b"photos", "room_count", b"room_count", "roommates_count", b"roommates_count", "sex", b"sex", "smoking", b"smoking", "surname", b"surname", "user_type", b"user_type"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["address", b"address", "age", b"age", "alko", b"alko", "budget", b"budget", "description", b"description", "geo", b"geo", "month", b"month", "name", b"name", "pet", b"pet", "photos", b"photos", "room_count", b"room_count", "roommates_count", b"roommates_count", "sex", b"sex", "smoking", b"smoking", "surname", b"surname", "user_type", b"user_type"]) -> None: ...
 
 global___Parameters = Parameters
 
@@ -426,7 +429,7 @@ class FindGroupsResponse(google.protobuf.message.Message):
 global___FindGroupsResponse = FindGroupsResponse
 
 @typing.final
-class GetReqeustsRequest(google.protobuf.message.Message):
+class GetRequestsRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     GROUP_ID_FIELD_NUMBER: builtins.int
@@ -438,10 +441,10 @@ class GetReqeustsRequest(google.protobuf.message.Message):
     ) -> None: ...
     def ClearField(self, field_name: typing.Literal["group_id", b"group_id"]) -> None: ...
 
-global___GetReqeustsRequest = GetReqeustsRequest
+global___GetRequestsRequest = GetRequestsRequest
 
 @typing.final
-class GetReqeustsResponse(google.protobuf.message.Message):
+class GetRequestsResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     REQUESTS_FIELD_NUMBER: builtins.int
@@ -454,7 +457,7 @@ class GetReqeustsResponse(google.protobuf.message.Message):
     ) -> None: ...
     def ClearField(self, field_name: typing.Literal["requests", b"requests"]) -> None: ...
 
-global___GetReqeustsResponse = GetReqeustsResponse
+global___GetRequestsResponse = GetRequestsResponse
 
 @typing.final
 class SendJoinRequestRequest(google.protobuf.message.Message):
