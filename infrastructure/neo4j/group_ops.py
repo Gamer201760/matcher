@@ -29,7 +29,7 @@ def add_user_to_group(session, user_id, group_id):
     
     Args:
         session: Neo4j session
-        user_id: ID of user to add
+        user_id: User ID
         group_id: ID of group
     """
     add_query = """
@@ -236,6 +236,7 @@ def remove_user_from_group(
             )
 
         # Create new group and establish relationship in a single atomic query
+        # Set metadata fields with defaults for consistency
         create_new_group_query = """
             MATCH (u:User {id: $user_id})
             MERGE (g:Group {id: $new_group_id})
@@ -244,7 +245,18 @@ def remove_user_from_group(
                 g.roommates = $roommates,
                 g.budget = $budget,
                 g.months = $months,
-                g.embedding = $embedding
+                g.embedding = $embedding,
+                g.surname = '',
+                g.geo_lat = 0.0,
+                g.geo_lon = 0.0,
+                g.photos = [],
+                g.age = 0,
+                g.smoking = false,
+                g.alko = false,
+                g.pet = false,
+                g.sex = 1,
+                g.user_type = 1,
+                g.description = ''
             MERGE (u)-[:MEMBER_OF]->(g)
             WITH g
             UNWIND $param_list AS param
@@ -319,9 +331,21 @@ def get_group_info(session, group_id):
     parameters = {param['name']: param['value'] for param in record['parameters']}
     members = record['members']
 
+    # Include metadata fields in the return dict for proper DTO conversion
     return {
         'id': group['id'],
         'name': group['name'],
+        'surname': group.get('surname', ''),
+        'geo_lat': group.get('geo_lat', 0.0),
+        'geo_lon': group.get('geo_lon', 0.0),
+        'photos': group.get('photos', []),
+        'age': group.get('age', 0),
+        'smoking': group.get('smoking', False),
+        'alko': group.get('alko', False),
+        'pet': group.get('pet', False),
+        'sex': group.get('sex', 1),
+        'user_type': group.get('user_type', 1),
+        'description': group.get('description', ''),
         'parameters': parameters,
         'members': members,
         'member_count': len(members),
@@ -574,6 +598,7 @@ def create_empty_group(
     ]
 
     # Create empty group query (no MEMBER_OF relationships)
+    # Set metadata fields with defaults for consistency with user nodes
     create_group_query = """
         MERGE (g:Group {id: $group_id})
         SET g.name = $group_name,
@@ -582,7 +607,18 @@ def create_empty_group(
             g.roommates = $roommates,
             g.budget = $budget,
             g.months = $months,
-            g.embedding = $embedding
+            g.embedding = $embedding,
+            g.surname = '',
+            g.geo_lat = 0.0,
+            g.geo_lon = 0.0,
+            g.photos = [],
+            g.age = 0,
+            g.smoking = false,
+            g.alko = false,
+            g.pet = false,
+            g.sex = 1,
+            g.user_type = 1,
+            g.description = ''
         WITH g
         UNWIND $param_list AS param
         MERGE (gp:GroupParameter {groupId: $group_id, name: param.name})

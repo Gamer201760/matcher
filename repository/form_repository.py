@@ -20,9 +20,9 @@ from entity.parameters import Parameters
 from infrastructure.neo4j import (
     delete_user_form,
     get_user_form,
-    upsert_users,
+    upsert_form,
 )
-from repository.form_dto import db_form_to_form
+from repository.form_dto import db_form_to_form, form_to_db_dict
 
 
 class FormRepository:
@@ -58,14 +58,11 @@ class FormRepository:
         Returns:
             UUID: The user_id of the created form
         """
-        # Convert Form entity to database format
-        user_dict = self._form_to_db_dict(form)
+        # Convert Form entity to database format using DTO
+        form_dict = form_to_db_dict(form)
 
         with self.driver.session() as session:
-            upsert_users(
-                session,
-                [user_dict],
-            )
+            upsert_form(session, form_dict)
 
         return form.user_id
 
@@ -111,14 +108,11 @@ class FormRepository:
             created_at=existing_form.created_at,
         )
 
-        # Update in database
-        user_dict = self._form_to_db_dict(updated_form)
+        # Update in database using DTO
+        form_dict = form_to_db_dict(updated_form)
 
         with self.driver.session() as session:
-            upsert_users(
-                session,
-                [user_dict],
-            )
+            upsert_form(session, form_dict)
 
     def delete_by_user_id(self, user_id: UUID) -> None:
         """
@@ -129,33 +123,6 @@ class FormRepository:
         """
         with self.driver.session() as session:
             delete_user_form(session, str(user_id))
-
-    def _form_to_db_dict(self, form: Form) -> dict:  # Вынести в dto
-        """
-        Convert Form entity to database dictionary format.
-
-        Maps:
-        - parameters.room_count -> rooms
-        - parameters.roommates_count -> roommates
-        - parameters.budget -> budget
-        - Default: months = 12
-
-        Args:
-            form: Form entity
-
-        Returns:
-            dict: Database-compatible dictionary
-        """
-        params = form.parameters
-
-        return {
-            'id': str(form.user_id),
-            'name': params.name if params.name else f'User {form.user_id}',
-            'rooms': params.room_count,
-            'roommates': params.roommates_count,
-            'budget': params.budget,
-            'months': 12,  # Default value, not in Parameters entity
-        }
 
     def close(self):
         """Close the database driver."""
