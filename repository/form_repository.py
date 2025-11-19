@@ -65,9 +65,6 @@ class FormRepository:
             upsert_users(
                 session,
                 [user_dict],
-                caps=self.caps,
-                use_weights=self.use_weights,
-                weights=self.weights,
             )
 
         return form.user_id
@@ -121,9 +118,6 @@ class FormRepository:
             upsert_users(
                 session,
                 [user_dict],
-                caps=self.caps,
-                use_weights=self.use_weights,
-                weights=self.weights,
             )
 
     def delete_by_user_id(self, user_id: UUID) -> None:

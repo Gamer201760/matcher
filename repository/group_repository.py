@@ -256,10 +256,7 @@ class GroupRepository:
             success = add_user_to_group(
                 session,
                 str(user_id),
-                str(group_id),
-                caps=self.caps,
-                use_weights=self.use_weights,
-                weights=self.weights,
+                str(group_id)
             )
 
             if not success:
