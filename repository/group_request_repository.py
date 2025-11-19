@@ -46,7 +46,8 @@ class GroupRequestRepository:
 
         with self.driver.session() as session:
             # Create the request with our UUID stored as a property
-            create_join_request_with_id(session, request_id, str(user_id), str(group_id))
+            # Convert IDs to strings immediately for Neo4j
+            create_join_request_with_id(session, str(request_id), str(user_id), str(group_id))
 
         return request_id
 

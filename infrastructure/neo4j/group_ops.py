@@ -7,6 +7,7 @@ This module handles:
 - Group parameter calculations
 - Member addition and removal
 """
+
 from uuid import uuid4
 
 from recommendation import create_vector
@@ -22,135 +23,32 @@ from ..logging_utils import (
 logger = setup_logger('roommate_db', 'INFO')
 
 
-def add_user_to_group(
-    session, user_id, target_group_id, caps=None, use_weights=False, weights=None
-):
+def add_user_to_group(session, user_id, group_id):
     """
-    Add a user to an existing group, delete their old group, and update group parameters.
+    Create a MEMBER_OF relationship between a user and a group.
 
     Args:
         session: Neo4j session
-        user_id: ID of user to add
-        target_group_id: ID of group to join
-        caps: Normalization caps for vector creation
-        use_weights: Whether to use weighted vectors
-        weights: Parameter weights for group vector creation
-
-    Returns:
-        bool: True if successful, False otherwise
+        user_id: User ID
+        group_id: ID of group
     """
-    try:
-        # Get user's current group
-        current_group_query = """
-            MATCH (u:User {id: $user_id})-[:MEMBER_OF]->(g:Group)
-            RETURN g.id as current_group_id
-        """
-        result = session.run(current_group_query, user_id=user_id)
-        record = result.single()
-        current_group_id = record['current_group_id'] if record else None
+    add_query = """
+        MATCH (u:User {id: $user_id})
+        MATCH (g:Group {id: $group_id})
+        MERGE (u)-[:MEMBER_OF]->(g)
+        RETURN u.id as user_id, g.id as group_id
+    """
 
-        if not current_group_id:
-            logger.warning(f'User {user_id} is not a member of any group')
-            return False
+    log_neo4j_query(logger, add_query)
+    result = session.run(add_query, user_id=user_id, group_id=group_id)
+    record = result.single()
 
-        # Only proceed if user is not already in the target group
-        if current_group_id == target_group_id:
-            logger.info(
-                f'User {user_id} is already a member of group {target_group_id}'
-            )
-            return True
-
-        # Import here to avoid circular dependency
-        from .user_ops import get_user_parameters
-
-        # Get all users in the target group to calculate new parameters (from Parameter nodes)
-        target_members = get_group_member_parameters(session, target_group_id)
-
-        # Add the new user to the list
-        new_user_record = get_user_parameters(session, user_id)
-        if new_user_record:
-            target_members.append({'user_id': user_id, **new_user_record})
-
-        # Calculate new group parameters (average of all members)
-        if target_members:
-            new_group_params = {}
-            for param in PARAMETERS:
-                values = [member[param] for member in target_members if param in member]
-                if values:
-                    new_group_params[param] = sum(values) / len(values)
-
-            # Update group parameters and vector
-            group_values = {p: new_group_params.get(p, 0) for p in PARAMETERS}
-            weights = weights or GROUP_PARAMETER_WEIGHTS
-
-            new_vector = create_vector(
-                group_values,
-                PARAMETERS,
-                statistics=get_parameter_statistics(),
-                weights=weights if use_weights else None,
-            )
-
-            # Update the group in database
-            update_group_query = """
-                MATCH (g:Group {id: $target_group_id})
-                SET g.rooms = $rooms, g.roommates = $roommates,
-                    g.budget = $budget, g.months = $months,
-                    g.embedding = $embedding
-                WITH g
-                MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
-                SET gp.value = CASE gp.name
-                    WHEN 'rooms' THEN $rooms
-                    WHEN 'roommates' THEN $roommates
-                    WHEN 'budget' THEN $budget
-                    WHEN 'months' THEN $months
-                    ELSE gp.value
-                END
-            """
-            session.run(
-                update_group_query,
-                target_group_id=target_group_id,
-                rooms=new_group_params.get('rooms', 0),
-                roommates=new_group_params.get('roommates', 0),
-                budget=new_group_params.get('budget', 0),
-                months=new_group_params.get('months', 0),
-                embedding=new_vector,
-            )
-
-            # Move user to new group and delete old group with all its parameters
-            # CRITICAL: Must explicitly DELETE old MEMBER_OF relationship first
-            move_user_query = """
-                MATCH (u:User {id: $user_id})
-                MATCH (old_g:Group {id: $current_group_id})
-                MATCH (u)-[old_rel:MEMBER_OF]->(old_g)
-                DELETE old_rel
-                WITH u, old_g
-                MATCH (g:Group {id: $target_group_id})
-                MERGE (u)-[:MEMBER_OF]->(g)
-                WITH old_g
-                OPTIONAL MATCH (old_g)-[:HAS_PARAMETER]->(gp:GroupParameter)
-                DETACH DELETE gp, old_g
-            """
-            session.run(
-                move_user_query,
-                user_id=user_id,
-                target_group_id=target_group_id,
-                current_group_id=current_group_id,
-            )
-
-            logger.info(
-                f'✓ User {user_id} moved from group {current_group_id} to group {target_group_id}'
-            )
-            log_vector_operation(
-                logger, 'Updated group vector', len(new_vector), target_group_id
-            )
-            return True
-        else:
-            logger.warning(f'No members found in target group {target_group_id}')
-            return False
-
-    except Exception as e:
-        logger.error(f'Error adding user {user_id} to group {target_group_id}: {e}')
+    if not record:
+        logger.error(f'Failed to add user {user_id} to group {group_id}')
         return False
+
+    logger.info(f'✓ User {user_id} added to group {group_id}')
+    return True
 
 
 def remove_user_from_group(
@@ -338,6 +236,7 @@ def remove_user_from_group(
             )
 
         # Create new group and establish relationship in a single atomic query
+        # Set metadata fields with defaults for consistency
         create_new_group_query = """
             MATCH (u:User {id: $user_id})
             MERGE (g:Group {id: $new_group_id})
@@ -346,7 +245,18 @@ def remove_user_from_group(
                 g.roommates = $roommates,
                 g.budget = $budget,
                 g.months = $months,
-                g.embedding = $embedding
+                g.embedding = $embedding,
+                g.surname = '',
+                g.geo_lat = 0.0,
+                g.geo_lon = 0.0,
+                g.photos = [],
+                g.age = 0,
+                g.smoking = false,
+                g.alko = false,
+                g.pet = false,
+                g.sex = 1,
+                g.user_type = 1,
+                g.description = ''
             MERGE (u)-[:MEMBER_OF]->(g)
             WITH g
             UNWIND $param_list AS param
@@ -421,9 +331,21 @@ def get_group_info(session, group_id):
     parameters = {param['name']: param['value'] for param in record['parameters']}
     members = record['members']
 
+    # Include metadata fields in the return dict for proper DTO conversion
     return {
         'id': group['id'],
         'name': group['name'],
+        'surname': group.get('surname', ''),
+        'geo_lat': group.get('geo_lat', 0.0),
+        'geo_lon': group.get('geo_lon', 0.0),
+        'photos': group.get('photos', []),
+        'age': group.get('age', 0),
+        'smoking': group.get('smoking', False),
+        'alko': group.get('alko', False),
+        'pet': group.get('pet', False),
+        'sex': group.get('sex', 1),
+        'user_type': group.get('user_type', 1),
+        'description': group.get('description', ''),
         'parameters': parameters,
         'members': members,
         'member_count': len(members),
@@ -607,13 +529,12 @@ def update_group_parameters(
     """
     # Create new group vector
     group_values = {p: parameters_dict.get(p, 0) for p in PARAMETERS}
-    if use_weights:
-        new_vector = create_vector(
-            group_values,
-            PARAMETERS,
-            statistics=get_parameter_statistics(),
-            weights=weights if use_weights else None,
-        )
+    new_vector = create_vector(
+        group_values,
+        PARAMETERS,
+        statistics=get_parameter_statistics(),
+        weights=weights if use_weights else None,
+    )
 
     # Update group properties and GroupParameter nodes
     update_query = """
@@ -643,7 +564,104 @@ def update_group_parameters(
         embedding=new_vector,
     )
 
-    logger.info(f'✓ Updated parameters for group {group_id}')
+    logger.info(f'Updated parameters for group {group_id}')
+
+
+def create_empty_group(
+    session,
+    group_id,
+    group_name,
+    owner_id,
+    parameters_dict,
+    embedding,
+    use_weights=False,
+    weights=None,
+):
+    """
+    Create an empty group in the database without any members.
+
+    Args:
+        session: Neo4j session
+        group_id: Group ID (string)
+        group_name: Name of the group
+        parameters_dict: Dict with parameter values (rooms, roommates, budget, months)
+        embedding: Pre-computed embedding vector for the group
+        use_weights: Whether to use weighted vectors (for logging purposes)
+        weights: Parameter weights (for logging purposes)
+
+    Returns:
+        str: The created group_id
+    """
+    # Create parameter list for GroupParameter nodes
+    parameters_list = [
+        {'name': p, 'value': parameters_dict.get(p, 0)} for p in PARAMETERS
+    ]
+
+    # Create empty group query (no MEMBER_OF relationships)
+    # Set metadata fields with defaults for consistency with user nodes
+    create_group_query = """
+        MERGE (g:Group {id: $group_id})
+        SET g.name = $group_name,
+            g.rooms = $rooms,
+            g.owner_id = $owner_id,
+            g.roommates = $roommates,
+            g.budget = $budget,
+            g.months = $months,
+            g.embedding = $embedding,
+            g.surname = '',
+            g.geo_lat = 0.0,
+            g.geo_lon = 0.0,
+            g.photos = [],
+            g.age = 0,
+            g.smoking = false,
+            g.alko = false,
+            g.pet = false,
+            g.sex = 1,
+            g.user_type = 1,
+            g.description = ''
+        WITH g
+        UNWIND $param_list AS param
+        MERGE (gp:GroupParameter {groupId: $group_id, name: param.name})
+        SET gp.value = param.value
+        MERGE (g)-[:HAS_PARAMETER]->(gp)
+        WITH DISTINCT g
+        RETURN g.id as created_group_id
+    """
+
+    log_neo4j_query(
+        logger,
+        create_group_query,
+        group_id=group_id,
+        group_name=group_name,
+        param_list_count=len(parameters_list),
+    )
+
+    result = session.run(
+        create_group_query,
+        owner_id=owner_id,
+        group_id=group_id,
+        group_name=group_name,
+        rooms=parameters_dict.get('rooms', 0),
+        roommates=parameters_dict.get('roommates', 0),
+        budget=parameters_dict.get('budget', 0),
+        months=parameters_dict.get('months', 0),
+        embedding=embedding,
+        param_list=parameters_list,
+    )
+
+    record = result.single()
+    if not record:
+        raise RuntimeError(f'Failed to create group {group_id}')
+
+    logger.info(f'✓ Created empty group {group_id} with name "{group_name}"')
+    log_vector_operation(
+        logger,
+        'Created empty group vector',
+        len(embedding) if embedding else 0,
+        group_id,
+    )
+
+    return group_id
 
 
 def change_group_owner(session, group_id, new_owner_id):

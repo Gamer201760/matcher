@@ -18,7 +18,7 @@ from infrastructure.neo4j.connection import ensure_constraints_and_index, get_dr
 from repository.form_repository import FormRepository
 from repository.group_recommendation_repository import GroupRecommendationRepository
 from repository.group_repository import GroupRepository
-from repository.group_request_repository import GroupRequestRepository
+from repository.group_request_in_memory import InMemoryGroupRequestRepository
 from usecase.form import FormService
 from usecase.group import FindGroupService, GroupService
 from usecase.group_query import GroupQuery
@@ -40,7 +40,8 @@ def main():
     group_repo = GroupRepository(driver)
     recomend_repo = GroupRecommendationRepository(driver)
     form_repo = FormRepository(driver)
-    req_repo = GroupRequestRepository(driver)
+    # req_repo = GroupRequestRepository(driver)
+    req_repo = InMemoryGroupRequestRepository()
 
     form_serv = FormService(form_repo, group_repo)
     find_serv = FindGroupService(
@@ -79,4 +80,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.info('Goodbye!')

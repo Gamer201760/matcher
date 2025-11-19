@@ -4,6 +4,7 @@ Unit tests for GroupRequestRepository
 Tests join request lifecycle: creation, retrieval, listing, and deletion.
 """
 
+import os
 import unittest
 from uuid import uuid4
 
@@ -28,35 +29,42 @@ class TestGroupRequestRepository(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test environment once before all tests."""
+        # Create driver with credentials from environment variables
+        cls.driver = get_driver(
+            os.getenv('NEO4J_URI', 'bolt://localhost:7687'),
+            os.getenv('NEO4J_USERNAME', 'neo4j'),
+            os.getenv('NEO4J_PASSWORD', '123456789'),
+        )
+        
         # Check Neo4j connection
-        if not check_neo4j_connection():
+        if not check_neo4j_connection(cls.driver):
             raise RuntimeError("Neo4j database is not available")
+        
+        # Initialize database constraints and indexes
+        with cls.driver.session() as session:
+            ensure_constraints_and_index(session, dims=4)
 
-        # Initialize database
-        with get_driver() as driver:
-            with driver.session() as session:
-                ensure_constraints_and_index(session, dims=4)
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up after all tests."""
+        if hasattr(cls, 'driver'):
+            cls.driver.close()
 
     def setUp(self):
         """Set up before each test."""
         # Clear database before each test
-        with get_driver() as driver:
-            with driver.session() as session:
-                clear_users(session)
+        with self.driver.session() as session:
+            clear_users(session)
 
-        # Create repository instances
-        self.repo = GroupRequestRepository()
-        self.form_repo = FormRepository()
-        self.group_repo = GroupRepository()
+        # Create repository instances with shared driver
+        self.repo = GroupRequestRepository(self.driver)
+        self.form_repo = FormRepository(self.driver)
+        self.group_repo = GroupRepository(self.driver)
 
     def tearDown(self):
         """Clean up after each test."""
-        if hasattr(self, 'repo'):
-            self.repo.close()
-        if hasattr(self, 'form_repo'):
-            self.form_repo.close()
-        if hasattr(self, 'group_repo'):
-            self.group_repo.close()
+        # Note: Don't close the driver here, it's shared across tests
+        pass
 
     def _create_test_form(self, user_id=None) -> Form:
         """Helper to create a test form."""

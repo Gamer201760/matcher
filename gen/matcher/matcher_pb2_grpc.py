@@ -245,6 +245,11 @@ class GroupQueryServiceStub(object):
                 request_serializer=matcher_dot_matcher__pb2.GetGroupRequest.SerializeToString,
                 response_deserializer=matcher_dot_matcher__pb2.Group.FromString,
                 _registered_method=True)
+        self.GetGroupByUser = channel.unary_unary(
+                '/matcher.GroupQueryService/GetGroupByUser',
+                request_serializer=matcher_dot_matcher__pb2.GetGroupByUserRequest.SerializeToString,
+                response_deserializer=matcher_dot_matcher__pb2.Group.FromString,
+                _registered_method=True)
         self.DeleteGroup = channel.unary_unary(
                 '/matcher.GroupQueryService/DeleteGroup',
                 request_serializer=matcher_dot_matcher__pb2.DeleteGroupRequest.SerializeToString,
@@ -262,6 +267,12 @@ class GroupQueryServiceServicer(object):
     """
 
     def GetGroup(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetGroupByUser(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -285,6 +296,11 @@ def add_GroupQueryServiceServicer_to_server(servicer, server):
             'GetGroup': grpc.unary_unary_rpc_method_handler(
                     servicer.GetGroup,
                     request_deserializer=matcher_dot_matcher__pb2.GetGroupRequest.FromString,
+                    response_serializer=matcher_dot_matcher__pb2.Group.SerializeToString,
+            ),
+            'GetGroupByUser': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetGroupByUser,
+                    request_deserializer=matcher_dot_matcher__pb2.GetGroupByUserRequest.FromString,
                     response_serializer=matcher_dot_matcher__pb2.Group.SerializeToString,
             ),
             'DeleteGroup': grpc.unary_unary_rpc_method_handler(
@@ -325,6 +341,33 @@ class GroupQueryService(object):
             target,
             '/matcher.GroupQueryService/GetGroup',
             matcher_dot_matcher__pb2.GetGroupRequest.SerializeToString,
+            matcher_dot_matcher__pb2.Group.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetGroupByUser(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/matcher.GroupQueryService/GetGroupByUser',
+            matcher_dot_matcher__pb2.GetGroupByUserRequest.SerializeToString,
             matcher_dot_matcher__pb2.Group.FromString,
             options,
             channel_credentials,
@@ -476,10 +519,10 @@ class GroupServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetReqeusts = channel.unary_unary(
-                '/matcher.GroupService/GetReqeusts',
-                request_serializer=matcher_dot_matcher__pb2.GetReqeustsRequest.SerializeToString,
-                response_deserializer=matcher_dot_matcher__pb2.GetReqeustsResponse.FromString,
+        self.GetRequests = channel.unary_unary(
+                '/matcher.GroupService/GetRequests',
+                request_serializer=matcher_dot_matcher__pb2.GetRequestsRequest.SerializeToString,
+                response_deserializer=matcher_dot_matcher__pb2.GetRequestsResponse.FromString,
                 _registered_method=True)
         self.SendJoinRequest = channel.unary_unary(
                 '/matcher.GroupService/SendJoinRequest',
@@ -502,7 +545,7 @@ class GroupServiceServicer(object):
     """Group Service
     """
 
-    def GetReqeusts(self, request, context):
+    def GetRequests(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -529,10 +572,10 @@ class GroupServiceServicer(object):
 
 def add_GroupServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'GetReqeusts': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetReqeusts,
-                    request_deserializer=matcher_dot_matcher__pb2.GetReqeustsRequest.FromString,
-                    response_serializer=matcher_dot_matcher__pb2.GetReqeustsResponse.SerializeToString,
+            'GetRequests': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRequests,
+                    request_deserializer=matcher_dot_matcher__pb2.GetRequestsRequest.FromString,
+                    response_serializer=matcher_dot_matcher__pb2.GetRequestsResponse.SerializeToString,
             ),
             'SendJoinRequest': grpc.unary_unary_rpc_method_handler(
                     servicer.SendJoinRequest,
@@ -562,7 +605,7 @@ class GroupService(object):
     """
 
     @staticmethod
-    def GetReqeusts(request,
+    def GetRequests(request,
             target,
             options=(),
             channel_credentials=None,
@@ -575,9 +618,9 @@ class GroupService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/matcher.GroupService/GetReqeusts',
-            matcher_dot_matcher__pb2.GetReqeustsRequest.SerializeToString,
-            matcher_dot_matcher__pb2.GetReqeustsResponse.FromString,
+            '/matcher.GroupService/GetRequests',
+            matcher_dot_matcher__pb2.GetRequestsRequest.SerializeToString,
+            matcher_dot_matcher__pb2.GetRequestsResponse.FromString,
             options,
             channel_credentials,
             insecure,

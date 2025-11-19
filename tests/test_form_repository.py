@@ -79,6 +79,7 @@ def test_form():
             budget=50000,
             room_count=2,
             roommates_count=1,
+            month=12,
             age=25,
             smoking=False,
             alko=False,
@@ -160,6 +161,7 @@ def test_update_parameters(form_repo, test_form):
         budget=75000,  # Changed
         room_count=3,  # Changed
         roommates_count=2,  # Changed
+        month=18,
         age=26,
         smoking=False,
         alko=True,
@@ -192,6 +194,7 @@ def test_update_nonexistent_form(form_repo):
         budget=50000,
         room_count=2,
         roommates_count=1,
+        month=12,
         age=25,
         smoking=False,
         alko=False,

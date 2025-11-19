@@ -213,12 +213,12 @@ def create_join_request_with_id(session, request_id, user_id, group_id):
 
     Args:
         session: Neo4j session
-        request_id: UUID for the request
-        user_id: User ID sending the request
-        group_id: Target group ID
+        request_id: String UUID for the request
+        user_id: String User ID sending the request
+        group_id: String Target group ID
 
     Note: Neo4j doesn't allow setting relationship IDs directly, so we store
-    the UUID as a property instead.
+    the UUID as a property instead. All IDs should be passed as strings.
     """
     request_query = """
         MATCH (u:User {id: $user_id})
@@ -227,7 +227,7 @@ def create_join_request_with_id(session, request_id, user_id, group_id):
         RETURN r
     """
     session.run(
-        request_query, request_id=str(request_id), user_id=user_id, group_id=group_id
+        request_query, request_id=request_id, user_id=user_id, group_id=group_id
     )
     logger.info(
         f'✓ Created join request {request_id} from user {user_id} to group {group_id}'

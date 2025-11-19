@@ -6,17 +6,17 @@ This module handles:
 - User parameter management
 - Form data retrieval
 """
+
 from uuid import uuid4
 
-from ..config import PARAMETERS
+from recommendation import create_vector
+
+from ..config import GROUP_PARAMETER_WEIGHTS, PARAMETERS, get_parameter_statistics
 from ..logging_utils import (
     log_database_stats,
     log_neo4j_query,
-    log_vector_operation,
     setup_logger,
 )
-from ..config import get_parameter_statistics, GROUP_PARAMETER_WEIGHTS
-from recommendation import create_vector
 
 # Setup logger
 logger = setup_logger('roommate_db', 'INFO')
@@ -54,91 +54,95 @@ def clear_users(session):
     )
 
 
+def upsert_form(session, form: dict):
+    """
+    Insert or update a single form and its parameters.
+    
+    Args:
+        session: Neo4j session
+        form: Dictionary containing form data ready for database insertion
+              Expected to have 'id' (user_id), 'form_id', and all parameter fields
+    """
+    logger.info(f'Starting upsert of form {form.get("form_id")} for user {form.get("id")}')
+    
+    # Single query for one form with all metadata fields
+    upsert_query = """
+        MERGE (u:User {id: $id})
+        SET u.form_id = $form_id,
+            u.user_id = $user_id,
+            u.name = $name,
+            u.surname = $surname,
+            u.geo_lat = $geo_lat,
+            u.geo_lon = $geo_lon,
+            u.photos = $photos,
+            u.age = $age,
+            u.smoking = $smoking,
+            u.alko = $alko,
+            u.pet = $pet,
+            u.sex = $sex,
+            u.user_type = $user_type,
+            u.description = $description,
+            u.active = $active
+        WITH u
+        UNWIND $param_list AS param
+        MERGE (p:Parameter {userId: $id, name: param.name})
+        SET p.value = param.value
+        MERGE (u)-[:HAS_PARAMETER]->(p)
+        RETURN u.id as created_id
+    """
+    
+    log_neo4j_query(logger, upsert_query)
+    result = session.run(upsert_query, **form)
+    
+    created = result.single()
+    if created:
+        logger.info(f'✓ Upserted form {form.get("form_id")} for user {created["created_id"]} successfully')
+    else:
+        logger.warning(f'Failed to upsert form {form.get("form_id")}')
+
+
+# Backward compatibility: Allow bulk operations for CLI
 def upsert_users(session, users, caps=None, use_weights=False, weights=None):
-    """Insert or update users along with their single-member groups and parameters."""
-    weights = weights or GROUP_PARAMETER_WEIGHTS
+    """
+    Bulk insert or update users (for CLI and testing purposes).
     
-    total_users = len(users)
-    logger.info(f'Starting bulk upsert of {total_users} users')
-    logger.debug(f'Using weights: {use_weights}')
+    This is a wrapper around upsert_form for backward compatibility.
     
-    # Process in batches to avoid overwhelming Neo4j
-    BATCH_SIZE = 100  # Process 100 users at a time
-    total_created = 0
+    Args:
+        session: Neo4j session
+        users: List of user dictionaries
+        caps: Deprecated parameter (kept for compatibility)
+        use_weights: Deprecated parameter (kept for compatibility)
+        weights: Deprecated parameter (kept for compatibility)
+    """
+    logger.info(f'Starting bulk upsert of {len(users)} users')
     
-    for batch_num, i in enumerate(range(0, total_users, BATCH_SIZE), 1):
-        batch = users[i:i + BATCH_SIZE]
-        batch_size = len(batch)
-        
-        logger.info(f'Processing batch {batch_num}/{(total_users + BATCH_SIZE - 1) // BATCH_SIZE}: users {i+1}-{i+batch_size} of {total_users}')
-        
-        rows = []
-        for u in batch:
-            # Single-member group id and name
-            group_id = str(uuid4())
-            group_name = f"Group of {u.get('name') or u['id']}"
+    for user in users:
+        # Prepare each user as a form dict
+        param_list = [{'name': p, 'value': user.get(p)} for p in PARAMETERS]
+        form_dict = {
+            'id': user['id'],
+            'form_id': user.get('id'),  # For backward compatibility, form_id = id
+            'user_id': user.get('id'),
+            'name': user.get('name', ''),
+            'surname': user.get('surname', ''),
+            'geo_lat': user.get('geo_lat', 0.0),
+            'geo_lon': user.get('geo_lon', 0.0),
+            'photos': user.get('photos', []),
+            'age': user.get('age', 0),
+            'smoking': user.get('smoking', False),
+            'alko': user.get('alko', False),
+            'pet': user.get('pet', False),
+            'sex': user.get('sex', 1),
+            'user_type': user.get('user_type', 1),
+            'description': user.get('description', ''),
+            'active': user.get('active', True),
+            'param_list': param_list,
+        }
+        upsert_form(session, form_dict)
+    
+    logger.info(f'✓ Upserted {len(users)} users successfully')
 
-            # Prepare parameter list as separate nodes (user and group)
-            param_list = [{'name': p, 'value': u.get(p)} for p in PARAMETERS]
-
-            group_values = {p: u.get(p) for p in PARAMETERS}
-            gvec = create_vector(
-                group_values, 
-                PARAMETERS, 
-                statistics=get_parameter_statistics(),
-                weights=weights if use_weights else None
-            )
-
-            rows.append(
-                {
-                    'user': {
-                        'id': u['id'],
-                        'name': u.get('name'),
-                        'parameters': param_list,
-                    },
-                    'group': {
-                        'id': group_id,
-                        'name': group_name,
-                        'embedding': gvec,
-                        'parameters': param_list,
-                    },
-                }
-            )
-
-        upsert_query = """
-            UNWIND $rows AS row
-            MERGE (u:User {id: row.user.id})
-            SET u.name = row.user.name
-            WITH u, row
-            UNWIND row.user.parameters AS param
-            MERGE (p:Parameter {userId: row.user.id, name: param.name})
-            SET p.value = param.value
-            MERGE (u)-[:HAS_PARAMETER]->(p)
-            WITH u, row
-            MERGE (g:Group {id: row.group.id})
-            SET g.name = row.group.name,
-                g.embedding = row.group.embedding
-            MERGE (u)-[:MEMBER_OF]->(g)
-            WITH g, row
-            UNWIND row.group.parameters AS gparam
-            MERGE (gp:GroupParameter {groupId: row.group.id, name: gparam.name})
-            SET gp.value = gparam.value
-            MERGE (g)-[:HAS_PARAMETER]->(gp)
-            WITH DISTINCT g
-            RETURN count(g) as created
-        """
-
-        log_neo4j_query(logger, upsert_query, rows_count=len(rows))
-        result = session.run(upsert_query, rows=rows)
-
-        batch_count = result.single()['created']
-        total_created += batch_count
-        logger.info(f'✓ Batch {batch_num} complete: {batch_count} groups created ({total_created}/{total_users} total)')
-
-    logger.info(f'✓ All {total_created} groups upserted successfully (and linked to users)')
-    log_database_stats(
-        logger, {'groups_created': total_created, 'group_vectors_generated': total_users}
-    )
 
 
 def get_user_form(session, user_id):
@@ -150,11 +154,25 @@ def get_user_form(session, user_id):
         user_id: User ID
 
     Returns:
-        dict: User form data with id, name, and parameters, or None if not found
+        dict: User form data with id, name, metadata fields, and parameters, or None if not found
     """
     user_query = """
         MATCH (u:User {id: $user_id})
-        RETURN u.id as id, u.name as name
+        RETURN u.id as id,
+               u.form_id as form_id,
+               u.user_id as user_id,
+               u.name as name,
+               u.surname as surname,
+               u.geo_lat as geo_lat,
+               u.geo_lon as geo_lon,
+               u.photos as photos,
+               u.age as age,
+               u.smoking as smoking,
+               u.alko as alko,
+               u.pet as pet,
+               u.sex as sex,
+               u.user_type as user_type,
+               u.description as description
     """
     result = session.run(user_query, user_id=user_id)
     record = result.single()
@@ -162,15 +180,35 @@ def get_user_form(session, user_id):
     if not record:
         return None
 
+    # Convert record to dict with all metadata fields
+    user_data = {
+        'id': record['id'],  # User ID (for backward compatibility)
+        'form_id': record.get('form_id'),  # Form ID
+        'user_id': record.get('user_id'),  # User ID (explicit)
+        'name': record['name'],
+        'surname': record.get('surname', ''),
+        'geo_lat': record.get('geo_lat', 0.0),
+        'geo_lon': record.get('geo_lon', 0.0),
+        'photos': record.get('photos', []),
+        'age': record.get('age', 0),
+        'smoking': record.get('smoking', False),
+        'alko': record.get('alko', False),
+        'pet': record.get('pet', False),
+        'sex': record.get('sex', 1),
+        'user_type': record.get('user_type', 1),
+        'description': record.get('description', ''),
+    }
+    
+    # Get parameter node values (rooms, roommates, budget, months)
     params = get_user_parameters(session, user_id)
 
-    return {'id': record['id'], 'name': record['name'], **params}
+    return {**user_data, **params}
 
 
 def delete_user_form(session, user_id):
     """
     Delete a user and all associated data (parameters, group, relationships).
-    
+
     Handles two scenarios:
     1. User in multi-member group: Remove user and update remaining group
     2. User in single-member group: Delete both user and group with all parameters
@@ -181,7 +219,7 @@ def delete_user_form(session, user_id):
     """
     # Import here to avoid circular dependency
     from ..config import PARAMETERS
-    
+
     # Step 1: Check if user is in a multi-member group
     check_group_query = """
         MATCH (u:User {id: $user_id})-[:MEMBER_OF]->(g:Group)
@@ -190,7 +228,7 @@ def delete_user_form(session, user_id):
     """
     result = session.run(check_group_query, user_id=user_id)
     record = result.single()
-    
+
     if not record:
         logger.warning(f'User {user_id} is not in any group, deleting user only')
         # Just delete the user and their parameters
@@ -199,7 +237,7 @@ def delete_user_form(session, user_id):
             DETACH DELETE p
         """
         session.run(delete_params_query, user_id=user_id)
-        
+
         delete_user_query = """
             MATCH (u:User {id: $user_id})
             DETACH DELETE u
@@ -207,43 +245,48 @@ def delete_user_form(session, user_id):
         session.run(delete_user_query, user_id=user_id)
         logger.info(f'✓ Deleted user {user_id} (no group found)')
         return
-    
+
     group_id = record['group_id']
     member_count = record['member_count']
-    
+
     if member_count > 1:
         # Multi-member group: Remove user and update group
-        logger.debug(f'User {user_id} is in multi-member group {group_id} with {member_count} members')
-        
+        logger.debug(
+            f'User {user_id} is in multi-member group {group_id} with {member_count} members'
+        )
+
         # Step 2: Delete the MEMBER_OF relationship
         delete_relationship_query = """
             MATCH (u:User {id: $user_id})-[r:MEMBER_OF]->(g:Group {id: $group_id})
             DELETE r
         """
         session.run(delete_relationship_query, user_id=user_id, group_id=group_id)
-        
+
         # Step 3: Get remaining group members and update group
         from .group_ops import get_group_member_parameters
+
         remaining_members = get_group_member_parameters(session, group_id)
-        
+
         if remaining_members:
             # Calculate new averaged parameters for the remaining group
             new_group_params = {}
             for param in PARAMETERS:
-                values = [member[param] for member in remaining_members if param in member]
+                values = [
+                    member[param] for member in remaining_members if param in member
+                ]
                 if values:
                     new_group_params[param] = sum(values) / len(values)
-            
+
             # Create new group vector
             weights = GROUP_PARAMETER_WEIGHTS
             group_values = {p: new_group_params.get(p, 0) for p in PARAMETERS}
             new_vector = create_vector(
-                group_values, 
-                PARAMETERS, 
+                group_values,
+                PARAMETERS,
                 statistics=get_parameter_statistics(),
-                weights=weights
+                weights=weights,
             )
-            
+
             # Update group properties and GroupParameter nodes
             update_group_query = """
                 MATCH (g:Group {id: $group_id})
@@ -282,14 +325,14 @@ def delete_user_form(session, user_id):
         """
         session.run(delete_group_query, user_id=user_id)
         logger.info(f'✓ Deleted group {group_id} and its parameters')
-    
+
     # Step 4: Delete user's parameters
     delete_params_query = """
         MATCH (u:User {id: $user_id})-[:HAS_PARAMETER]->(p:Parameter)
         DETACH DELETE p
     """
     session.run(delete_params_query, user_id=user_id)
-    
+
     # Step 5: Delete user
     delete_user_query = """
         MATCH (u:User {id: $user_id})

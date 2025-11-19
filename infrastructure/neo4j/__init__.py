@@ -27,6 +27,7 @@ from .group_ops import (
     add_user_to_group,
     change_group_owner,
     count_group_members,
+    create_empty_group,
     delete_group,
     delete_group_by_owner,
     get_group_by_owner_id,
@@ -62,7 +63,8 @@ from .user_ops import (
     delete_user_form,
     get_user_form,
     get_user_parameters,
-    upsert_users,
+    upsert_form,
+    upsert_users,  # Kept for CLI backward compatibility
 )
 
 __all__ = [
@@ -73,7 +75,8 @@ __all__ = [
     'check_neo4j_connection',
     # User ops
     'clear_users',
-    'upsert_users',
+    'upsert_form',
+    'upsert_users',  # For CLI backward compatibility
     'get_user_form',
     'delete_user_form',
     'get_user_parameters',
@@ -87,6 +90,7 @@ __all__ = [
     'get_group_by_owner_id',
     'list_group_members',
     'count_group_members',
+    'create_empty_group',
     'update_group_parameters',
     'change_group_owner',
     'delete_group',

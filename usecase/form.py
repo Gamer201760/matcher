@@ -1,10 +1,14 @@
-from uuid import UUID, uuid4
+from logging import getLogger
+from uuid import UUID
 
 from entity.errors import DomainError, NotFoundError
 from entity.form import Form
+from entity.group import Group
 from entity.parameters import Parameters
 
 from .interface import FormRepository, GroupRepository
+
+logger = getLogger(__name__)
 
 
 class FormService:
@@ -36,16 +40,16 @@ class FormService:
             )
         )
 
-        # group_id = self._group_repo.create(
-        #     Group(
-        #         max_users=parameters.roommates_count + 1,
-        #         owner_id=user_id,
-        #         parameters=parameters,
-        #     )
-        # )
-        #
-        # self._group_repo.add_user(user_id=user_id, group_id=group_id)
-        # self._group_repo.calculate_params(group_id)
+        group_id = self._group_repo.create(
+            Group(
+                max_users=parameters.roommates_count + 1,
+                owner_id=user_id,
+                parameters=parameters,
+            )
+        )
+
+        self._group_repo.add_user(user_id=user_id, group_id=group_id)
+        self._group_repo.calculate_params(group_id)
 
     def get_by_user(self, user_id: UUID) -> Form:
         """
@@ -71,14 +75,16 @@ class FormService:
         """
         try:
             # TODO: начало транзакции
+            logger.debug('start update')
             self._form_repo.update_parameters_by_user_id(user_id, parameters)
+
+            logger.debug('update')
             group = self._group_repo.get_by_owner_id(user_id)
-            #? What if user is not owner of the group?
-            #* raise not found error
+            logger.debug(f'group {group}')
+
             if self._group_repo.count_members(group.id) == 1:
                 self._group_repo.update_parameters(group.id, parameters)
                 self._group_repo.calculate_params(group.id)
-            # TODO: конец транзакции
 
         except NotFoundError:
             raise DomainError(
@@ -98,7 +104,7 @@ class FormService:
 
         # if len(members) == 0:
         #     raise DomainError('Количество участников группы равно 0')
-        #* Never happens
+        # * Never happens
 
         if len(members) > 1:
             self._group_repo.rm_user(user_id, group.id)

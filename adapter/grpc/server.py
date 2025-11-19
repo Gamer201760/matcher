@@ -1,3 +1,4 @@
+from logging import getLogger
 from uuid import UUID
 
 import grpc
@@ -20,6 +21,8 @@ from .mapper import (
     to_proto_group_with_score,
     to_proto_request,
 )
+
+logger = getLogger(__name__)
 
 
 class FormServicer(pb2_grpc.FormServiceServicer):
@@ -53,6 +56,7 @@ class FormServicer(pb2_grpc.FormServiceServicer):
         try:
             user_id = UUID(request.user_id)
             parameters = from_proto_parameters(request.parameters)
+            logger.debug(f'update request {parameters}')
             self.service.update(user_id, parameters)
             return Empty()
         except NotFoundError as e:
@@ -60,6 +64,7 @@ class FormServicer(pb2_grpc.FormServiceServicer):
         except DomainError as e:
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
+            logger.error(str(e), exc_info=e)
             context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
 
     def DeleteForm(self, request, context):
@@ -83,6 +88,15 @@ class GroupQueryServicer(pb2_grpc.GroupQueryServiceServicer):
         try:
             group_id = UUID(request.group_id)
             group = self.query.get(group_id)
+            return to_proto_group(group)
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+    def GetGroupByUser(self, request, context):
+        try:
+            group = self.query.get_by_user_id(UUID(request.user_id))
             return to_proto_group(group)
         except NotFoundError as e:
             context.abort(grpc.StatusCode.NOT_FOUND, str(e))
@@ -130,6 +144,7 @@ class FindGroupServicer(pb2_grpc.FindGroupServiceServicer):
         except DomainError as e:
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
+            logger.error(str(e), exc_info=e)
             context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
 
 
@@ -137,11 +152,11 @@ class GroupServicer(pb2_grpc.GroupServiceServicer):
     def __init__(self, service: GroupService):
         self.service = service
 
-    def GetReqeusts(self, request: pb2.GetReqeustsRequest, context):
+    def GetReqeusts(self, request: pb2.GetRequestsRequest, context):
         try:
             group_id = UUID(request.group_id)
             requests = self.service.get_requests(group_id)
-            return pb2.GetReqeustsResponse(
+            return pb2.GetRequestsResponse(
                 requests=[to_proto_request(r) for r in requests]
             )
         except NotFoundError as e:

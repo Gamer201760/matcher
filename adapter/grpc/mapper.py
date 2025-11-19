@@ -60,6 +60,7 @@ def timestamp_to_datetime(timestamp: Timestamp) -> datetime:
 
 
 def to_proto_parameters(params: Parameters) -> pb2.Parameters:
+    # TODO: check why store in float?
     return pb2.Parameters(
         name=params.name,
         surname=params.surname,
@@ -76,6 +77,7 @@ def to_proto_parameters(params: Parameters) -> pb2.Parameters:
         sex=to_proto_sex(params.sex),
         user_type=to_proto_user_type(params.user_type),
         description=params.description,
+        address=params.address,
     )
 
 
@@ -96,6 +98,7 @@ def from_proto_parameters(proto: pb2.Parameters) -> Parameters:
         sex=from_proto_sex(proto.sex),
         user_type=from_proto_user_type(proto.user_type),
         description=proto.description,
+        address=proto.address,
     )
 
 
