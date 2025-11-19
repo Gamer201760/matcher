@@ -113,6 +113,7 @@ def sample_parameters():
             name=name,
             surname='Test',
             geo=Point(55.7558, 37.6173),  # Moscow
+            address='Test Address',
             photos=[],
             budget=budget,
             room_count=rooms,

@@ -152,7 +152,7 @@ class GroupServicer(pb2_grpc.GroupServiceServicer):
     def __init__(self, service: GroupService):
         self.service = service
 
-    def GetReqeusts(self, request: pb2.GetRequestsRequest, context):
+    def GetRequests(self, request: pb2.GetRequestsRequest, context):
         try:
             group_id = UUID(request.group_id)
             requests = self.service.get_requests(group_id)

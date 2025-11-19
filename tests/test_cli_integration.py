@@ -77,7 +77,7 @@ class TestUsecaseUUIDCompatibility(unittest.TestCase):
         test_uuid = uuid4()
         test_params = Parameters(
             name='Test', surname='User', geo=Point(lat=55.7558, lon=37.6173),
-            photos=[], budget=15000, room_count=2, roommates_count=1, month=12,
+            address='Test Address', photos=[], budget=15000, room_count=2, roommates_count=1, month=12,
             age=25, smoking=False, alko=False, pet=False, sex=Sex.MALE,
             user_type=UserType.WORKER, description='Test'
         )

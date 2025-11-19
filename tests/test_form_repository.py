@@ -75,6 +75,7 @@ def test_form():
             name='Test User',
             surname='Test Surname',
             geo=Point(55.7558, 37.6173),  # Moscow
+            address='Test Address',
             photos=['photo1.jpg', 'photo2.jpg'],
             budget=50000,
             room_count=2,
@@ -157,6 +158,7 @@ def test_update_parameters(form_repo, test_form):
         name='Updated User',
         surname='Updated Surname',
         geo=Point(55.7558, 37.6173),
+        address='Updated Address',
         photos=[],
         budget=75000,  # Changed
         room_count=3,  # Changed
@@ -190,6 +192,7 @@ def test_update_nonexistent_form(form_repo):
         name='Test',
         surname='Test',
         geo=Point(0.0, 0.0),
+        address='',
         photos=[],
         budget=50000,
         room_count=2,

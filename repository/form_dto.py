@@ -89,6 +89,7 @@ def parameters_to_db_dict(parameters: Parameters, include_id: str = None) -> dic
     db_dict['surname'] = parameters.surname
     db_dict['geo_lat'] = parameters.geo.lat
     db_dict['geo_lon'] = parameters.geo.lon
+    db_dict['address'] = parameters.address
     db_dict['photos'] = parameters.photos  # Will be stored as list/json
     db_dict['age'] = parameters.age
     db_dict['smoking'] = parameters.smoking
@@ -130,6 +131,7 @@ def db_dict_to_parameters(db_dict: dict) -> Parameters:
 
     name = str(db_dict.get('name', ''))
     surname = str(db_dict.get('surname', ''))
+    address = str(db_dict.get('address', ''))
     photos = db_dict.get('photos', [])
 
     smoking = bool(db_dict.get('smoking', False))
@@ -146,6 +148,7 @@ def db_dict_to_parameters(db_dict: dict) -> Parameters:
         name=name,
         surname=surname,
         geo=geo,
+        address=address,
         photos=photos,
         budget=budget,
         room_count=room_count,

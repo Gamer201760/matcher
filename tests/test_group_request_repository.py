@@ -75,6 +75,7 @@ class TestGroupRequestRepository(unittest.TestCase):
             name=f"User {user_id}",
             surname="Test",
             geo=Point(55.7558, 37.6173),
+            address="Test Address",
             photos=[],
             budget=50000,
             room_count=2,
