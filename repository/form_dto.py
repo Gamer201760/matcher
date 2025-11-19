@@ -136,17 +136,9 @@ def db_dict_to_parameters(db_dict: dict) -> Parameters:
     alko = bool(db_dict.get('alko', False))
     pet = bool(db_dict.get('pet', False))
 
-    sex_value = db_dict.get('sex', Sex.MALE.value)
-    try:
-        sex = Sex(int(sex_value))
-    except (ValueError, TypeError):
-        sex = Sex.MALE
+    sex = Sex(int(db_dict.get('sex', Sex.MALE.value)))
 
-    user_type_value = db_dict.get('user_type', UserType.STUDENT.value)
-    try:
-        user_type = UserType(int(user_type_value))
-    except (ValueError, TypeError):
-        user_type = UserType.STUDENT
+    user_type = UserType(int(db_dict.get('user_type', UserType.STUDENT.value)))
 
     description = str(db_dict.get('description', ''))
 
