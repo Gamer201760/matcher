@@ -54,98 +54,39 @@ def clear_users(session):
     )
 
 
-def upsert_users(session, users, caps=None, use_weights=False, weights=None):
-    """Insert or update users along with their single-member groups and parameters."""
-    weights = weights or GROUP_PARAMETER_WEIGHTS
+def upsert_users(session, users):
+    """Insert or update users and their parameters."""
+    
+    logger.info(f'Starting upsert of {len(users)} users')
+    
+    rows = []
+    for user in users:
+        param_list = [{'name': p, 'value': user.get(p)} for p in PARAMETERS]
+        rows.append({
+            'id': user['id'],
+            'name': user.get('name'),
+            'parameters': param_list,
+        })
+    
+    # Single query for ALL users
+    upsert_query = """
+        UNWIND $rows AS row
+        MERGE (u:User {id: row.id})
+        SET u.name = row.name
+        WITH u, row
+        UNWIND row.parameters AS param
+        MERGE (p:Parameter {userId: row.id, name: param.name})
+        SET p.value = param.value
+        MERGE (u)-[:HAS_PARAMETER]->(p)
+        RETURN count(DISTINCT u) as created
+    """
+    
+    log_neo4j_query(logger, upsert_query, rows_count=len(rows))
+    result = session.run(upsert_query, rows=rows)
+    
+    user_count = result.single()['created']
+    logger.info(f'✓ Upserted {user_count} users successfully')
 
-    total_users = len(users)
-    logger.info(f'Starting bulk upsert of {total_users} users')
-    logger.debug(f'Using weights: {use_weights}')
-
-    # Process in batches to avoid overwhelming Neo4j
-    BATCH_SIZE = 100  # Process 100 users at a time
-    total_created = 0
-
-    for batch_num, i in enumerate(range(0, total_users, BATCH_SIZE), 1):
-        batch = users[i : i + BATCH_SIZE]
-        batch_size = len(batch)
-
-        logger.info(
-            f'Processing batch {batch_num}/{(total_users + BATCH_SIZE - 1) // BATCH_SIZE}: users {i + 1}-{i + batch_size} of {total_users}'
-        )
-
-        rows = []
-        for u in batch:
-            # Single-member group id and name
-            group_id = str(uuid4())
-            group_name = f'Group of {u.get("name") or u["id"]}'
-
-            # Prepare parameter list as separate nodes (user and group)
-            param_list = [{'name': p, 'value': u.get(p)} for p in PARAMETERS]
-
-            group_values = {p: u.get(p) for p in PARAMETERS}
-            gvec = create_vector(
-                group_values,
-                PARAMETERS,
-                statistics=get_parameter_statistics(),
-                weights=weights if use_weights else None,
-            )
-
-            rows.append(
-                {
-                    'user': {
-                        'id': u['id'],
-                        'name': u.get('name'),
-                        'parameters': param_list,
-                    },
-                    'group': {
-                        'id': group_id,
-                        'name': group_name,
-                        'embedding': gvec,
-                        'parameters': param_list,
-                    },
-                }
-            )
-
-        upsert_query = """
-            UNWIND $rows AS row
-            MERGE (u:User {id: row.user.id})
-            SET u.name = row.user.name
-            WITH u, row
-            UNWIND row.user.parameters AS param
-            MERGE (p:Parameter {userId: row.user.id, name: param.name})
-            SET p.value = param.value
-            MERGE (u)-[:HAS_PARAMETER]->(p)
-            WITH u, row
-            MERGE (g:Group {id: row.group.id})
-            SET g.name = row.group.name,
-                g.embedding = row.group.embedding
-            MERGE (u)-[:MEMBER_OF]->(g)
-            WITH g, row
-            UNWIND row.group.parameters AS gparam
-            MERGE (gp:GroupParameter {groupId: row.group.id, name: gparam.name})
-            SET gp.value = gparam.value
-            MERGE (g)-[:HAS_PARAMETER]->(gp)
-            WITH DISTINCT g
-            RETURN count(g) as created
-        """
-
-        log_neo4j_query(logger, upsert_query, rows_count=len(rows))
-        result = session.run(upsert_query, rows=rows)
-
-        batch_count = result.single()['created']
-        total_created += batch_count
-        logger.info(
-            f'✓ Batch {batch_num} complete: {batch_count} groups created ({total_created}/{total_users} total)'
-        )
-
-    logger.info(
-        f'✓ All {total_created} groups upserted successfully (and linked to users)'
-    )
-    log_database_stats(
-        logger,
-        {'groups_created': total_created, 'group_vectors_generated': total_users},
-    )
 
 
 def get_user_form(session, user_id):
