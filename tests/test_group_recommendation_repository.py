@@ -41,7 +41,8 @@ class TestGroupRecommendationRepository(unittest.TestCase):
         
         # Initialize database constraints and indexes
         with cls.driver.session() as session:
-            ensure_constraints_and_index(session, dims=4)
+            from infrastructure.config import VECTOR_DIMENSIONS
+            ensure_constraints_and_index(session, dims=VECTOR_DIMENSIONS)
 
     @classmethod
     def tearDownClass(cls):

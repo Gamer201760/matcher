@@ -404,12 +404,18 @@ def get_group_member_parameters(session, group_id, exclude_user_id=None):
         OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pm:Parameter {name: 'roommates'})
         OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pb:Parameter {name: 'budget'})
         OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pn:Parameter {name: 'months'})
+        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pglat:Parameter {name: 'geo_lat'})
+        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pglon:Parameter {name: 'geo_lon'})
+        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pa:Parameter {name: 'age'})
         RETURN u.id as id,
                u.name as name,
                coalesce(pr.value, 0) as rooms,
                coalesce(pm.value, 0) as roommates,
                coalesce(pb.value, 0) as budget,
-               coalesce(pn.value, 1) as months
+               coalesce(pn.value, 1) as months,
+               coalesce(pglat.value, 0.0) as geo_lat,
+               coalesce(pglon.value, 0.0) as geo_lon,
+               coalesce(pa.value, 0) as age
     """
     result = session.run(query, group_id=group_id, exclude_user_id=exclude_user_id)
     return [r.data() for r in result]

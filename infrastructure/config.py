@@ -11,10 +11,10 @@ import math
 # ============================================================================
 
 # User/Group parameters used for matching
-PARAMETERS = ['rooms', 'roommates', 'budget', 'months']
+PARAMETERS = ['rooms', 'roommates', 'budget', 'months', 'geo_lat', 'geo_lon', 'age']
 
 # Vector dimensions (must match PARAMETERS length)
-VECTOR_DIMENSIONS = 4
+VECTOR_DIMENSIONS = 7
 
 # ============================================================================
 # WEIGHT CONFIGURATION
@@ -28,7 +28,10 @@ BASE_WEIGHTS = {
     'rooms': 1.0,
     'roommates': 1.0,
     'budget': 1,
-    'months': 1
+    'months': 1,
+    'geo_lat': 1.0,
+    'geo_lon': 1.0,
+    'age': 1
 }
 
 # Final weights (base weights * multiplier)
@@ -36,7 +39,10 @@ GROUP_PARAMETER_WEIGHTS = {
     'rooms': BASE_WEIGHTS['rooms'] * WEIGHT_MULTIPLIER,
     'roommates': BASE_WEIGHTS['roommates'] * WEIGHT_MULTIPLIER,
     'budget': BASE_WEIGHTS['budget'] * WEIGHT_MULTIPLIER,
-    'months': BASE_WEIGHTS['months'] * WEIGHT_MULTIPLIER
+    'months': BASE_WEIGHTS['months'] * WEIGHT_MULTIPLIER,
+    'geo_lat': BASE_WEIGHTS['geo_lat'] * WEIGHT_MULTIPLIER,
+    'geo_lon': BASE_WEIGHTS['geo_lon'] * WEIGHT_MULTIPLIER,
+    'age': BASE_WEIGHTS['age'] * WEIGHT_MULTIPLIER
 }
 
 # ============================================================================
@@ -175,6 +181,9 @@ def get_normalizer():
                 'roommates': {'mean': 3.0, 'std': 1.5},
                 'budget': {'mean': 30000, 'std': 20000},
                 'months': {'mean': 12, 'std': 8},
+                'geo_lat': {'mean': 55.7558, 'std': 0.5},  # Default to Moscow area, adjust as needed
+                'geo_lon': {'mean': 37.6173, 'std': 0.5},
+                'age': {'mean': 25.0, 'std': 5.0},
             }
     elif NORMALIZATION_METHOD == 'PERCENTILE':
         normalizer = PercentileNormalization()
@@ -192,6 +201,15 @@ def get_normalizer():
                 },
                 'months': {
                     'percentiles': np.array([3]*10 + [6]*15 + [9]*15 + [12]*30 + [18]*15 + [24]*10 + [36]*6)
+                },
+                'geo_lat': {
+                    'percentiles': np.linspace(55.0, 56.5, 101)  # Default range for Moscow area, adjust as needed
+                },
+                'geo_lon': {
+                    'percentiles': np.linspace(37.0, 38.2, 101)
+                },
+                'age': {
+                    'percentiles': np.linspace(18, 40, 101)
                 },
             }
     else:

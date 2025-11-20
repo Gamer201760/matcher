@@ -80,64 +80,55 @@ def ensure_constraints_and_index(session, dims):
         session.run(gparam_constraint_query)
         logger.debug('✓ GroupParameter uniqueness constraint ensured (groupId, name)')
 
-        # Check if vector index exists
-        index_check_query = """
-            SHOW INDEXES
-            YIELD name, type, entityType, labelsOrTypes, properties
-            WHERE type = 'VECTOR' AND entityType = 'NODE'
-              AND 'User' IN labelsOrTypes AND 'embedding' IN properties
-            RETURN name LIMIT 1
+        # Drop and recreate vector index to ensure correct dimensions
+        # (Neo4j vector indexes can't be altered, so we need to recreate them)
+        try:
+            drop_user_index_query = "DROP INDEX user_vec_index IF EXISTS"
+            log_neo4j_query(logger, drop_user_index_query)
+            session.run(drop_user_index_query)
+            logger.debug('Dropped existing user_vec_index (if it existed)')
+        except Neo4jError as e:
+            logger.debug(f'Index might not exist, continuing: {e}')
+
+        # Create vector index for User.embedding using new syntax
+        index_create_query = f"""
+            CREATE VECTOR INDEX user_vec_index IF NOT EXISTS
+            FOR (u:User) ON (u.embedding)
+            OPTIONS {{indexConfig: {{
+                `vector.dimensions`: $dims,
+                `vector.similarity_function`: '{SIMILARITY_FUNCTION}'
+            }}}}
         """
-        log_neo4j_query(logger, index_check_query)
-        result = session.run(index_check_query)
+        log_neo4j_query(logger, index_create_query, dims=dims)
+        session.run(index_create_query, dims=dims)
+        logger.info(
+            f"✓ Vector index 'user_vec_index' created/recreated with {dims} dimensions"
+        )
 
-        if result.peek() is None:
-            # Create vector index for User.embedding using new syntax
-            index_create_query = f"""
-                CREATE VECTOR INDEX user_vec_index IF NOT EXISTS
-                FOR (u:User) ON (u.embedding)
-                OPTIONS {{indexConfig: {{
-                    `vector.dimensions`: $dims,
-                    `vector.similarity_function`: '{SIMILARITY_FUNCTION}'
-                }}}}
-            """
-            log_neo4j_query(logger, index_create_query, dims=dims)
-            session.run(index_create_query, dims=dims)
-            logger.info(
-                f"✓ Vector index 'user_vec_index' created with {dims} dimensions"
-            )
-        else:
-            logger.debug('✓ Vector index already exists')
-            logger.debug('Skipping vector index creation - index already present')
+        # Drop and recreate group vector index to ensure correct dimensions
+        # (Neo4j vector indexes can't be altered, so we need to recreate them)
+        try:
+            drop_group_index_query = "DROP INDEX group_vec_index IF EXISTS"
+            log_neo4j_query(logger, drop_group_index_query)
+            session.run(drop_group_index_query)
+            logger.debug('Dropped existing group_vec_index (if it existed)')
+        except Neo4jError as e:
+            logger.debug(f'Index might not exist, continuing: {e}')
 
-        # Check if GROUP vector index exists
-        gindex_check_query = """
-            SHOW INDEXES
-            YIELD name, type, entityType, labelsOrTypes, properties
-            WHERE type = 'VECTOR' AND entityType = 'NODE'
-              AND 'Group' IN labelsOrTypes AND 'embedding' IN properties
-            RETURN name LIMIT 1
+        # Create vector index for Group.embedding using new syntax
+        gindex_create_query = f"""
+            CREATE VECTOR INDEX group_vec_index IF NOT EXISTS
+            FOR (g:Group) ON (g.embedding)
+            OPTIONS {{indexConfig: {{
+                `vector.dimensions`: $dims,
+                `vector.similarity_function`: '{SIMILARITY_FUNCTION}'
+            }}}}
         """
-        log_neo4j_query(logger, gindex_check_query)
-        gresult = session.run(gindex_check_query)
-
-        if gresult.peek() is None:
-            gindex_create_query = f"""
-                CREATE VECTOR INDEX group_vec_index IF NOT EXISTS
-                FOR (g:Group) ON (g.embedding)
-                OPTIONS {{indexConfig: {{
-                    `vector.dimensions`: $dims,
-                    `vector.similarity_function`: '{SIMILARITY_FUNCTION}'
-                }}}}
-            """
-            log_neo4j_query(logger, gindex_create_query, dims=dims)
-            session.run(gindex_create_query, dims=dims)
-            logger.debug(
-                f"✓ Vector index 'group_vec_index' created with {dims} dimensions"
-            )
-        else:
-            logger.debug('✓ Group vector index already exists')
-            logger.debug('Skipping group vector index creation - index already present')
+        log_neo4j_query(logger, gindex_create_query, dims=dims)
+        session.run(gindex_create_query, dims=dims)
+        logger.info(
+            f"✓ Vector index 'group_vec_index' created/recreated with {dims} dimensions"
+        )
 
     except Neo4jError as e:
         logger.warning(f'Could not ensure constraints/indexes: {e}')

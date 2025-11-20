@@ -38,8 +38,9 @@ def neo4j_driver():
         raise RuntimeError('Neo4j database is not available')
 
     # Initialize database constraints and indexes
+    from infrastructure.config import VECTOR_DIMENSIONS
     with driver.session() as session:
-        ensure_constraints_and_index(session, dims=4)
+        ensure_constraints_and_index(session, dims=VECTOR_DIMENSIONS)
 
     yield driver
 

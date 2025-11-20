@@ -19,10 +19,15 @@ def calculate_parameter_statistics(session, parameters, strategy):
     Returns:
         Dict mapping parameter names to statistics dict
     """
-    query = """
+    # Build query to collect all parameters from Parameter nodes
+    query_parts = []
+    for param in parameters:
+        query_parts.append(f"OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(p{param}:Parameter {{name: '{param}'}})")
+    
+    query = f"""
     MATCH (u:User)
-    RETURN u.rooms as rooms, u.roommates as roommates, 
-           u.budget as budget, u.months as months
+    {" ".join(query_parts)}
+    RETURN u.id as user_id, {", ".join([f"coalesce(p{param}.value, NULL) as {param}" for param in parameters])}
     """
     
     result = session.run(query)

@@ -2,8 +2,9 @@
 Data Transfer Objects for converting between entity.Parameters and database representations.
 
 This module provides centralized conversion functions for Parameters:
-- PARAMETERS fields (rooms, roommates, budget, months) are stored as separate Parameter nodes
+- PARAMETERS fields (rooms, roommates, budget, months, geo_lat, geo_lon, age) are stored as separate Parameter nodes
 - All other Parameters fields are stored as metadata on User/Group nodes
+- Note: geo_lat, geo_lon, age are stored BOTH as Parameter nodes (for recommendations) AND as metadata (for backward compatibility)
 """
 
 from uuid import UUID
@@ -19,6 +20,9 @@ PARAMETER_DB_MAPPING = {
     'roommates_count': 'roommates',
     'budget': 'budget',
     'month': 'months',
+    'geo_lat': 'geo_lat',
+    'geo_lon': 'geo_lon',
+    'age': 'age',
 }
 
 # Reverse mapping for reading from database
@@ -62,8 +66,9 @@ def parameters_to_db_dict(parameters: Parameters, include_id: str = None) -> dic
     Convert Parameters entity to database dictionary format.
 
     Converts Parameters fields to database format:
-    - PARAMETERS fields: rooms, roommates, budget, months (stored as nodes)
+    - PARAMETERS fields: rooms, roommates, budget, months, geo_lat, geo_lon, age (stored as nodes)
     - Metadata fields: name, surname, geo, photos, age, smoking, alko, pet, sex, user_type, description
+    Note: geo_lat, geo_lon, age are stored BOTH as Parameter nodes (for recommendations) AND as metadata (for backward compatibility)
 
     Args:
         parameters: Parameters entity to convert
@@ -83,8 +88,12 @@ def parameters_to_db_dict(parameters: Parameters, include_id: str = None) -> dic
     db_dict['roommates'] = parameters.roommates_count
     db_dict['budget'] = parameters.budget
     db_dict['months'] = parameters.month
+    db_dict['geo_lat'] = parameters.geo.lat
+    db_dict['geo_lon'] = parameters.geo.lon
+    db_dict['age'] = parameters.age
 
     # Add metadata fields (these become properties on User/Group node)
+    # Note: geo_lat, geo_lon, age are also stored as metadata for backward compatibility
     db_dict['name'] = parameters.name
     db_dict['surname'] = parameters.surname
     db_dict['geo_lat'] = parameters.geo.lat

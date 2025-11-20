@@ -355,12 +355,18 @@ def get_user_parameters(session, user_id):
         OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pm:Parameter {name: 'roommates'})
         OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pb:Parameter {name: 'budget'})
         OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pn:Parameter {name: 'months'})
+        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pglat:Parameter {name: 'geo_lat'})
+        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pglon:Parameter {name: 'geo_lon'})
+        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pa:Parameter {name: 'age'})
         RETURN coalesce(pr.value, 0) as rooms,
                coalesce(pm.value, 0) as roommates,
                coalesce(pb.value, 0) as budget,
-               coalesce(pn.value, 1) as months
+               coalesce(pn.value, 1) as months,
+               coalesce(pglat.value, 0.0) as geo_lat,
+               coalesce(pglon.value, 0.0) as geo_lon,
+               coalesce(pa.value, 0) as age
     """
     record = session.run(query, user_id=user_id).single()
     if not record:
-        return {'rooms': 0, 'roommates': 0, 'budget': 0, 'months': 1}
+        return {'rooms': 0, 'roommates': 0, 'budget': 0, 'months': 1, 'geo_lat': 0.0, 'geo_lon': 0.0, 'age': 0}
     return {p: record[p] for p in PARAMETERS}
