@@ -189,27 +189,33 @@ def get_group_with_status(session, group_id):
 
 def get_group_member_parameters(session, group_id, exclude_user_id=None):
     """Fetch parameter values for all members of a group, optionally excluding a user."""
-    query = """
-        MATCH (u:User)-[:MEMBER_OF]->(g:Group {id: $group_id})
+    # Build dynamic OPTIONAL MATCH clauses and RETURN fields from PARAMETERS
+    optional_matches = []
+    return_fields = []
+    
+    for i, param in enumerate(PARAMETERS):
+        # Create alias for parameter (p0, p1, p2, etc.)
+        alias = f'p{i}'
+        
+        # Build OPTIONAL MATCH clause
+        optional_matches.append(
+            f"OPTIONAL MATCH (u)-[:HAS_PARAMETER]->({alias}:Parameter {{name: '{param}'}})"
+        )
+        
+        # Build RETURN field without defaults - return value as-is
+        return_fields.append(f"{alias}.value as {param}")
+    
+    # Build the query
+    query = f"""
+        MATCH (u:User)-[:MEMBER_OF]->(g:Group {{id: $group_id}})
         WHERE $exclude_user_id IS NULL OR u.id <> $exclude_user_id
         WITH u
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pr:Parameter {name: 'rooms'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pm:Parameter {name: 'roommates'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pb:Parameter {name: 'budget'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pn:Parameter {name: 'months'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pglat:Parameter {name: 'geo_lat'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pglon:Parameter {name: 'geo_lon'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pa:Parameter {name: 'age'})
+        {' '.join(optional_matches)}
         RETURN u.id as id,
                u.name as name,
-               coalesce(pr.value, 0) as rooms,
-               coalesce(pm.value, 0) as roommates,
-               coalesce(pb.value, 0) as budget,
-               coalesce(pn.value, 1) as months,
-               coalesce(pglat.value, 0.0) as geo_lat,
-               coalesce(pglon.value, 0.0) as geo_lon,
-               coalesce(pa.value, 0) as age
+               {', '.join(return_fields)}
     """
+    
     result = session.run(query, group_id=group_id, exclude_user_id=exclude_user_id)
     return [r.data() for r in result]
 
@@ -320,15 +326,18 @@ def update_group_parameters(
     """
     Update group parameters and recalculate the group vector.
 
+    Updates all parameters in parameters_dict on the Group node and GroupParameter nodes.
+    Only PARAMETERS fields are used for vector calculation.
+
     Args:
         session: Neo4j session
         group_id: Group ID
-        parameters_dict: Dict with parameter values (rooms, roommates, budget, months)
+        parameters_dict: Dict with parameter values (can include any Group property)
         caps: Normalization caps
         use_weights: Whether to use weighted vectors
         weights: Parameter weights
     """
-    # Create new group vector
+    # Create new group vector (only using PARAMETERS fields)
     group_values = {p: parameters_dict.get(p, 0) for p in PARAMETERS}
     new_vector = create_vector(
         group_values,
@@ -337,33 +346,48 @@ def update_group_parameters(
         weights=weights if use_weights else None,
     )
 
-    # Update group properties and GroupParameter nodes
-    update_query = """
-        MATCH (g:Group {id: $group_id})
-        SET g.rooms = $rooms,
-            g.roommates = $roommates,
-            g.budget = $budget,
-            g.months = $months,
-            g.embedding = $embedding
+    # Build dynamic SET clauses for all parameters in parameters_dict
+    set_clauses = []
+    query_params = {'group_id': group_id, 'embedding': new_vector}
+    
+    for param_name, param_value in parameters_dict.items():
+        # Skip embedding as it's handled separately
+        if param_name == 'embedding':
+            continue
+        set_clauses.append(f'g.{param_name} = ${param_name}')
+        query_params[param_name] = param_value
+    
+    # Build GroupParameter update - only update PARAMETERS that are in parameters_dict
+    param_in_params = [p for p in PARAMETERS if p in parameters_dict]
+    
+    # Build SET clause for Group node - include all parameters + embedding
+    all_set_clauses = set_clauses + ['g.embedding = $embedding']
+    set_clause_str = ',\n            '.join(all_set_clauses)
+    
+    if param_in_params:
+        case_clauses = [
+            f"WHEN '{param}' THEN ${param}" for param in param_in_params
+        ]
+        case_clause_str = '\n                    '.join(case_clauses)
+        update_query = f"""
+        MATCH (g:Group {{id: $group_id}})
+        SET {set_clause_str}
         WITH g
         MATCH (g)-[:HAS_PARAMETER]->(gp:GroupParameter)
         SET gp.value = CASE gp.name
-            WHEN 'rooms' THEN $rooms
-            WHEN 'roommates' THEN $roommates
-            WHEN 'budget' THEN $budget
-            WHEN 'months' THEN $months
-            ELSE gp.value
+                    {case_clause_str}
+                    ELSE gp.value
         END
-    """
-    session.run(
-        update_query,
-        group_id=group_id,
-        rooms=parameters_dict.get('rooms', 0),
-        roommates=parameters_dict.get('roommates', 0),
-        budget=parameters_dict.get('budget', 0),
-        months=parameters_dict.get('months', 0),
-        embedding=new_vector,
-    )
+        """
+    else:
+        # No PARAMETERS to update, just update Group node
+        update_query = f"""
+        MATCH (g:Group {{id: $group_id}})
+        SET {set_clause_str}
+        """
+    
+    log_neo4j_query(logger, update_query, **query_params)
+    session.run(update_query, **query_params)
 
     logger.info(f'Updated parameters for group {group_id}')
 
@@ -381,11 +405,14 @@ def create_empty_group(
     """
     Create an empty group in the database without any members.
 
+    Sets all parameters from parameters_dict on the Group node and creates
+    GroupParameter nodes for all PARAMETERS fields.
+
     Args:
         session: Neo4j session
         group_id: Group ID (string)
         group_name: Name of the group
-        parameters_dict: Dict with parameter values (rooms, roommates, budget, months)
+        parameters_dict: Dict with parameter values (can include any Group property)
         embedding: Pre-computed embedding vector for the group
         use_weights: Whether to use weighted vectors (for logging purposes)
         weights: Parameter weights (for logging purposes)
@@ -393,37 +420,41 @@ def create_empty_group(
     Returns:
         str: The created group_id
     """
-    # Create parameter list for GroupParameter nodes
+    # Create parameter list for GroupParameter nodes (only PARAMETERS fields)
     parameters_list = [
         {'name': p, 'value': parameters_dict.get(p, 0)} for p in PARAMETERS
     ]
 
+    # Build dynamic SET clauses for all parameters in parameters_dict
+    set_clauses = [
+        'g.name = $group_name',
+        'g.owner_id = $owner_id',
+        'g.embedding = $embedding',
+    ]
+    query_params = {
+        'group_id': group_id,
+        'group_name': group_name,
+        'owner_id': owner_id,
+        'embedding': embedding,
+        'param_list': parameters_list,
+    }
+
+    # Add all parameters from parameters_dict (skip embedding as it's already added)
+    for param_name, param_value in parameters_dict.items():
+        if param_name == 'embedding':
+            continue
+        set_clauses.append(f'g.{param_name} = ${param_name}')
+        query_params[param_name] = param_value
+
+    set_clause_str = ',\n            '.join(set_clauses)
+
     # Create empty group query (no MEMBER_OF relationships)
-    # Set metadata fields with defaults for consistency with user nodes
-    create_group_query = """
-        MERGE (g:Group {id: $group_id})
-        SET g.name = $group_name,
-            g.rooms = $rooms,
-            g.owner_id = $owner_id,
-            g.roommates = $roommates,
-            g.budget = $budget,
-            g.months = $months,
-            g.embedding = $embedding,
-            g.surname = '',
-            g.geo_lat = 0.0,
-            g.geo_lon = 0.0,
-            g.address = '',
-            g.photos = [],
-            g.age = 0,
-            g.smoking = false,
-            g.alko = false,
-            g.pet = false,
-            g.sex = 1,
-            g.user_type = 1,
-            g.description = ''
+    create_group_query = f"""
+        MERGE (g:Group {{id: $group_id}})
+        SET {set_clause_str}
         WITH g
         UNWIND $param_list AS param
-        MERGE (gp:GroupParameter {groupId: $group_id, name: param.name})
+        MERGE (gp:GroupParameter {{groupId: $group_id, name: param.name}})
         SET gp.value = param.value
         MERGE (g)-[:HAS_PARAMETER]->(gp)
         WITH DISTINCT g
@@ -440,15 +471,7 @@ def create_empty_group(
 
     result = session.run(
         create_group_query,
-        owner_id=owner_id,
-        group_id=group_id,
-        group_name=group_name,
-        rooms=parameters_dict.get('rooms', 0),
-        roommates=parameters_dict.get('roommates', 0),
-        budget=parameters_dict.get('budget', 0),
-        months=parameters_dict.get('months', 0),
-        embedding=embedding,
-        param_list=parameters_list,
+        **query_params,
     )
 
     record = result.single()
