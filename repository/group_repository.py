@@ -303,23 +303,12 @@ class GroupRepository:
                     f'No members found in group {group_id}'
                 )  # TODO: refactor to internal error
 
-            # Calculate averages
-            avg_params: dict[str, float] = {
-                'rooms': 0,
-                'roommates': 0,
-                'budget': 0,
-                'months': 0,
-            }
-
-            for member in members:
-                avg_params['rooms'] += member.get('rooms', 0)
-                avg_params['roommates'] += member.get('roommates', 0)
-                avg_params['budget'] += member.get('budget', 0)
-                avg_params['months'] += member.get('months', 0)
-
+            # Calculate averages using generators
             count = len(members)
-            for key in avg_params:
-                avg_params[key] = avg_params[key] / count
+            avg_params: dict[str, float] = {
+                param: sum(member.get(param, 0) for member in members) / count
+                for param in PARAMETERS
+            }
 
             # Update group with calculated parameters
             update_group_parameters(
