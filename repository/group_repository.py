@@ -266,23 +266,21 @@ class GroupRepository:
         """
         Remove a user from a group.
 
-        Note: In the current implementation, remove_user_from_group doesn't
-        take a group_id parameter - it removes the user from their current group
-        and creates a new single-member group.
-
         Args:
             user_id: User ID to remove
-            group_id: Group ID (not used in current implementation)
+            group_id: Group ID to remove user from
         """
         with self.driver.session() as session:
             try:
-                remove_user_from_group(
+                success = remove_user_from_group(
                     session,
                     str(user_id),
-                    caps=self.caps,
-                    use_weights=self.use_weights,
-                    weights=self.weights,
+                    group_id=str(group_id),
                 )
+                if not success:
+                    raise RuntimeError(
+                        f'User {user_id} is not a member of group {group_id}'
+                    )
             except ValueError as e:
                 # Re-raise as RuntimeError for consistency
                 raise RuntimeError(str(e))
