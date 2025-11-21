@@ -1,6 +1,6 @@
 from datetime import datetime
 from logging import getLogger
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import neo4j
 
@@ -35,24 +35,17 @@ def db_group_to_group(db_dict: dict, group_id: UUID) -> Group:
         'budget': params_dict.get('budget', 0),
         'months': params_dict.get('months', 0),
     }
-    
+
     # Use centralized DTO function to convert to Parameters
     parameters = db_dict_to_parameters(merged_dict)
 
     # Extract owner_id - in current impl, first member is typically owner
-    members = db_dict.get('members', [])
-    if members:
-        member_id = members[0]['id']
-        owner_id = UUID(member_id) if isinstance(member_id, str) else member_id
-    else:
-        owner_id = group_id
-
     # Extract max_users from roommates parameter
     max_users = int(params_dict.get('roommates', 4))
 
     return Group(
         id=group_id,
-        owner_id=owner_id,
+        owner_id=db_dict.get('owner_id', uuid4()),
         parameters=parameters,
         max_users=max_users,
     )

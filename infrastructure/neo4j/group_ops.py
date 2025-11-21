@@ -10,7 +10,7 @@ This module handles:
 
 from recommendation import create_vector
 
-from ..config import GROUP_PARAMETER_WEIGHTS, PARAMETERS, get_parameter_statistics
+from ..config import PARAMETERS, get_parameter_statistics
 from ..logging_utils import (
     log_neo4j_query,
     log_vector_operation,
@@ -31,7 +31,7 @@ def add_user_to_group(session, user_id, group_id):
         group_id: ID of group
     """
     add_query = """
-        MATCH (u:User {id: $user_id})
+        MATCH (u:User {user_id: $user_id})
         MATCH (g:Group {id: $group_id})
         MERGE (u)-[:MEMBER_OF]->(g)
         RETURN u.id as user_id, g.id as group_id
@@ -86,14 +86,10 @@ def remove_user_from_group(session, user_id, group_id):
             record = result.single()
 
             if not record:
-                logger.warning(
-                    f'User {user_id} is not a member of group {group_id}'
-                )
+                logger.warning(f'User {user_id} is not a member of group {group_id}')
                 return False
 
-            logger.info(
-                f'✓ Removed user {user_id} from group {group_id}'
-            )
+            logger.info(f'✓ Removed user {user_id} from group {group_id}')
             return True
 
     except ValueError:
@@ -129,6 +125,7 @@ def get_group_info(session, group_id):
     return {
         'id': group['id'],
         'name': group['name'],
+        'owner_id': group['owner_id'],
         'surname': group.get('surname', ''),
         'geo_lat': group.get('geo_lat', 0.0),
         'geo_lon': group.get('geo_lon', 0.0),
@@ -192,19 +189,19 @@ def get_group_member_parameters(session, group_id, exclude_user_id=None):
     # Build dynamic OPTIONAL MATCH clauses and RETURN fields from PARAMETERS
     optional_matches = []
     return_fields = []
-    
+
     for i, param in enumerate(PARAMETERS):
         # Create alias for parameter (p0, p1, p2, etc.)
         alias = f'p{i}'
-        
+
         # Build OPTIONAL MATCH clause
         optional_matches.append(
             f"OPTIONAL MATCH (u)-[:HAS_PARAMETER]->({alias}:Parameter {{name: '{param}'}})"
         )
-        
+
         # Build RETURN field without defaults - return value as-is
-        return_fields.append(f"{alias}.value as {param}")
-    
+        return_fields.append(f'{alias}.value as {param}')
+
     # Build the query
     query = f"""
         MATCH (u:User)-[:MEMBER_OF]->(g:Group {{id: $group_id}})
@@ -215,7 +212,7 @@ def get_group_member_parameters(session, group_id, exclude_user_id=None):
                u.name as name,
                {', '.join(return_fields)}
     """
-    
+
     result = session.run(query, group_id=group_id, exclude_user_id=exclude_user_id)
     return [r.data() for r in result]
 
@@ -349,25 +346,24 @@ def update_group_parameters(
     # Build dynamic SET clauses for all parameters in parameters_dict
     set_clauses = []
     query_params = {'group_id': group_id, 'embedding': new_vector}
-    
+
     for param_name, param_value in parameters_dict.items():
         # Skip embedding as it's handled separately
-        if param_name == 'embedding':
+        logger.debug(f'Name: {param_name}')
+        if param_name in ('embedding', 'id', 'owner_id'):
             continue
         set_clauses.append(f'g.{param_name} = ${param_name}')
         query_params[param_name] = param_value
-    
+
     # Build GroupParameter update - only update PARAMETERS that are in parameters_dict
     param_in_params = [p for p in PARAMETERS if p in parameters_dict]
-    
+
     # Build SET clause for Group node - include all parameters + embedding
     all_set_clauses = set_clauses + ['g.embedding = $embedding']
     set_clause_str = ',\n            '.join(all_set_clauses)
-    
+
     if param_in_params:
-        case_clauses = [
-            f"WHEN '{param}' THEN ${param}" for param in param_in_params
-        ]
+        case_clauses = [f"WHEN '{param}' THEN ${param}" for param in param_in_params]
         case_clause_str = '\n                    '.join(case_clauses)
         update_query = f"""
         MATCH (g:Group {{id: $group_id}})
@@ -385,7 +381,7 @@ def update_group_parameters(
         MATCH (g:Group {{id: $group_id}})
         SET {set_clause_str}
         """
-    
+
     log_neo4j_query(logger, update_query, **query_params)
     session.run(update_query, **query_params)
 
