@@ -325,18 +325,17 @@ def action_leave_group(
             display_info('Leave cancelled.')
             return
 
-        # Leave group (still using infrastructure for now, as FormService.delete does more than just leave)
-        new_group_id = remove_user_from_group(
+        # Leave group by unlinking the user from the group
+        group_id = current_group['id']
+        success = remove_user_from_group(
             session,
             str(current_user_id),
-            caps=caps,
-            use_weights=use_weights,
-            weights=weights,
+            group_id=group_id,
         )
 
-        if new_group_id:
+        if success:
             display_success(
-                f'Successfully left group! Created new single-member group: {new_group_id}'
+                f'Successfully left group {group_id}!'
             )
         else:
             display_error('Failed to leave group.')
