@@ -17,7 +17,7 @@ services:
     depends_on:
       neo4j:
         condition: service_healthy
-    image: matcher:latest
+    image: gglamer/matcher:latest
     ports:
       - "50051:50051"
     environment:
