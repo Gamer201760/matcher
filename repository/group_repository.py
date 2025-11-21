@@ -30,7 +30,7 @@ from infrastructure.neo4j import (
     update_group_parameters,
 )
 from recommendation import create_vector
-from repository.form_dto import db_form_to_form
+from repository.form_dto import db_form_to_form, parameters_to_db_dict
 from repository.group_dto import db_group_to_group
 
 
@@ -70,18 +70,14 @@ class GroupRepository:
         group_id_str = str(group_id)
         group_name = f'Group {group_id_str[:8]}'
 
-        # Extract parameters from group.parameters
-        params_dict = {
-            'rooms': group.parameters.room_count,
-            'roommates': group.max_users
-            - 1,  # max_users includes owner, roommates doesn't
-            'budget': group.parameters.budget,
-            'months': group.parameters.month,
-        }
+        # Convert Parameters entity to DB dict using DTO function
+        params_dict = parameters_to_db_dict(group.parameters)
+        
 
-        # Create vector for the group
+        # Create vector for the group (only using PARAMETERS fields)
+        group_values = {p: params_dict.get(p, 0) for p in PARAMETERS}
         group_vector = create_vector(
-            params_dict,
+            group_values,
             PARAMETERS,
             statistics=get_parameter_statistics(),
             weights=self.weights if self.use_weights else None,
@@ -174,12 +170,9 @@ class GroupRepository:
             group_id: Group ID to update
             parameters: New parameters
         """
-        params_dict = {
-            'rooms': parameters.room_count,
-            'roommates': parameters.roommates_count,
-            'budget': parameters.budget,
-            'months': parameters.month,
-        }
+        # Convert Parameters entity to DB dict and extract only PARAMETERS fields
+        db_dict = parameters_to_db_dict(parameters)
+        params_dict = {param: db_dict[param] for param in PARAMETERS}
 
         with self.driver.session() as session:
             update_group_parameters(
