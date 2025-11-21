@@ -49,7 +49,7 @@ def add_user_to_group(session, user_id, group_id):
     return True
 
 
-def remove_user_from_group(session, user_id, group_id=None):
+def remove_user_from_group(session, user_id, group_id):
     """
     Remove a user from a group by unlinking the MEMBER_OF relationship.
 
@@ -91,33 +91,6 @@ def remove_user_from_group(session, user_id, group_id=None):
                 )
                 return False
 
-            logger.info(
-                f'✓ Removed user {user_id} from group {group_id}'
-            )
-            return True
-        else:
-            # Remove from any group
-            delete_relationship_query = """
-                MATCH (u:User {id: $user_id})-[r:MEMBER_OF]->(g:Group)
-                DELETE r
-                RETURN g.id as group_id
-            """
-            log_neo4j_query(
-                logger,
-                delete_relationship_query,
-                user_id=user_id,
-            )
-            result = session.run(
-                delete_relationship_query,
-                user_id=user_id,
-            )
-            record = result.single()
-
-            if not record:
-                logger.warning(f'User {user_id} is not a member of any group')
-                raise ValueError(f'User {user_id} is not a member of any group')
-
-            group_id = record['group_id']
             logger.info(
                 f'✓ Removed user {user_id} from group {group_id}'
             )
