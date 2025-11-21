@@ -72,7 +72,6 @@ class GroupRepository:
 
         # Convert Parameters entity to DB dict using DTO function
         params_dict = parameters_to_db_dict(group.parameters)
-        
 
         # Create vector for the group (only using PARAMETERS fields)
         group_values = {p: params_dict.get(p, 0) for p in PARAMETERS}
@@ -246,11 +245,7 @@ class GroupRepository:
             group_id: Target group ID
         """
         with self.driver.session() as session:
-            success = add_user_to_group(
-                session,
-                str(user_id),
-                str(group_id)
-            )
+            success = add_user_to_group(session, str(user_id), str(group_id))
 
             if not success:
                 raise RuntimeError(f'Failed to add user {user_id} to group {group_id}')
@@ -292,7 +287,7 @@ class GroupRepository:
             members = get_group_member_parameters(session, str(group_id))
 
             if not members:
-                raise ValueError(
+                raise DomainError(
                     f'No members found in group {group_id}'
                 )  # TODO: refactor to internal error
 

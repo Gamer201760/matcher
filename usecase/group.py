@@ -72,7 +72,7 @@ class GroupService:
             raise DomainError('Не удалось добавить пользователя: группа уже заполнена.')
 
         self._group_repo.delete_by_owner_id(request.user_id)
-        self._group_repo.add_user(request.user_id, group_id=group.id)
+        self._group_repo.add_user(request.user_id, group.id)
         self._group_repo.calculate_params(group.id)
         self._request_repo.delete(request_id)
 
