@@ -216,27 +216,33 @@ def get_group_with_status(session, group_id):
 
 def get_group_member_parameters(session, group_id, exclude_user_id=None):
     """Fetch parameter values for all members of a group, optionally excluding a user."""
-    query = """
-        MATCH (u:User)-[:MEMBER_OF]->(g:Group {id: $group_id})
+    # Build dynamic OPTIONAL MATCH clauses and RETURN fields from PARAMETERS
+    optional_matches = []
+    return_fields = []
+    
+    for i, param in enumerate(PARAMETERS):
+        # Create alias for parameter (p0, p1, p2, etc.)
+        alias = f'p{i}'
+        
+        # Build OPTIONAL MATCH clause
+        optional_matches.append(
+            f"OPTIONAL MATCH (u)-[:HAS_PARAMETER]->({alias}:Parameter {{name: '{param}'}})"
+        )
+        
+        # Build RETURN field without defaults - return value as-is
+        return_fields.append(f"{alias}.value as {param}")
+    
+    # Build the query
+    query = f"""
+        MATCH (u:User)-[:MEMBER_OF]->(g:Group {{id: $group_id}})
         WHERE $exclude_user_id IS NULL OR u.id <> $exclude_user_id
         WITH u
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pr:Parameter {name: 'rooms'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pm:Parameter {name: 'roommates'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pb:Parameter {name: 'budget'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pn:Parameter {name: 'months'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pglat:Parameter {name: 'geo_lat'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pglon:Parameter {name: 'geo_lon'})
-        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(pa:Parameter {name: 'age'})
+        {' '.join(optional_matches)}
         RETURN u.id as id,
                u.name as name,
-               coalesce(pr.value, 0) as rooms,
-               coalesce(pm.value, 0) as roommates,
-               coalesce(pb.value, 0) as budget,
-               coalesce(pn.value, 1) as months,
-               coalesce(pglat.value, 0.0) as geo_lat,
-               coalesce(pglon.value, 0.0) as geo_lon,
-               coalesce(pa.value, 0) as age
+               {', '.join(return_fields)}
     """
+    
     result = session.run(query, group_id=group_id, exclude_user_id=exclude_user_id)
     return [r.data() for r in result]
 
