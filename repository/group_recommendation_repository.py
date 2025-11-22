@@ -36,7 +36,7 @@ class GroupRecommendationRepository:
     """
 
     def __init__(
-        self, driver: Driver, caps=None, use_weights=False, weights=None, top_k=5
+        self, driver: Driver, caps=None, use_weights=False, weights=None, top_k=100
     ):
         """
         Initialize GroupRecommendationRepository with search configuration.
