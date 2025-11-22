@@ -54,7 +54,7 @@ GROUP_PARAMETER_WEIGHTS = {
 SIMILARITY_FUNCTION = 'euclidean'
 
 # Default number of recommendations to return
-DEFAULT_TOP_K = 5
+DEFAULT_TOP_K = 100
 
 # ============================================================================
 # GROUP MANAGEMENT SETTINGS

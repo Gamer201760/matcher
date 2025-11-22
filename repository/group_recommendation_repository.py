@@ -14,6 +14,7 @@ from infrastructure.config import (
     GROUP_PARAMETER_WEIGHTS,
     PARAMETERS,
     get_parameter_statistics,
+    DEFAULT_TOP_K,
 )
 from infrastructure.logging_utils import setup_logger
 from infrastructure.neo4j import (
@@ -36,7 +37,7 @@ class GroupRecommendationRepository:
     """
 
     def __init__(
-        self, driver: Driver, caps=None, use_weights=False, weights=None, top_k=100
+        self, driver: Driver, caps=None, use_weights=False, weights=None, top_k=DEFAULT_TOP_K
     ):
         """
         Initialize GroupRecommendationRepository with search configuration.
