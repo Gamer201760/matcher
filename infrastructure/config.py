@@ -21,7 +21,7 @@ VECTOR_DIMENSIONS = 7
 # ============================================================================
 
 # Multiplier applied to all weights for increased sensitivity
-WEIGHT_MULTIPLIER = 8
+WEIGHT_MULTIPLIER = 1
 
 # Base weights for group parameter vectors (before multiplier)
 BASE_WEIGHTS = {
