@@ -240,6 +240,16 @@ class GroupQueryServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.LeaveGroup = channel.unary_unary(
+                '/matcher.GroupQueryService/LeaveGroup',
+                request_serializer=matcher_dot_matcher__pb2.LeaveGroupRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.KickGroup = channel.unary_unary(
+                '/matcher.GroupQueryService/KickGroup',
+                request_serializer=matcher_dot_matcher__pb2.KickGroupRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
         self.GetGroup = channel.unary_unary(
                 '/matcher.GroupQueryService/GetGroup',
                 request_serializer=matcher_dot_matcher__pb2.GetGroupRequest.SerializeToString,
@@ -265,6 +275,18 @@ class GroupQueryServiceStub(object):
 class GroupQueryServiceServicer(object):
     """GroupQuery Service
     """
+
+    def LeaveGroup(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def KickGroup(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetGroup(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -293,6 +315,16 @@ class GroupQueryServiceServicer(object):
 
 def add_GroupQueryServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'LeaveGroup': grpc.unary_unary_rpc_method_handler(
+                    servicer.LeaveGroup,
+                    request_deserializer=matcher_dot_matcher__pb2.LeaveGroupRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'KickGroup': grpc.unary_unary_rpc_method_handler(
+                    servicer.KickGroup,
+                    request_deserializer=matcher_dot_matcher__pb2.KickGroupRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
             'GetGroup': grpc.unary_unary_rpc_method_handler(
                     servicer.GetGroup,
                     request_deserializer=matcher_dot_matcher__pb2.GetGroupRequest.FromString,
@@ -324,6 +356,60 @@ def add_GroupQueryServiceServicer_to_server(servicer, server):
 class GroupQueryService(object):
     """GroupQuery Service
     """
+
+    @staticmethod
+    def LeaveGroup(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/matcher.GroupQueryService/LeaveGroup',
+            matcher_dot_matcher__pb2.LeaveGroupRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def KickGroup(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/matcher.GroupQueryService/KickGroup',
+            matcher_dot_matcher__pb2.KickGroupRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def GetGroup(request,

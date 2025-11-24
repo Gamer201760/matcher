@@ -26,7 +26,7 @@ from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15matcher/matcher.proto\x12\x07matcher\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"!\n\x05Point\x12\x0b\n\x03lat\x18\x01 \x01(\x01\x12\x0b\n\x03lon\x18\x02 \x01(\x01\"\xc4\x02\n\nParameters\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07surname\x18\x02 \x01(\t\x12\x1b\n\x03geo\x18\x03 \x01(\x0b\x32\x0e.matcher.Point\x12\x0e\n\x06photos\x18\x04 \x03(\t\x12\x0e\n\x06\x62udget\x18\x05 \x01(\x05\x12\x12\n\nroom_count\x18\x06 \x01(\x05\x12\x17\n\x0froommates_count\x18\x07 \x01(\x05\x12\r\n\x05month\x18\x08 \x01(\x05\x12\x0b\n\x03\x61ge\x18\t \x01(\x05\x12\x0f\n\x07smoking\x18\n \x01(\x08\x12\x0c\n\x04\x61lko\x18\x0b \x01(\x08\x12\x0b\n\x03pet\x18\x0c \x01(\x08\x12\x19\n\x03sex\x18\r \x01(\x0e\x32\x0c.matcher.Sex\x12$\n\tuser_type\x18\x0e \x01(\x0e\x32\x11.matcher.UserType\x12\x13\n\x0b\x64\x65scription\x18\x0f \x01(\t\x12\x0f\n\x07\x61\x64\x64ress\x18\x10 \x01(\t\"\xbc\x01\n\x04\x46orm\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\'\n\nparameters\x18\x03 \x01(\x0b\x32\x13.matcher.Parameters\x12\x0e\n\x06\x61\x63tive\x18\x04 \x01(\x08\x12.\n\ncreated_at\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"m\n\x0cGroupRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x10\n\x08group_id\x18\x02 \x01(\t\x12\x0f\n\x07user_id\x18\x03 \x01(\t\x12.\n\ncreated_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xc1\x01\n\x05Group\x12\n\n\x02id\x18\x01 \x01(\t\x12\x10\n\x08owner_id\x18\x02 \x01(\t\x12\'\n\nparameters\x18\x03 \x01(\x0b\x32\x13.matcher.Parameters\x12\x11\n\tmax_users\x18\x04 \x01(\x05\x12.\n\ncreated_at\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\">\n\x0eGroupWithScore\x12\x1d\n\x05group\x18\x01 \x01(\x0b\x32\x0e.matcher.Group\x12\r\n\x05score\x18\x02 \x01(\x02\"M\n\x11\x43reateFormRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\'\n\nparameters\x18\x02 \x01(\x0b\x32\x13.matcher.Parameters\"\'\n\x14GetFormByUserRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"(\n\x15GetGroupByUserRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"M\n\x11UpdateFormRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\'\n\nparameters\x18\x02 \x01(\x0b\x32\x13.matcher.Parameters\"$\n\x11\x44\x65leteFormRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"#\n\x0fGetGroupRequest\x12\x10\n\x08group_id\x18\x01 \x01(\t\"&\n\x12\x44\x65leteGroupRequest\x12\x10\n\x08owner_id\x18\x01 \x01(\t\"+\n\x17ListGroupMembersRequest\x12\x10\n\x08group_id\x18\x01 \x01(\t\":\n\x18ListGroupMembersResponse\x12\x1e\n\x07members\x18\x01 \x03(\x0b\x32\r.matcher.Form\"$\n\x11\x46indGroupsRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"=\n\x12\x46indGroupsResponse\x12\'\n\x06groups\x18\x01 \x03(\x0b\x32\x17.matcher.GroupWithScore\"&\n\x12GetRequestsRequest\x12\x10\n\x08group_id\x18\x01 \x01(\t\">\n\x13GetRequestsResponse\x12\'\n\x08requests\x18\x01 \x03(\x0b\x32\x15.matcher.GroupRequest\";\n\x16SendJoinRequestRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x10\n\x08group_id\x18\x02 \x01(\t\"-\n\x17SendJoinRequestResponse\x12\x12\n\nrequest_id\x18\x01 \x01(\t\"@\n\x18\x41\x63\x63\x65ptJoinRequestRequest\x12\x10\n\x08owner_id\x18\x01 \x01(\t\x12\x12\n\nrequest_id\x18\x02 \x01(\t\"@\n\x18RejectJoinRequestRequest\x12\x10\n\x08owner_id\x18\x01 \x01(\t\x12\x12\n\nrequest_id\x18\x02 \x01(\t*8\n\x03Sex\x12\x13\n\x0fSEX_UNSPECIFIED\x10\x00\x12\x0c\n\x08SEX_MALE\x10\x01\x12\x0e\n\nSEX_FEMALE\x10\x02*i\n\x08UserType\x12\x19\n\x15USER_TYPE_UNSPECIFIED\x10\x00\x12\x15\n\x11USER_TYPE_STUDENT\x10\x01\x12\x14\n\x10USER_TYPE_WORKER\x10\x02\x12\x15\n\x11USER_TYPE_TOURIST\x10\x03\x32\x92\x02\n\x0b\x46ormService\x12@\n\nCreateForm\x12\x1a.matcher.CreateFormRequest\x1a\x16.google.protobuf.Empty\x12=\n\rGetFormByUser\x12\x1d.matcher.GetFormByUserRequest\x1a\r.matcher.Form\x12@\n\nUpdateForm\x12\x1a.matcher.UpdateFormRequest\x1a\x16.google.protobuf.Empty\x12@\n\nDeleteForm\x12\x1a.matcher.DeleteFormRequest\x1a\x16.google.protobuf.Empty2\xa8\x02\n\x11GroupQueryService\x12\x34\n\x08GetGroup\x12\x18.matcher.GetGroupRequest\x1a\x0e.matcher.Group\x12@\n\x0eGetGroupByUser\x12\x1e.matcher.GetGroupByUserRequest\x1a\x0e.matcher.Group\x12\x42\n\x0b\x44\x65leteGroup\x12\x1b.matcher.DeleteGroupRequest\x1a\x16.google.protobuf.Empty\x12W\n\x10ListGroupMembers\x12 .matcher.ListGroupMembersRequest\x1a!.matcher.ListGroupMembersResponse2Y\n\x10\x46indGroupService\x12\x45\n\nFindGroups\x12\x1a.matcher.FindGroupsRequest\x1a\x1b.matcher.FindGroupsResponse2\xce\x02\n\x0cGroupService\x12H\n\x0bGetRequests\x12\x1b.matcher.GetRequestsRequest\x1a\x1c.matcher.GetRequestsResponse\x12T\n\x0fSendJoinRequest\x12\x1f.matcher.SendJoinRequestRequest\x1a .matcher.SendJoinRequestResponse\x12N\n\x11\x41\x63\x63\x65ptJoinRequest\x12!.matcher.AcceptJoinRequestRequest\x1a\x16.google.protobuf.Empty\x12N\n\x11RejectJoinRequest\x12!.matcher.RejectJoinRequestRequest\x1a\x16.google.protobuf.EmptyB\x16Z\x14matcher_v1;matcherv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15matcher/matcher.proto\x12\x07matcher\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"!\n\x05Point\x12\x0b\n\x03lat\x18\x01 \x01(\x01\x12\x0b\n\x03lon\x18\x02 \x01(\x01\"\xc4\x02\n\nParameters\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07surname\x18\x02 \x01(\t\x12\x1b\n\x03geo\x18\x03 \x01(\x0b\x32\x0e.matcher.Point\x12\x0e\n\x06photos\x18\x04 \x03(\t\x12\x0e\n\x06\x62udget\x18\x05 \x01(\x05\x12\x12\n\nroom_count\x18\x06 \x01(\x05\x12\x17\n\x0froommates_count\x18\x07 \x01(\x05\x12\r\n\x05month\x18\x08 \x01(\x05\x12\x0b\n\x03\x61ge\x18\t \x01(\x05\x12\x0f\n\x07smoking\x18\n \x01(\x08\x12\x0c\n\x04\x61lko\x18\x0b \x01(\x08\x12\x0b\n\x03pet\x18\x0c \x01(\x08\x12\x19\n\x03sex\x18\r \x01(\x0e\x32\x0c.matcher.Sex\x12$\n\tuser_type\x18\x0e \x01(\x0e\x32\x11.matcher.UserType\x12\x13\n\x0b\x64\x65scription\x18\x0f \x01(\t\x12\x0f\n\x07\x61\x64\x64ress\x18\x10 \x01(\t\"\xbc\x01\n\x04\x46orm\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\'\n\nparameters\x18\x03 \x01(\x0b\x32\x13.matcher.Parameters\x12\x0e\n\x06\x61\x63tive\x18\x04 \x01(\x08\x12.\n\ncreated_at\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"m\n\x0cGroupRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x10\n\x08group_id\x18\x02 \x01(\t\x12\x0f\n\x07user_id\x18\x03 \x01(\t\x12.\n\ncreated_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xc1\x01\n\x05Group\x12\n\n\x02id\x18\x01 \x01(\t\x12\x10\n\x08owner_id\x18\x02 \x01(\t\x12\'\n\nparameters\x18\x03 \x01(\x0b\x32\x13.matcher.Parameters\x12\x11\n\tmax_users\x18\x04 \x01(\x05\x12.\n\ncreated_at\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\">\n\x0eGroupWithScore\x12\x1d\n\x05group\x18\x01 \x01(\x0b\x32\x0e.matcher.Group\x12\r\n\x05score\x18\x02 \x01(\x02\"M\n\x11\x43reateFormRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\'\n\nparameters\x18\x02 \x01(\x0b\x32\x13.matcher.Parameters\"\'\n\x14GetFormByUserRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"(\n\x15GetGroupByUserRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"M\n\x11UpdateFormRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\'\n\nparameters\x18\x02 \x01(\x0b\x32\x13.matcher.Parameters\"$\n\x11\x44\x65leteFormRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"5\n\x10KickGroupRequest\x12\x10\n\x08group_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"$\n\x11LeaveGroupRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"#\n\x0fGetGroupRequest\x12\x10\n\x08group_id\x18\x01 \x01(\t\"&\n\x12\x44\x65leteGroupRequest\x12\x10\n\x08owner_id\x18\x01 \x01(\t\"+\n\x17ListGroupMembersRequest\x12\x10\n\x08group_id\x18\x01 \x01(\t\":\n\x18ListGroupMembersResponse\x12\x1e\n\x07members\x18\x01 \x03(\x0b\x32\r.matcher.Form\"$\n\x11\x46indGroupsRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"=\n\x12\x46indGroupsResponse\x12\'\n\x06groups\x18\x01 \x03(\x0b\x32\x17.matcher.GroupWithScore\"&\n\x12GetRequestsRequest\x12\x10\n\x08group_id\x18\x01 \x01(\t\">\n\x13GetRequestsResponse\x12\'\n\x08requests\x18\x01 \x03(\x0b\x32\x15.matcher.GroupRequest\";\n\x16SendJoinRequestRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x10\n\x08group_id\x18\x02 \x01(\t\"-\n\x17SendJoinRequestResponse\x12\x12\n\nrequest_id\x18\x01 \x01(\t\"@\n\x18\x41\x63\x63\x65ptJoinRequestRequest\x12\x10\n\x08owner_id\x18\x01 \x01(\t\x12\x12\n\nrequest_id\x18\x02 \x01(\t\"@\n\x18RejectJoinRequestRequest\x12\x10\n\x08owner_id\x18\x01 \x01(\t\x12\x12\n\nrequest_id\x18\x02 \x01(\t*8\n\x03Sex\x12\x13\n\x0fSEX_UNSPECIFIED\x10\x00\x12\x0c\n\x08SEX_MALE\x10\x01\x12\x0e\n\nSEX_FEMALE\x10\x02*i\n\x08UserType\x12\x19\n\x15USER_TYPE_UNSPECIFIED\x10\x00\x12\x15\n\x11USER_TYPE_STUDENT\x10\x01\x12\x14\n\x10USER_TYPE_WORKER\x10\x02\x12\x15\n\x11USER_TYPE_TOURIST\x10\x03\x32\x92\x02\n\x0b\x46ormService\x12@\n\nCreateForm\x12\x1a.matcher.CreateFormRequest\x1a\x16.google.protobuf.Empty\x12=\n\rGetFormByUser\x12\x1d.matcher.GetFormByUserRequest\x1a\r.matcher.Form\x12@\n\nUpdateForm\x12\x1a.matcher.UpdateFormRequest\x1a\x16.google.protobuf.Empty\x12@\n\nDeleteForm\x12\x1a.matcher.DeleteFormRequest\x1a\x16.google.protobuf.Empty2\xaa\x03\n\x11GroupQueryService\x12@\n\nLeaveGroup\x12\x1a.matcher.LeaveGroupRequest\x1a\x16.google.protobuf.Empty\x12>\n\tKickGroup\x12\x19.matcher.KickGroupRequest\x1a\x16.google.protobuf.Empty\x12\x34\n\x08GetGroup\x12\x18.matcher.GetGroupRequest\x1a\x0e.matcher.Group\x12@\n\x0eGetGroupByUser\x12\x1e.matcher.GetGroupByUserRequest\x1a\x0e.matcher.Group\x12\x42\n\x0b\x44\x65leteGroup\x12\x1b.matcher.DeleteGroupRequest\x1a\x16.google.protobuf.Empty\x12W\n\x10ListGroupMembers\x12 .matcher.ListGroupMembersRequest\x1a!.matcher.ListGroupMembersResponse2Y\n\x10\x46indGroupService\x12\x45\n\nFindGroups\x12\x1a.matcher.FindGroupsRequest\x1a\x1b.matcher.FindGroupsResponse2\xce\x02\n\x0cGroupService\x12H\n\x0bGetRequests\x12\x1b.matcher.GetRequestsRequest\x1a\x1c.matcher.GetRequestsResponse\x12T\n\x0fSendJoinRequest\x12\x1f.matcher.SendJoinRequestRequest\x1a .matcher.SendJoinRequestResponse\x12N\n\x11\x41\x63\x63\x65ptJoinRequest\x12!.matcher.AcceptJoinRequestRequest\x1a\x16.google.protobuf.Empty\x12N\n\x11RejectJoinRequest\x12!.matcher.RejectJoinRequestRequest\x1a\x16.google.protobuf.EmptyB\x16Z\x14matcher_v1;matcherv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,10 +34,10 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'matcher.matcher_pb2', _glob
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z\024matcher_v1;matcherv1'
-  _globals['_SEX']._serialized_start=1926
-  _globals['_SEX']._serialized_end=1982
-  _globals['_USERTYPE']._serialized_start=1984
-  _globals['_USERTYPE']._serialized_end=2089
+  _globals['_SEX']._serialized_start=2019
+  _globals['_SEX']._serialized_end=2075
+  _globals['_USERTYPE']._serialized_start=2077
+  _globals['_USERTYPE']._serialized_end=2182
   _globals['_POINT']._serialized_start=96
   _globals['_POINT']._serialized_end=129
   _globals['_PARAMETERS']._serialized_start=132
@@ -60,36 +60,40 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_UPDATEFORMREQUEST']._serialized_end=1259
   _globals['_DELETEFORMREQUEST']._serialized_start=1261
   _globals['_DELETEFORMREQUEST']._serialized_end=1297
-  _globals['_GETGROUPREQUEST']._serialized_start=1299
-  _globals['_GETGROUPREQUEST']._serialized_end=1334
-  _globals['_DELETEGROUPREQUEST']._serialized_start=1336
-  _globals['_DELETEGROUPREQUEST']._serialized_end=1374
-  _globals['_LISTGROUPMEMBERSREQUEST']._serialized_start=1376
-  _globals['_LISTGROUPMEMBERSREQUEST']._serialized_end=1419
-  _globals['_LISTGROUPMEMBERSRESPONSE']._serialized_start=1421
-  _globals['_LISTGROUPMEMBERSRESPONSE']._serialized_end=1479
-  _globals['_FINDGROUPSREQUEST']._serialized_start=1481
-  _globals['_FINDGROUPSREQUEST']._serialized_end=1517
-  _globals['_FINDGROUPSRESPONSE']._serialized_start=1519
-  _globals['_FINDGROUPSRESPONSE']._serialized_end=1580
-  _globals['_GETREQUESTSREQUEST']._serialized_start=1582
-  _globals['_GETREQUESTSREQUEST']._serialized_end=1620
-  _globals['_GETREQUESTSRESPONSE']._serialized_start=1622
-  _globals['_GETREQUESTSRESPONSE']._serialized_end=1684
-  _globals['_SENDJOINREQUESTREQUEST']._serialized_start=1686
-  _globals['_SENDJOINREQUESTREQUEST']._serialized_end=1745
-  _globals['_SENDJOINREQUESTRESPONSE']._serialized_start=1747
-  _globals['_SENDJOINREQUESTRESPONSE']._serialized_end=1792
-  _globals['_ACCEPTJOINREQUESTREQUEST']._serialized_start=1794
-  _globals['_ACCEPTJOINREQUESTREQUEST']._serialized_end=1858
-  _globals['_REJECTJOINREQUESTREQUEST']._serialized_start=1860
-  _globals['_REJECTJOINREQUESTREQUEST']._serialized_end=1924
-  _globals['_FORMSERVICE']._serialized_start=2092
-  _globals['_FORMSERVICE']._serialized_end=2366
-  _globals['_GROUPQUERYSERVICE']._serialized_start=2369
-  _globals['_GROUPQUERYSERVICE']._serialized_end=2665
-  _globals['_FINDGROUPSERVICE']._serialized_start=2667
-  _globals['_FINDGROUPSERVICE']._serialized_end=2756
-  _globals['_GROUPSERVICE']._serialized_start=2759
-  _globals['_GROUPSERVICE']._serialized_end=3093
+  _globals['_KICKGROUPREQUEST']._serialized_start=1299
+  _globals['_KICKGROUPREQUEST']._serialized_end=1352
+  _globals['_LEAVEGROUPREQUEST']._serialized_start=1354
+  _globals['_LEAVEGROUPREQUEST']._serialized_end=1390
+  _globals['_GETGROUPREQUEST']._serialized_start=1392
+  _globals['_GETGROUPREQUEST']._serialized_end=1427
+  _globals['_DELETEGROUPREQUEST']._serialized_start=1429
+  _globals['_DELETEGROUPREQUEST']._serialized_end=1467
+  _globals['_LISTGROUPMEMBERSREQUEST']._serialized_start=1469
+  _globals['_LISTGROUPMEMBERSREQUEST']._serialized_end=1512
+  _globals['_LISTGROUPMEMBERSRESPONSE']._serialized_start=1514
+  _globals['_LISTGROUPMEMBERSRESPONSE']._serialized_end=1572
+  _globals['_FINDGROUPSREQUEST']._serialized_start=1574
+  _globals['_FINDGROUPSREQUEST']._serialized_end=1610
+  _globals['_FINDGROUPSRESPONSE']._serialized_start=1612
+  _globals['_FINDGROUPSRESPONSE']._serialized_end=1673
+  _globals['_GETREQUESTSREQUEST']._serialized_start=1675
+  _globals['_GETREQUESTSREQUEST']._serialized_end=1713
+  _globals['_GETREQUESTSRESPONSE']._serialized_start=1715
+  _globals['_GETREQUESTSRESPONSE']._serialized_end=1777
+  _globals['_SENDJOINREQUESTREQUEST']._serialized_start=1779
+  _globals['_SENDJOINREQUESTREQUEST']._serialized_end=1838
+  _globals['_SENDJOINREQUESTRESPONSE']._serialized_start=1840
+  _globals['_SENDJOINREQUESTRESPONSE']._serialized_end=1885
+  _globals['_ACCEPTJOINREQUESTREQUEST']._serialized_start=1887
+  _globals['_ACCEPTJOINREQUESTREQUEST']._serialized_end=1951
+  _globals['_REJECTJOINREQUESTREQUEST']._serialized_start=1953
+  _globals['_REJECTJOINREQUESTREQUEST']._serialized_end=2017
+  _globals['_FORMSERVICE']._serialized_start=2185
+  _globals['_FORMSERVICE']._serialized_end=2459
+  _globals['_GROUPQUERYSERVICE']._serialized_start=2462
+  _globals['_GROUPQUERYSERVICE']._serialized_end=2888
+  _globals['_FINDGROUPSERVICE']._serialized_start=2890
+  _globals['_FINDGROUPSERVICE']._serialized_end=2979
+  _globals['_GROUPSERVICE']._serialized_start=2982
+  _globals['_GROUPSERVICE']._serialized_end=3316
 # @@protoc_insertion_point(module_scope)

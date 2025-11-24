@@ -84,6 +84,27 @@ class GroupQueryServicer(pb2_grpc.GroupQueryServiceServicer):
     def __init__(self, query: GroupQuery):
         self.query = query
 
+    def LeaveGroup(self, request, context):
+        try:
+            user_id = UUID(request.user_id)
+            self.query.leave(user_id)
+            return Empty()
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
+    def KickGroup(self, request, context):
+        try:
+            user_id = UUID(request.user_id)
+            owner_id = UUID(request.owner_id)
+            self.query.kick(owner_id, user_id)
+            return Empty()
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
     def GetGroup(self, request, context):
         try:
             group_id = UUID(request.group_id)

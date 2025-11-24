@@ -337,6 +337,39 @@ class DeleteFormRequest(google.protobuf.message.Message):
 global___DeleteFormRequest = DeleteFormRequest
 
 @typing.final
+class KickGroupRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    GROUP_ID_FIELD_NUMBER: builtins.int
+    USER_ID_FIELD_NUMBER: builtins.int
+    group_id: builtins.str
+    user_id: builtins.str
+    def __init__(
+        self,
+        *,
+        group_id: builtins.str = ...,
+        user_id: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["group_id", b"group_id", "user_id", b"user_id"]) -> None: ...
+
+global___KickGroupRequest = KickGroupRequest
+
+@typing.final
+class LeaveGroupRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    USER_ID_FIELD_NUMBER: builtins.int
+    user_id: builtins.str
+    def __init__(
+        self,
+        *,
+        user_id: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["user_id", b"user_id"]) -> None: ...
+
+global___LeaveGroupRequest = LeaveGroupRequest
+
+@typing.final
 class GetGroupRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
