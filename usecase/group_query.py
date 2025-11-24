@@ -11,6 +11,8 @@ class GroupQuery:
         self.repo = repo
 
     def kick(self, owner_id: UUID, user_id: UUID):
+        if owner_id == user_id:
+            raise DomainError('Вы не можете выгнать самого себя')
         try:
             group = self.repo.get_by_owner_id(owner_id)
         except NotFoundError:
@@ -22,6 +24,13 @@ class GroupQuery:
             group = self.repo.get_by_user_id(user_id)
         except NotFoundError:
             raise DomainError('У вас группы')
+        members = self.repo.list_members(group.id)
+        if len(members) == 1:
+            raise DomainError('Вы не можете выйти из группы, когда остались только вы')
+        if group.owner_id == user_id:
+            self.repo.change_owner(
+                group.id, [x.user_id for x in members if x.user_id != user_id][0]
+            )
         self.repo.rm_user(user_id, group.id)
 
     def get(self, group_id: UUID) -> Group:
