@@ -50,7 +50,7 @@ def main():
     )
     group_serv = GroupService(group_repo, req_repo)
 
-    group_q = GroupQuery(group_repo)
+    group_q = GroupQuery(group_repo, form_repo)
 
     # Регистрация сервиса
     pb2_grpc.add_FindGroupServiceServicer_to_server(
