@@ -26,7 +26,7 @@ class GroupQuery:
         try:
             group = self._group_repo.get_by_user_id(user_id)
         except NotFoundError:
-            raise DomainError('У вас группы')
+            raise DomainError('У вас нет группы')
         members = self._group_repo.list_members(group.id)
         if len(members) == 1:
             raise DomainError('Вы не можете выйти из группы, когда остались только вы')
