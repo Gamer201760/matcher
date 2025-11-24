@@ -18,6 +18,7 @@ class GroupQuery:
         except NotFoundError:
             raise DomainError('У вас нет прав выгнать человека из группы')
         self.repo.rm_user(user_id, group.id)
+        # TODO: create new group to user
 
     def leave(self, user_id: UUID):
         try:
@@ -32,6 +33,7 @@ class GroupQuery:
                 group.id, [x.user_id for x in members if x.user_id != user_id][0]
             )
         self.repo.rm_user(user_id, group.id)
+        # TODO: create new group to user
 
     def get(self, group_id: UUID) -> Group:
         return self.repo.get(group_id)

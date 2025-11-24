@@ -340,17 +340,17 @@ global___DeleteFormRequest = DeleteFormRequest
 class KickGroupRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    GROUP_ID_FIELD_NUMBER: builtins.int
+    OWNER_ID_FIELD_NUMBER: builtins.int
     USER_ID_FIELD_NUMBER: builtins.int
-    group_id: builtins.str
+    owner_id: builtins.str
     user_id: builtins.str
     def __init__(
         self,
         *,
-        group_id: builtins.str = ...,
+        owner_id: builtins.str = ...,
         user_id: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["group_id", b"group_id", "user_id", b"user_id"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["owner_id", b"owner_id", "user_id", b"user_id"]) -> None: ...
 
 global___KickGroupRequest = KickGroupRequest
 
