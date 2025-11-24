@@ -134,7 +134,7 @@ class GroupRepository:
             # Extract group_id from the returned group info
             group_id_str = db_group.get('id')
             if not group_id_str:
-                raise DomainError('db group not found id')
+                raise NotFoundError('db group not found id')
 
             # Parse group ID using robust helper
             return db_group_to_group(db_group, self._parse_group_id(group_id_str))
@@ -157,7 +157,7 @@ class GroupRepository:
 
             group_id_str = db_group.get('id')
             if not group_id_str:
-                raise DomainError('db group not found id')
+                raise NotFoundError('db group not found id')
 
             return db_group_to_group(db_group, self._parse_group_id(group_id_str))
 
@@ -266,7 +266,7 @@ class GroupRepository:
                     group_id=str(group_id),
                 )
                 if not success:
-                    raise RuntimeError(
+                    raise DomainError(
                         f'User {user_id} is not a member of group {group_id}'
                     )
             except ValueError as e:

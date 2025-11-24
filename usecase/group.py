@@ -41,6 +41,20 @@ class GroupService:
         self._group_repo = group_repo
         self._request_repo = request_repo
 
+    def kick(self, owner_id: UUID, user_id: UUID):
+        try:
+            group = self._group_repo.get_by_owner_id(owner_id)
+        except NotFoundError:
+            raise DomainError('У вас нет прав выгнать человека из группы')
+        self._group_repo.rm_user(user_id, group.id)
+
+    def leave(self, user_id: UUID):
+        try:
+            group = self._group_repo.get_by_user_id(user_id)
+        except NotFoundError:
+            raise DomainError('У вас группы')
+        self._group_repo.rm_user(user_id, group.id)
+
     def get_requests(self, group_id: UUID) -> list[GroupRequest]:
         return self._request_repo.get_all(group_id)
 
