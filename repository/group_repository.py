@@ -29,7 +29,7 @@ from infrastructure.neo4j import (
     remove_user_from_group,
     update_group_parameters,
 )
-from recommendation import create_vector
+from recommendation import create_vector, mean_geo_coords
 from repository.form_dto import db_form_to_form, parameters_to_db_dict
 from repository.group_dto import db_group_to_group
 
@@ -297,6 +297,11 @@ class GroupRepository:
                 param: sum(member.get(param, 0) for member in members) / count
                 for param in PARAMETERS
             }
+
+            # Override the naïve averages for geo_lat / geo_lon
+            avg_lat, avg_lon = mean_geo_coords(members)
+            avg_params["geo_lat"] = avg_lat
+            avg_params["geo_lon"] = avg_lon
 
             # Update group with calculated parameters
             update_group_parameters(
