@@ -1,5 +1,6 @@
 """Vector creation and distance calculation for recommendation system."""
 
+import math
 from math import sqrt
 
 
@@ -57,3 +58,55 @@ def euclidean_distance(vec1, vec2):
     # Normalize by maximum possible distance
     max_distance = sqrt(len(vec1))
     return min(1.0, distance / max_distance)
+
+
+def mean_geo_coords(members: list[dict[str, float]]) -> tuple[float, float]:
+    """
+    Calculate the geographic mean (centroid) of coordinates using spherical geometry.
+
+    This function computes the mean of geographic coordinates on a sphere, which is
+    more accurate than simple arithmetic mean for coordinates that span large distances
+    or cross the antimeridian.
+
+    Args:
+        members: List of dicts with 'geo_lat' and 'geo_lon' keys in degrees
+
+    Returns:
+        Tuple of (lat, lon) in degrees
+
+    Raises:
+        ValueError: If members list is empty
+    """
+    if not members:
+        raise ValueError("No members for geo mean")
+
+    x = y = z = 0.0
+    for m in members:
+        lat_deg = m["geo_lat"]
+        lon_deg = m["geo_lon"]
+
+        lat = math.radians(lat_deg)
+        lon = math.radians(lon_deg)
+
+        x += math.cos(lat) * math.cos(lon)
+        y += math.cos(lat) * math.sin(lon)
+        z += math.sin(lat)
+
+    n = len(members)
+    x /= n
+    y /= n
+    z /= n
+
+    hyp = math.sqrt(x * x + y * y)
+    lat = math.atan2(z, hyp)
+    lon = math.atan2(y, x)
+
+    return math.degrees(lat), math.degrees(lon)
+
+if __name__ == "__main__":
+    members = [
+        {"geo_lat": 55, "geo_lon": 37},
+        {"geo_lat": 59, "geo_lon": 30},
+    ]
+    avg_lat, avg_lon = mean_geo_coords(members)
+    print(avg_lat, avg_lon)
