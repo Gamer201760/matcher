@@ -1,4 +1,4 @@
-.PHONY: test lint typecheck run pre-commit proto-gen fix-grpc-autogen
+.PHONY: test lint typecheck run pre-commit proto-gen fix-grpc-autogen build
 PROTO_DIR := proto
 GEN_DIR := gen
 PROTO_FILES := $(shell find $(PROTO_DIR) -name '*.proto')
@@ -6,6 +6,7 @@ PROTO_FILES := $(shell find $(PROTO_DIR) -name '*.proto')
 help:
 	@echo "Доступные команды:"
 	@echo "  make install      - Установить все зависимости"
+	@echo "  make build        - Собрать контейнер"
 	@echo "  make test         - Запустить тесты pytest"
 	@echo "  make lint         - Запустить линтер ruff"
 	@echo "  make typecheck    - Запустить проверку типов mypy"
@@ -30,6 +31,9 @@ fix-grpc-autogen:
 	./fix_grpc_autogen.sh $(GEN_DIR) $(GEN_DIR)
 
 pre-commit: lint typecheck test
+
+build:
+	docker-buildx build --platform linux/amd64,linux/arm64  --tag gglamer/matcher:latest .
 
 proto-gen: 	
 	@echo "🧹 Cleaning up old generated files..."
