@@ -1,7 +1,7 @@
 from logging import getLogger
 from uuid import UUID
 
-from entity.errors import DomainError, NotFoundError
+from entity.errors import DomainError, EntityAlreadyExistsError, NotFoundError
 from entity.form import Form
 from entity.group import Group
 from entity.parameters import Parameters
@@ -33,23 +33,29 @@ class FormService:
         :param form: Объект анкеты с данными.
         :raises EntityAlreadyExistsError: Если у пользователя уже есть анкета.
         """
-        self._form_repo.create(
-            Form(
-                user_id=user_id,
-                parameters=parameters,
+        try:
+            self._form_repo.get_by_user_id(user_id)
+            raise EntityAlreadyExistsError(
+                f'Форма уже существует у пользователя {user_id}'
             )
-        )
-
-        group_id = self._group_repo.create(
-            Group(
-                max_users=parameters.roommates_count + 1,
-                owner_id=user_id,
-                parameters=parameters,
+        except NotFoundError:
+            self._form_repo.create(
+                Form(
+                    user_id=user_id,
+                    parameters=parameters,
+                )
             )
-        )
 
-        self._group_repo.add_user(user_id=user_id, group_id=group_id)
-        self._group_repo.calculate_params(group_id)
+            group_id = self._group_repo.create(
+                Group(
+                    max_users=parameters.roommates_count + 1,
+                    owner_id=user_id,
+                    parameters=parameters,
+                )
+            )
+
+            self._group_repo.add_user(user_id=user_id, group_id=group_id)
+            self._group_repo.calculate_params(group_id)
 
     def get_by_user(self, user_id: UUID) -> Form:
         """
