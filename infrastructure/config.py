@@ -25,13 +25,13 @@ WEIGHT_MULTIPLIER = 1
 
 # Base weights for group parameter vectors (before multiplier)
 BASE_WEIGHTS = {
-    'rooms': 1.0,
-    'roommates': 1.0,
-    'budget': 1,
-    'months': 1,
-    'geo_lat': 1.0,
-    'geo_lon': 1.0,
-    'age': 1
+    'rooms': 3.69,        # Кол-во комнат
+    'roommates': 4.18,    # Кол-во соседей
+    'budget': 4.51,       # Бюджет
+    'months': 4.26,       # Месяцы
+    'geo_lat': 4.23 / 2,  # Расположение
+    'geo_lon': 4.23 / 2,  # Расположение
+    'age': 3.31,          # Возраст соседей
 }
 
 # Final weights (base weights * multiplier)
