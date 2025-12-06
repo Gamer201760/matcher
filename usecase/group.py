@@ -60,6 +60,7 @@ class GroupService:
 
         self._request_repo.create(group_id, user_id)
         self._notify.send_join_request(group, user_id)
+        self._notify.flush()
 
     def accept_join_request(self, owner_id: UUID, request_id: UUID):
         """
@@ -84,6 +85,7 @@ class GroupService:
         self._group_repo.calculate_params(group.id)
         self._request_repo.delete_all_by_user_id(request.user_id)
         self._notify.accept_join_request(group, request)
+        self._notify.flush()
 
     def reject_join_request(self, owner_id: UUID, request_id: UUID):
         """Владелец группы ОТКЛОНЯЕТ запрос на вступление."""
@@ -98,3 +100,4 @@ class GroupService:
             raise DomainError('Только владелец группы может отклонять запросы')
 
         self._notify.reject_join_request(group, request)
+        self._notify.flush()

@@ -16,6 +16,7 @@ dependencies = [
     "scipy>=1.16.2",
     "grpcio-tools>=1.75.1",
     "types-grpcio>=1.0.0.20251001",
+    "kafka-python>=2.3.0",
 ]
 
 [dependency-groups]

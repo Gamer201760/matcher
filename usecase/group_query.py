@@ -32,6 +32,7 @@ class GroupQuery:
             user_id,
             group.max_users - self._group_repo.count_members(group.id),
         )
+        self._notify.flush()
 
     def leave(self, user_id: UUID):
         try:
@@ -49,6 +50,7 @@ class GroupQuery:
         self._group_repo.calculate_params(group.id)
         self._create_group(user_id)
         self._notify.leave(group, user_id, group.max_users - len(members))
+        self._notify.flush()
 
     def _create_group(self, user_id: UUID) -> None:
         form = self._form_repo.get_by_user_id(user_id)
