@@ -78,7 +78,7 @@ class GroupService:
         self._group_repo.delete_by_owner_id(request.user_id)
         self._group_repo.add_user(request.user_id, group.id)
         self._group_repo.calculate_params(group.id)
-        self._request_repo.delete(request_id)
+        self._request_repo.delete_all_by_user_id(request.user_id)
 
     def reject_join_request(self, owner_id: UUID, request_id: UUID):
         """Владелец группы ОТКЛОНЯЕТ запрос на вступление."""
