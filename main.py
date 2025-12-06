@@ -1,8 +1,10 @@
+import json
 import os
 from concurrent import futures
 
 import grpc
 from grpc_reflection.v1alpha import reflection
+from kafka import KafkaProducer
 
 import gen.matcher.matcher_pb2 as pb2
 import gen.matcher.matcher_pb2_grpc as pb2_grpc
@@ -19,6 +21,7 @@ from repository.form_repository import FormRepository
 from repository.group_recommendation_repository import GroupRecommendationRepository
 from repository.group_repository import GroupRepository
 from repository.group_request_in_memory import InMemoryGroupRequestRepository
+from repository.notify_repository import KafkaNotificationRepository
 from usecase.form import FormService
 from usecase.group import FindGroupService, GroupService
 from usecase.group_query import GroupQuery
@@ -37,6 +40,12 @@ def main():
     with driver.session() as session:
         ensure_constraints_and_index(session, dims=len(PARAMETERS))
 
+    producer = KafkaProducer(
+        bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
+        value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+    )
+    notify_repo = KafkaNotificationRepository(producer)
+
     group_repo = GroupRepository(driver)
     recomend_repo = GroupRecommendationRepository(driver)
     form_repo = FormRepository(driver)
@@ -48,9 +57,9 @@ def main():
         group_repo,
         recomend_repo,
     )
-    group_serv = GroupService(group_repo, req_repo)
+    group_serv = GroupService(group_repo, req_repo, notify_repo)
 
-    group_q = GroupQuery(group_repo, form_repo)
+    group_q = GroupQuery(group_repo, form_repo, notify_repo)
 
     # Регистрация сервиса
     pb2_grpc.add_FindGroupServiceServicer_to_server(
