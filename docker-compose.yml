@@ -1,6 +1,6 @@
 services:
   neo4j:
-    image: neo4j:latest
+    image: neo4j:5.26.18-community-bullseye
     ports:
       - "7687:7687" # db
       - "7474:7474" # web
@@ -25,3 +25,32 @@ services:
       - NEO4J_USERNAME=neo4j
       - NEO4J_PASSWORD=123456789
       - NEO4J_DATABASE=neo4j
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+    ports:
+      - "9092:9092"
+      - "9644:9644" # admin API
+
+  console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    container_name: redpanda-console
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      REDPANDA_ADMIN_API: http://redpanda:9644
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redpanda

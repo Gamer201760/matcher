@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from uuid import UUID
 
 from kafka import KafkaProducer
@@ -24,11 +23,11 @@ class KafkaNotificationRepository:
 
     @staticmethod
     def _group_to_dict(group: Group) -> dict:
-        return asdict(group)
+        return group.to_dict()
 
     @staticmethod
     def _request_to_dict(request: GroupRequest) -> dict:
-        return asdict(request)
+        return request.to_dict()
 
     def send_join_request(self, group: 'Group', user_id: UUID) -> None:
         topic = 'matcher.group.join-request'
