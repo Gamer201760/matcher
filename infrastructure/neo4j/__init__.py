@@ -21,6 +21,7 @@ from .connection import (
     ensure_constraints_and_index,
     get_driver,
 )
+from .statistics import update_parameter_statistics
 
 # Group operations
 from .group_ops import (
@@ -73,6 +74,8 @@ __all__ = [
     'ensure_constraints_and_index',
     'clean_db',
     'check_neo4j_connection',
+    # Statistics
+    'update_parameter_statistics',
     # User ops
     'clear_users',
     'upsert_form',

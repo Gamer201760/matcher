@@ -30,7 +30,7 @@ from infrastructure.cli.utils import (
     sample_users,
     setup_sample_groups,
 )
-from infrastructure.config import PARAMETERS, get_parameter_statistics, set_parameter_statistics
+from infrastructure.config import PARAMETERS, get_parameter_statistics
 from infrastructure.neo4j import (
     add_user_to_group,
     clean_db,
@@ -38,12 +38,12 @@ from infrastructure.neo4j import (
     get_group_by_user_id,
     get_user_parameters,
     remove_user_from_group,
+    update_parameter_statistics,
     upsert_users,
 )
 from infrastructure.neo4j.connection import ensure_constraints_and_index, get_driver
 from infrastructure.neo4j.group_ops import get_group_member_parameters
 from recommendation import create_vector
-from recommendation.statistics import update_statistics
 from usecase.form import FormService
 from usecase.group import FindGroupService, GroupService
 from usecase.group_query import GroupQuery
@@ -53,25 +53,18 @@ import os
 def update_parameter_statistics_action():
     """Update parameter statistics from current user data."""
     try:
-        from infrastructure.config import get_normalizer
         import infrastructure.config as config
-        
-        driver = get_driver(
-            os.getenv('NEO4J_URI', ''),
-            os.getenv('NEO4J_USERNAME', ''),
-            os.getenv('NEO4J_PASSWORD', ''),
-        )
-        
-        # Get the configured normalizer
-        normalizer = get_normalizer()
-        statistics, user_count = update_statistics(driver, PARAMETERS, normalizer)
-        
+
+        statistics, user_count = update_parameter_statistics()
+
         if statistics and user_count >= 10:
-            # Update the config module's statistics
-            set_parameter_statistics(statistics)
-            display_success(f'✓ Statistics updated from {user_count} users ({config.NORMALIZATION_METHOD} method)')
+            display_success(
+                f'✓ Statistics updated from {user_count} users ({config.NORMALIZATION_METHOD} method)'
+            )
         elif user_count < 10:
-            display_info(f'Using default statistics (only {user_count} users, need at least 10)')
+            display_info(
+                f'Using default statistics (only {user_count} users, need at least 10)'
+            )
         else:
             display_warning('Could not calculate statistics, using defaults')
     except Exception as e:
