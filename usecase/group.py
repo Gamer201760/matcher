@@ -8,6 +8,7 @@ from .interface import (
     GroupRecomendationRepository,
     GroupRepository,
     GroupRequestRepository,
+    NotificationRepository,
 )
 
 
@@ -37,9 +38,11 @@ class GroupService:
         self,
         group_repo: GroupRepository,
         request_repo: GroupRequestRepository,
+        notify_repo: NotificationRepository,
     ):
         self._group_repo = group_repo
         self._request_repo = request_repo
+        self._notify = notify_repo
 
     def get_requests(self, group_id: UUID) -> list[GroupRequest]:
         return self._request_repo.get_all_by_group_id(group_id)
@@ -56,6 +59,7 @@ class GroupService:
             raise DomainError('В этой группу уже максимум человек')
 
         self._request_repo.create(group_id, user_id)
+        self._notify.send_join_request(group, user_id)
 
     def accept_join_request(self, owner_id: UUID, request_id: UUID):
         """
@@ -79,6 +83,7 @@ class GroupService:
         self._group_repo.add_user(request.user_id, group.id)
         self._group_repo.calculate_params(group.id)
         self._request_repo.delete_all_by_user_id(request.user_id)
+        self._notify.accept_join_request(group, request)
 
     def reject_join_request(self, owner_id: UUID, request_id: UUID):
         """Владелец группы ОТКЛОНЯЕТ запрос на вступление."""
@@ -91,3 +96,5 @@ class GroupService:
                 raise DomainError('Этот запрос на вступленние не в вашу группу')
         except NotFoundError:
             raise DomainError('Только владелец группы может отклонять запросы')
+
+        self._notify.reject_join_request(group, request)

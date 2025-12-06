@@ -3,13 +3,19 @@ from uuid import UUID
 from entity.errors import DomainError, NotFoundError
 from entity.form import Form
 from entity.group import Group
-from usecase.interface import FormRepository, GroupRepository
+from usecase.interface import FormRepository, GroupRepository, NotificationRepository
 
 
 class GroupQuery:
-    def __init__(self, group_repo: GroupRepository, form_repo: FormRepository):
+    def __init__(
+        self,
+        group_repo: GroupRepository,
+        form_repo: FormRepository,
+        notify_repo: NotificationRepository,
+    ):
         self._group_repo = group_repo
         self._form_repo = form_repo
+        self._notify = notify_repo
 
     def kick(self, owner_id: UUID, user_id: UUID):
         if owner_id == user_id:
@@ -21,6 +27,11 @@ class GroupQuery:
         self._group_repo.rm_user(user_id, group.id)
         self._group_repo.calculate_params(group.id)
         self._create_group(user_id)
+        self._notify.kick(
+            group,
+            user_id,
+            group.max_users - self._group_repo.count_members(group.id),
+        )
 
     def leave(self, user_id: UUID):
         try:
@@ -37,6 +48,7 @@ class GroupQuery:
         self._group_repo.rm_user(user_id, group.id)
         self._group_repo.calculate_params(group.id)
         self._create_group(user_id)
+        self._notify.leave(group, user_id, group.max_users - len(members))
 
     def _create_group(self, user_id: UUID) -> None:
         form = self._form_repo.get_by_user_id(user_id)

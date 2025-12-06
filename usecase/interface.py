@@ -56,19 +56,34 @@ class GroupRecomendationRepository(Protocol):
 
 
 class NotificationRepository(Protocol):
-    """Абстракция для отправки уведомлений пользователям"""
-
-    def notify_owner_of_new_request(
+    def send_join_request(
         self,
-        group_id: UUID,
+        group: Group,
         user_id: UUID,
-    ) -> None:
-        """Уведомить владельца группы о новом запросе на вступление."""
+    ) -> None: ...
 
-    def notify_user_of_decision(
+    def accept_join_request(
         self,
+        group: Group,
+        request: GroupRequest,
+    ) -> None: ...
+
+    def reject_join_request(
+        self,
+        group: Group,
+        request: GroupRequest,
+    ) -> None: ...
+
+    def kick(
+        self,
+        group: Group,
         user_id: UUID,
-        group_id: UUID,
-        accepted: bool,
-    ) -> None:
-        """Уведомить пользователя о решении (принят или отклонен)"""
+        remained: int,
+    ) -> None: ...
+
+    def leave(
+        self,
+        group: Group,
+        user_id: UUID,
+        remained: int,
+    ) -> None: ...
