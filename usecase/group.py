@@ -49,6 +49,12 @@ class GroupService:
 
     def send_join_request(self, user_id: UUID, group_id: UUID):
         """Пользователь отправляет запрос на вступление в группу."""
+        if group_id in [
+            i.group_id for i in self._request_repo.get_all_by_user_id(user_id)
+        ]:
+            raise DomainError(
+                'Вы не можете отправить больше одной заявки на вступление в эту группу'
+            )
         group = self._group_repo.get(group_id)
         if user_id in [i.user_id for i in self._group_repo.list_members(group_id)]:
             raise DomainError(
