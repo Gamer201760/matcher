@@ -9,7 +9,7 @@ import gen.matcher.matcher_pb2_grpc as pb2_grpc
 from entity.errors import DomainError, NotFoundError
 from usecase.form import FormService
 from usecase.group import (
-    FindGroupService,
+    FindGroupServiceInterface,
     GroupService,
 )
 from usecase.group_query import GroupQuery
@@ -150,7 +150,7 @@ class GroupQueryServicer(pb2_grpc.GroupQueryServiceServicer):
 
 
 class FindGroupServicer(pb2_grpc.FindGroupServiceServicer):
-    def __init__(self, service: FindGroupService):
+    def __init__(self, service: FindGroupServiceInterface):
         self.service = service
 
     def FindGroups(self, request, context):

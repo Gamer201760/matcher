@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Protocol, Tuple
 from uuid import UUID
 
 from entity.errors import DomainError, NotFoundError
@@ -10,6 +10,10 @@ from .interface import (
     GroupRequestRepository,
     NotificationRepository,
 )
+
+
+class FindGroupServiceInterface(Protocol):
+    def execute(self, user_id: UUID) -> List[Tuple[Group, float]]: ...
 
 
 class FindGroupService:
