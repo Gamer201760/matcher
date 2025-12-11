@@ -45,7 +45,7 @@ def db_group_to_group(db_dict: dict, group_id: UUID) -> Group:
 
     return Group(
         id=group_id,
-        owner_id=db_dict.get('owner_id', uuid4()),
+        owner_id=UUID(db_dict.get('owner_id', uuid4())),
         parameters=parameters,
         max_users=max_users,
     )

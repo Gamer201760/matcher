@@ -57,6 +57,7 @@ class GroupRecomendationRepository(Protocol):
 
 class CacheGroupRecomendationRepository(Protocol):
     def execute(self, user_id: UUID) -> list[tuple[Group, float]]: ...
+    def add(self, user_id: UUID, value: list[tuple[Group, float]]) -> None: ...
 
 
 class NotificationRepository(Protocol):

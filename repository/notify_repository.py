@@ -5,6 +5,34 @@ from kafka import KafkaProducer
 from entity.group import Group, GroupRequest
 
 
+class MockNotificationRepository:
+    """
+    Топики:
+      matcher.group.join-request
+      matcher.group.accept
+      matcher.group.reject
+      matcher.group.kick
+      matcher.group.leave
+    """
+
+    def send_join_request(self, group: 'Group', user_id: UUID) -> None:
+        print('Send event', group, user_id)
+
+    def accept_join_request(self, group: 'Group', request: 'GroupRequest') -> None:
+        print('accept_join_request', group, request)
+
+    def reject_join_request(self, group: 'Group', request: 'GroupRequest') -> None:
+        print('reject_join_request', group, request)
+
+    def kick(self, group: 'Group', user_id: UUID, remained: int) -> None:
+        print('kick', group, remained, user_id)
+
+    def leave(self, group: 'Group', user_id: UUID, remained: int) -> None:
+        print('leave', group, remained, user_id)
+
+    def flush(self) -> None: ...
+
+
 class KafkaNotificationRepository:
     """
     Топики:

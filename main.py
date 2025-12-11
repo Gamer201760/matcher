@@ -1,10 +1,9 @@
-import json
 import os
 from concurrent import futures
 
 import grpc
+from dotenv import load_dotenv
 from grpc_reflection.v1alpha import reflection
-from kafka import KafkaProducer
 
 import gen.matcher.matcher_pb2 as pb2
 import gen.matcher.matcher_pb2_grpc as pb2_grpc
@@ -21,12 +20,14 @@ from repository.form_repository import FormRepository
 from repository.group_recommendation_repository import GroupRecommendationRepository
 from repository.group_repository import GroupRepository
 from repository.group_request_in_memory import InMemoryGroupRequestRepository
-from repository.notify_repository import KafkaNotificationRepository
+from repository.notify_repository import MockNotificationRepository
 from usecase.form import FormService
 from usecase.group import FindGroupService, GroupService
 from usecase.group_query import GroupQuery
 
 logger = setup_logger('main')
+
+load_dotenv()
 
 
 def main():
@@ -40,11 +41,12 @@ def main():
     with driver.session() as session:
         ensure_constraints_and_index(session, dims=len(PARAMETERS))
 
-    producer = KafkaProducer(
-        bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
-        value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-    )
-    notify_repo = KafkaNotificationRepository(producer)
+    # producer = KafkaProducer(
+    #     bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
+    #     value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+    # )
+    # notify_repo = KafkaNotificationRepository(producer)
+    notify_repo = MockNotificationRepository()
 
     group_repo = GroupRepository(driver)
     recomend_repo = GroupRecommendationRepository(driver)

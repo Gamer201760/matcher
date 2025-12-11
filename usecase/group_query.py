@@ -3,7 +3,10 @@ from uuid import UUID
 from entity.errors import DomainError, NotFoundError
 from entity.form import Form
 from entity.group import Group
+from infrastructure.logging_utils import setup_logger
 from usecase.interface import FormRepository, GroupRepository, NotificationRepository
+
+logger = setup_logger(name='group_query')
 
 
 class GroupQuery:
@@ -42,6 +45,9 @@ class GroupQuery:
         members = self._group_repo.list_members(group.id)
         if len(members) == 1:
             raise DomainError('Вы не можете выйти из группы, когда остались только вы')
+        logger.warning(
+            f'Group {group}\nMembers {members}\nUser_id {user_id}\ntype: {type(group.owner_id)}'
+        )
         if group.owner_id == user_id:
             self._group_repo.change_owner(
                 group.id, [x.user_id for x in members if x.user_id != user_id][0]
