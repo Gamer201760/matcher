@@ -223,6 +223,24 @@ class GroupRepository:
 
             return forms
 
+    def get_all(self) -> list[tuple[UUID, tuple[UUID]]]:
+        a = []
+        with self.driver.session() as session:
+            query = """
+                MATCH (u:User)-[:MEMBER_OF]->(g:Group)
+                WITH g.id AS groupId, collect(u.user_id) AS userIds
+                RETURN groupId, userIds
+                ORDER BY groupId;
+            """
+            results = session.run(query)
+            for res in results:
+                group_id = UUID(res.get('groupId'))
+                if group_id is None:
+                    raise DomainError('ошибка получения groupID')
+                user_ids = tuple(map(UUID, [x for x in res.get('userIds', [])]))
+                a.append((group_id, user_ids))
+        return a
+
     def count_members(self, group_id: UUID) -> int:
         """
         Count the number of members in a group.
@@ -300,8 +318,8 @@ class GroupRepository:
 
             # Override the naïve averages for geo_lat / geo_lon
             avg_lat, avg_lon = mean_geo_coords(members)
-            avg_params["geo_lat"] = avg_lat
-            avg_params["geo_lon"] = avg_lon
+            avg_params['geo_lat'] = avg_lat
+            avg_params['geo_lon'] = avg_lon
 
             # Update group with calculated parameters
             update_group_parameters(

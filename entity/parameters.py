@@ -56,3 +56,27 @@ class Parameters:
             'user_type': self.user_type.name,
             'description': self.description,
         }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Parameters':
+        return cls(
+            name=data['name'],
+            surname=data['surname'],
+            geo=Point(
+                lat=data['geo']['lat'],
+                lon=data['geo']['lon'],
+            ),
+            address=data['address'],
+            photos=list(data['photos']),
+            budget=int(data['budget']),
+            room_count=int(data['room_count']),
+            roommates_count=int(data['roommates_count']),
+            month=int(data['month']),
+            age=int(data['age']),
+            smoking=bool(data['smoking']),
+            alko=bool(data['alko']),
+            pet=bool(data['pet']),
+            sex=Sex[data['sex']],
+            user_type=UserType[data['user_type']],
+            description=data['description'],
+        )

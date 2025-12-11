@@ -43,3 +43,14 @@ class Group:
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
         }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Group':
+        return cls(
+            id=UUID(data['id']),
+            owner_id=UUID(data['owner_id']),
+            parameters=Parameters.from_dict(data['parameters']),
+            max_users=int(data['max_users']),
+            created_at=datetime.fromisoformat(data['created_at']),
+            updated_at=datetime.fromisoformat(data['updated_at']),
+        )
