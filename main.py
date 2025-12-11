@@ -1,9 +1,12 @@
+import json
 import os
 from concurrent import futures
 
 import grpc
+import redis
 from dotenv import load_dotenv
 from grpc_reflection.v1alpha import reflection
+from kafka import KafkaProducer
 
 import gen.matcher.matcher_pb2 as pb2
 import gen.matcher.matcher_pb2_grpc as pb2_grpc
@@ -17,12 +20,14 @@ from infrastructure.config import PARAMETERS
 from infrastructure.logging_utils import setup_logger
 from infrastructure.neo4j.connection import ensure_constraints_and_index, get_driver
 from repository.form_repository import FormRepository
-from repository.group_recommendation_repository import GroupRecommendationRepository
+from repository.group_recommendation_cache import (
+    CacheGroupRecommendationRepositoryRedis,
+)
 from repository.group_repository import GroupRepository
 from repository.group_request_in_memory import InMemoryGroupRequestRepository
-from repository.notify_repository import MockNotificationRepository
+from repository.notify_repository import KafkaNotificationRepository
 from usecase.form import FormService
-from usecase.group import FindGroupService, GroupService
+from usecase.group import CacheFindGroupService, GroupService
 from usecase.group_query import GroupQuery
 
 logger = setup_logger('main')
@@ -41,27 +46,31 @@ def main():
     with driver.session() as session:
         ensure_constraints_and_index(session, dims=len(PARAMETERS))
 
-    # producer = KafkaProducer(
-    #     bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
-    #     value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-    # )
-    # notify_repo = KafkaNotificationRepository(producer)
-    notify_repo = MockNotificationRepository()
+    producer = KafkaProducer(
+        bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
+        value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+    )
+    notify_repo = KafkaNotificationRepository(producer)
+    # notify_repo = MockNotificationRepository()
 
     group_repo = GroupRepository(driver)
-    recomend_repo = GroupRecommendationRepository(driver)
     form_repo = FormRepository(driver)
-    # req_repo = GroupRequestRepository(driver)
     req_repo = InMemoryGroupRequestRepository()
 
     form_serv = FormService(form_repo, group_repo)
-    find_serv = FindGroupService(
-        group_repo,
-        recomend_repo,
+
+    redis_client = redis.Redis(
+        host=os.getenv('REDIS_HOST', 'localhost'),
+        port=int(os.getenv('REDIS_PORT', '6379')),
+        db=0,
+        decode_responses=True,
     )
+    cache_repo = CacheGroupRecommendationRepositoryRedis(redis_client)
+
     group_serv = GroupService(group_repo, req_repo, notify_repo)
 
     group_q = GroupQuery(group_repo, form_repo, notify_repo)
+    find_serv = CacheFindGroupService(cache_repo)
 
     # Регистрация сервиса
     pb2_grpc.add_FindGroupServiceServicer_to_server(
