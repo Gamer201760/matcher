@@ -55,6 +55,10 @@ class GroupRecomendationRepository(Protocol):
         ...
 
 
+class CacheGroupRecomendationRepository(Protocol):
+    def execute(self, user_id: UUID) -> list[tuple[Group, float]]: ...
+
+
 class NotificationRepository(Protocol):
     def send_join_request(
         self,

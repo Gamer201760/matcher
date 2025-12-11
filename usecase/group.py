@@ -5,6 +5,7 @@ from entity.errors import DomainError, NotFoundError
 from entity.group import Group, GroupRequest
 
 from .interface import (
+    CacheGroupRecomendationRepository,
     GroupRecomendationRepository,
     GroupRepository,
     GroupRequestRepository,
@@ -14,6 +15,14 @@ from .interface import (
 
 class FindGroupServiceInterface(Protocol):
     def execute(self, user_id: UUID) -> List[Tuple[Group, float]]: ...
+
+
+class CacheFindGroupService:
+    def __init__(self, cache_repo: CacheGroupRecomendationRepository):
+        self._cache_repo = cache_repo
+
+    def execute(self, user_id: UUID) -> List[Tuple[Group, float]]:
+        return self._cache_repo.execute(user_id)
 
 
 class FindGroupService:
