@@ -187,6 +187,20 @@ class GroupServicer(pb2_grpc.GroupServiceServicer):
         except Exception as e:
             context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
 
+    def GetRequestsByUserId(self, request: pb2.GetRequestsRequest, context):
+        try:
+            group_id = UUID(request.group_id)
+            requests = self.service.get_requests_by_user_id(group_id)
+            return pb2.GetRequestsResponse(
+                requests=[to_proto_request(r) for r in requests]
+            )
+        except NotFoundError as e:
+            context.abort(grpc.StatusCode.NOT_FOUND, str(e))
+        except DomainError as e:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+        except Exception as e:
+            context.abort(grpc.StatusCode.INTERNAL, f'Internal error: {str(e)}')
+
     def SendJoinRequest(self, request, context):
         try:
             user_id = UUID(request.user_id)

@@ -47,6 +47,9 @@ class GroupService:
     def get_requests(self, group_id: UUID) -> list[GroupRequest]:
         return self._request_repo.get_all_by_group_id(group_id)
 
+    def get_requests_by_user_id(self, user_id: UUID) -> list[GroupRequest]:
+        return self._request_repo.get_all_by_user_id(user_id)
+
     def send_join_request(self, user_id: UUID, group_id: UUID):
         """Пользователь отправляет запрос на вступление в группу."""
         if group_id in [
