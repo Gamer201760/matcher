@@ -1,16 +1,17 @@
-.PHONY: test lint typecheck run pre-commit proto-gen fix-grpc-autogen build
+.PHONY: test lint typecheck run pre-commit proto-gen fix-grpc-autogen build build-scheduler
 PROTO_DIR := proto
 GEN_DIR := gen
 PROTO_FILES := $(shell find $(PROTO_DIR) -name '*.proto')
 
 help:
 	@echo "Доступные команды:"
-	@echo "  make install      - Установить все зависимости"
-	@echo "  make build        - Собрать контейнер"
-	@echo "  make test         - Запустить тесты pytest"
-	@echo "  make lint         - Запустить линтер ruff"
-	@echo "  make typecheck    - Запустить проверку типов mypy"
-	@echo "  make pre-commit   - Запустить все проверки (lint, typecheck, test)"
+	@echo "  make install               - Установить все зависимости"
+	@echo "  make build                 - Собрать контейнер"
+	@echo "  make build-scheduler       - Собрать контейнер"
+	@echo "  make test                  - Запустить тесты pytest"
+	@echo "  make lint                  - Запустить линтер ruff"
+	@echo "  make typecheck             - Запустить проверку типов mypy"
+	@echo "  make pre-commit            - Запустить все проверки (lint, typecheck, test)"
 
 install:
 	uv sync
@@ -33,7 +34,10 @@ fix-grpc-autogen:
 pre-commit: lint typecheck test
 
 build:
-	docker-buildx build --platform linux/amd64,linux/arm64  --tag gglamer/matcher:latest .
+	docker-buildx build --platform linux/amd64,linux/arm64 --tag gglamer/matcher:latest .
+
+build-scheduler:
+	docker-buildx build --platform linux/amd64,linux/arm64 -f Dockerfile.scheduler --tag gglamer/matcher-scheduler:latest .
 
 proto-gen: 	
 	@echo "🧹 Cleaning up old generated files..."

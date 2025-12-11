@@ -1,0 +1,14 @@
+FROM gglamer/matcher:latest
+
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends cron ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+ARG CRON_SCHEDULE="* * * * *"
+ENV CRON_SCHEDULE=${CRON_SCHEDULE}
+
+# Запускаем cron в foreground
+COPY docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
