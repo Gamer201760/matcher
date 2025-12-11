@@ -477,6 +477,21 @@ class GetRequestsRequest(google.protobuf.message.Message):
 global___GetRequestsRequest = GetRequestsRequest
 
 @typing.final
+class GetRequestsByUserIdRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    USER_ID_FIELD_NUMBER: builtins.int
+    user_id: builtins.str
+    def __init__(
+        self,
+        *,
+        user_id: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["user_id", b"user_id"]) -> None: ...
+
+global___GetRequestsByUserIdRequest = GetRequestsByUserIdRequest
+
+@typing.final
 class GetRequestsResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
