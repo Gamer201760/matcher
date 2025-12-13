@@ -76,7 +76,7 @@ class GroupRecommendationRepository:
         with self.driver.session() as session:
             # Get the group's members and calculate average parameters
 
-            update_parameter_statistics(session)
+            update_parameter_statistics(self.driver)
             members = get_group_member_parameters(session, str(group_id))
 
             if not members:
