@@ -3,7 +3,6 @@ from uuid import UUID
 
 from entity.errors import DomainError, NotFoundError
 from entity.group import Group, GroupRequest
-from infrastructure.neo4j.statistics import update_parameter_statistics
 
 from .interface import (
     CacheGroupRecomendationRepository,
@@ -23,7 +22,6 @@ class CacheFindGroupService:
         self._cache_repo = cache_repo
 
     def execute(self, user_id: UUID) -> List[Tuple[Group, float]]:
-        update_parameter_statistics()
         return self._cache_repo.execute(user_id)
 
 

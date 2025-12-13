@@ -24,6 +24,7 @@ class CacheRecomendationUsecase:
     def execute(self) -> None:
         logger.debug('Run calculating cache')
         i = 0
+
         for group_id, user_ids in self._group_repo.get_all():
             logger.debug(f'Execute for {group_id} with users {user_ids}')
             if i == self._batch_size:
