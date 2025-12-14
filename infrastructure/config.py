@@ -25,15 +25,25 @@ VECTOR_DIMENSIONS = 7
 WEIGHT_MULTIPLIER = 1
 
 # Base weights for group parameter vectors (before multiplier)
+# BASE_WEIGHTS = {
+#     'rooms': 3.69,  # Кол-во комнат
+#     'roommates': 4.18,  # Кол-во соседей
+#     'budget': 4.51,  # Бюджет
+#     'months': 4.26,  # Месяцы
+#     'geo_lat': 4.23 / 2,  # Расположение
+#     'geo_lon': 4.23 / 2,  # Расположение
+#     'age': 3.31,  # Возраст соседей
+# }
 BASE_WEIGHTS = {
-    'rooms': 3.69,  # Кол-во комнат
-    'roommates': 4.18,  # Кол-во соседей
-    'budget': 4.51,  # Бюджет
-    'months': 4.26,  # Месяцы
-    'geo_lat': 4.23 / 2,  # Расположение
-    'geo_lon': 4.23 / 2,  # Расположение
-    'age': 3.31,  # Возраст соседей
+    'rooms': 1.2,
+    'roommates': 1.2,
+    'budget': 1.5,
+    'months': 1.0,
+    'geo_lat': 0.8,
+    'geo_lon': 0.8,
+    'age': 0.8,
 }
+
 
 # Final weights (base weights * multiplier)
 GROUP_PARAMETER_WEIGHTS = {
