@@ -22,7 +22,6 @@ from infrastructure.neo4j import (
     get_group_info,
     get_group_member_parameters,
 )
-from infrastructure.neo4j.statistics import update_parameter_statistics
 from recommendation import create_vector
 from repository.group_dto import db_group_to_group
 
@@ -75,8 +74,6 @@ class GroupRecommendationRepository:
         """
         with self.driver.session() as session:
             # Get the group's members and calculate average parameters
-
-            update_parameter_statistics(self.driver)
             members = get_group_member_parameters(session, str(group_id))
 
             if not members:

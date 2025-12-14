@@ -113,7 +113,7 @@ AUTO_GROUP_PROBABILITY = 0.4
 # ============================================================================
 
 # Normalization method: 'ZSCORE' or 'PERCENTILE'
-NORMALIZATION_METHOD = 'ZSCORE'
+NORMALIZATION_METHOD = 'PERCENTILE'
 
 # Parameter statistics (structure depends on normalization method)
 # Updated dynamically by calling update_statistics() after user generation

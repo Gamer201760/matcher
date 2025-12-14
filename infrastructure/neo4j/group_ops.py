@@ -535,3 +535,83 @@ def delete_group_by_owner(session, owner_id):
     """
     session.run(query, owner_id=owner_id)
     logger.info(f'✓ Deleted group owned by {owner_id} and its parameters')
+
+
+def recalculate_all_group_embeddings(session, use_weights=True, weights=None):
+    """
+    Recalculate embeddings for all groups using current statistics.
+    
+    This should be called after statistics are updated to ensure all group
+    embeddings are using the same normalization parameters.
+    
+    Args:
+        session: Neo4j session
+        use_weights: Whether to use parameter weights
+        weights: Parameter weights dict
+    """
+    from ..config import GROUP_PARAMETER_WEIGHTS
+    
+    if weights is None:
+        weights = GROUP_PARAMETER_WEIGHTS
+    
+    # Get all groups with their members
+    query = """
+        MATCH (g:Group)
+        OPTIONAL MATCH (u:User)-[:MEMBER_OF]->(g)
+        OPTIONAL MATCH (u)-[:HAS_PARAMETER]->(p:Parameter)
+        WITH g, u, collect({name: p.name, value: p.value}) as params
+        WITH g.id as group_id,
+             collect({
+                 user_id: u.id,
+                 rooms: [param IN params WHERE param.name = 'rooms'][0].value,
+                 roommates: [param IN params WHERE param.name = 'roommates'][0].value,
+                 budget: [param IN params WHERE param.name = 'budget'][0].value,
+                 months: [param IN params WHERE param.name = 'months'][0].value,
+                 geo_lat: [param IN params WHERE param.name = 'geo_lat'][0].value,
+                 geo_lon: [param IN params WHERE param.name = 'geo_lon'][0].value,
+                 age: [param IN params WHERE param.name = 'age'][0].value
+             }) as members
+        WHERE size(members) > 0
+        RETURN group_id, members
+    """
+    
+    result = session.run(query)
+    groups = list(result)
+    
+    logger.info(f'Recalculating embeddings for {len(groups)} groups...')
+    
+    for group_record in groups:
+        group_id = group_record['group_id']
+        members = group_record['members']
+        
+        # Filter out null members
+        valid_members = [m for m in members if m['user_id'] is not None]
+        
+        if not valid_members:
+            continue
+        
+        # Calculate averaged parameters
+        avg_params = {}
+        for param in PARAMETERS:
+            values = [m[param] for m in valid_members if m.get(param) is not None]
+            if values:
+                avg_params[param] = sum(values) / len(values)
+            else:
+                avg_params[param] = 0
+        
+        # Create new vector with current statistics
+        new_vector = create_vector(
+            avg_params,
+            PARAMETERS,
+            statistics=get_parameter_statistics(),
+            weights=weights if use_weights else None,
+        )
+        
+        # Update group embedding
+        update_query = """
+            MATCH (g:Group {id: $group_id})
+            SET g.embedding = $embedding
+        """
+        session.run(update_query, group_id=group_id, embedding=new_vector)
+    
+    logger.info(f'✓ Recalculated {len(groups)} group embeddings with current statistics')

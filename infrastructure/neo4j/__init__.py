@@ -37,6 +37,7 @@ from .group_ops import (
     get_group_member_parameters,
     get_group_with_status,
     list_group_members,
+    recalculate_all_group_embeddings,
     remove_user_from_group,
     update_group_parameters,
 )
@@ -98,6 +99,7 @@ __all__ = [
     'change_group_owner',
     'delete_group',
     'delete_group_by_owner',
+    'recalculate_all_group_embeddings',
     # Request ops
     'send_join_request',
     'approve_join_request',

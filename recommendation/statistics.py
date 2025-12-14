@@ -42,7 +42,7 @@ def calculate_parameter_statistics(session, parameters, strategy):
     for param in parameters:
         values = [r[param] for r in records if r.get(param) is not None]
         
-        if len(values) < 10:
+        if len(values) < 3:
             # Not enough data, use defaults
             continue
         
