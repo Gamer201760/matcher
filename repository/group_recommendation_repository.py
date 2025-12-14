@@ -21,6 +21,7 @@ from infrastructure.neo4j import (
     find_similar,
     get_group_info,
     get_group_member_parameters,
+    recalculate_all_group_embeddings,
 )
 from infrastructure.neo4j.statistics import update_parameter_statistics
 from recommendation import create_vector
@@ -74,8 +75,18 @@ class GroupRecommendationRepository:
             list[Group]: List of recommended groups, sorted by similarity
         """
         with self.driver.session() as session:
-            # Get the group's members and calculate average parameters
+            # Update statistics from all users (recalculates normalization parameters)
             update_parameter_statistics(self.driver)
+            
+            # CRITICAL: Recalculate all group embeddings with the new statistics
+            # This ensures stored embeddings match the statistics we'll use for the query vector
+            recalculate_all_group_embeddings(
+                session,
+                use_weights=self.use_weights,
+                weights=self.weights
+            )
+            
+            # Get the group's members and calculate average parameters
             members = get_group_member_parameters(session, str(group_id))
 
             if not members:
