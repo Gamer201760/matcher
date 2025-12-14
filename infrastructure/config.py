@@ -4,6 +4,7 @@ Configuration file for the Roommate Recommendation System.
 This module contains all constant parameters, weights, and settings
 used throughout the recommendation system and CLI.
 """
+
 import math
 
 # ============================================================================
@@ -25,13 +26,13 @@ WEIGHT_MULTIPLIER = 1
 
 # Base weights for group parameter vectors (before multiplier)
 BASE_WEIGHTS = {
-    'rooms': 3.69,        # Кол-во комнат
-    'roommates': 4.18,    # Кол-во соседей
-    'budget': 4.51,       # Бюджет
-    'months': 4.26,       # Месяцы
+    'rooms': 3.69,  # Кол-во комнат
+    'roommates': 4.18,  # Кол-во соседей
+    'budget': 4.51,  # Бюджет
+    'months': 4.26,  # Месяцы
     'geo_lat': 4.23 / 2,  # Расположение
     'geo_lon': 4.23 / 2,  # Расположение
-    'age': 3.31,          # Возраст соседей
+    'age': 3.31,  # Возраст соседей
 }
 
 # Final weights (base weights * multiplier)
@@ -42,7 +43,7 @@ GROUP_PARAMETER_WEIGHTS = {
     'months': BASE_WEIGHTS['months'] * WEIGHT_MULTIPLIER,
     'geo_lat': BASE_WEIGHTS['geo_lat'] * WEIGHT_MULTIPLIER,
     'geo_lon': BASE_WEIGHTS['geo_lon'] * WEIGHT_MULTIPLIER,
-    'age': BASE_WEIGHTS['age'] * WEIGHT_MULTIPLIER
+    'age': BASE_WEIGHTS['age'] * WEIGHT_MULTIPLIER,
 }
 
 # ============================================================================
@@ -113,7 +114,7 @@ AUTO_GROUP_PROBABILITY = 0.4
 # ============================================================================
 
 # Normalization method: 'ZSCORE' or 'PERCENTILE'
-NORMALIZATION_METHOD = 'ZSCORE'
+NORMALIZATION_METHOD = 'PERCENTILE'
 
 # Parameter statistics (structure depends on normalization method)
 # Updated dynamically by calling update_statistics() after user generation
@@ -124,28 +125,28 @@ _PARAMETER_STATISTICS = None  # Internal variable, use get_parameter_statistics(
 def get_parameter_statistics():
     """
     Get the current parameter statistics.
-    
+
     Initializes statistics with defaults if not already set.
     Call get_normalizer() first to ensure proper initialization.
-    
+
     Returns:
         Dict mapping parameter names to their statistics
     """
     global _PARAMETER_STATISTICS
-    
+
     # Initialize if needed
     if _PARAMETER_STATISTICS is None:
         get_normalizer()  # This will initialize _PARAMETER_STATISTICS
-    
+
     return _PARAMETER_STATISTICS
 
 
 def set_parameter_statistics(statistics):
     """
     Set the parameter statistics.
-    
+
     Used to update statistics after calculating from user data.
-    
+
     Args:
         statistics: Dict mapping parameter names to their statistics
     """
@@ -156,22 +157,23 @@ def set_parameter_statistics(statistics):
 def get_normalizer():
     """
     Get the configured normalization strategy instance.
-    
+
     Also initializes PARAMETER_STATISTICS with correct default format
     if it hasn't been initialized yet.
-    
+
     Returns:
         NormalizationStrategy: Instance of the configured normalizer
-    
+
     Raises:
         ValueError: If NORMALIZATION_METHOD is unknown
     """
     import numpy as np
-    from recommendation.ZSCORE_NORMALIZATION import ZScoreNormalization
+
     from recommendation.PERCENTILE_NORMALIZATION import PercentileNormalization
-    
+    from recommendation.ZSCORE_NORMALIZATION import ZScoreNormalization
+
     global _PARAMETER_STATISTICS
-    
+
     if NORMALIZATION_METHOD == 'ZSCORE':
         normalizer = ZScoreNormalization()
         # Initialize with default Z-score statistics if not set
@@ -181,7 +183,10 @@ def get_normalizer():
                 'roommates': {'mean': 3.0, 'std': 1.5},
                 'budget': {'mean': 30000, 'std': 20000},
                 'months': {'mean': 12, 'std': 8},
-                'geo_lat': {'mean': 55.7558, 'std': 0.5},  # Default to Moscow area, adjust as needed
+                'geo_lat': {
+                    'mean': 55.7558,
+                    'std': 0.5,
+                },  # Default to Moscow area, adjust as needed
                 'geo_lon': {'mean': 37.6173, 'std': 0.5},
                 'age': {'mean': 25.0, 'std': 5.0},
             }
@@ -191,31 +196,40 @@ def get_normalizer():
         if _PARAMETER_STATISTICS is None:
             _PARAMETER_STATISTICS = {
                 'rooms': {
-                    'percentiles': np.array([1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3] + [3]*89 + [4])
+                    'percentiles': np.array(
+                        [1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3] + [3] * 89 + [4]
+                    )
                 },
                 'roommates': {
-                    'percentiles': np.array([1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4] + [4]*89 + [5])
+                    'percentiles': np.array(
+                        [1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4] + [4] * 89 + [5]
+                    )
                 },
-                'budget': {
-                    'percentiles': np.linspace(5000, 60000, 101)
-                },
+                'budget': {'percentiles': np.linspace(5000, 60000, 101)},
                 'months': {
-                    'percentiles': np.array([3]*10 + [6]*15 + [9]*15 + [12]*30 + [18]*15 + [24]*10 + [36]*6)
+                    'percentiles': np.array(
+                        [3] * 10
+                        + [6] * 15
+                        + [9] * 15
+                        + [12] * 30
+                        + [18] * 15
+                        + [24] * 10
+                        + [36] * 6
+                    )
                 },
                 'geo_lat': {
-                    'percentiles': np.linspace(55.0, 56.5, 101)  # Default range for Moscow area, adjust as needed
+                    'percentiles': np.linspace(
+                        55.0, 56.5, 101
+                    )  # Default range for Moscow area, adjust as needed
                 },
-                'geo_lon': {
-                    'percentiles': np.linspace(37.0, 38.2, 101)
-                },
-                'age': {
-                    'percentiles': np.linspace(18, 40, 101)
-                },
+                'geo_lon': {'percentiles': np.linspace(37.0, 38.2, 101)},
+                'age': {'percentiles': np.linspace(18, 40, 101)},
             }
     else:
-        raise ValueError(f"Unknown normalization method: {NORMALIZATION_METHOD}")
-    
+        raise ValueError(f'Unknown normalization method: {NORMALIZATION_METHOD}')
+
     return normalizer
+
 
 # ============================================================================
 # LOGGING SETTINGS
@@ -225,24 +239,21 @@ def get_normalizer():
 DEFAULT_LOG_LEVEL = 'INFO'
 
 # Log levels for specific modules (optional overrides)
-MODULE_LOG_LEVELS = {
-    'cli': 'INFO',
-    'roommate_db': 'INFO',
-    'test_service': 'INFO'
-}
+MODULE_LOG_LEVELS = {'cli': 'INFO', 'roommate_db': 'INFO', 'test_service': 'INFO'}
 
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
 
+
 def round_for_display(value: float, is_budget: bool = False) -> float:
     """
     Round numeric values for display based on configured rounding mode.
-    
+
     Args:
         value: The value to round
         is_budget: Whether this is a budget value (uses different decimal places)
-    
+
     Returns:
         Rounded value according to DISPLAY_ROUNDING_MODE setting
     """
@@ -250,7 +261,7 @@ def round_for_display(value: float, is_budget: bool = False) -> float:
         return value
 
     decimal_places = BUDGET_DECIMAL_PLACES if is_budget else NUMERIC_DECIMAL_PLACES
-    multiplier = 10 ** decimal_places
+    multiplier = 10**decimal_places
 
     if DISPLAY_ROUNDING_MODE == 'ceil':
         return math.ceil(value * multiplier) / multiplier
@@ -260,4 +271,3 @@ def round_for_display(value: float, is_budget: bool = False) -> float:
         return round(value, decimal_places)
     else:
         return value
-
