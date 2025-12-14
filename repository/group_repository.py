@@ -241,6 +241,31 @@ class GroupRepository:
                 a.append((group_id, user_ids))
         return a
 
+    def get_avg_params(self) -> list:
+        with self.driver.session() as session:
+            query = """
+            MATCH (gp:GroupParameter)
+            WITH gp.name AS name, avg(toFloat(gp.value)) AS avgValue
+            WITH
+              CASE name
+                WHEN 'rooms'     THEN 1
+                WHEN 'roommates' THEN 2
+                WHEN 'months'    THEN 3
+                WHEN 'budget'    THEN 4
+                WHEN 'geo_lat'   THEN 5
+                WHEN 'geo_lon'   THEN 6
+                WHEN 'age'       THEN 7
+                ELSE 999
+              END AS ord,
+              avgValue
+            ORDER BY ord
+            RETURN collect(avgValue) AS avgVector;
+            """
+            results = session.run(query).single()
+            if not results or 'avgVector' not in results:
+                raise NotFoundError('Не получилось посчитать ср параметры')
+            return results['avgVector']
+
     def count_members(self, group_id: UUID) -> int:
         """
         Count the number of members in a group.
