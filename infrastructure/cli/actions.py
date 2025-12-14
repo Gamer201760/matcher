@@ -37,6 +37,7 @@ from infrastructure.neo4j import (
     find_similar,
     get_group_by_user_id,
     get_user_parameters,
+    recalculate_all_group_embeddings,
     remove_user_from_group,
     update_parameter_statistics,
     upsert_users,
@@ -51,17 +52,32 @@ import os
 
 
 def update_parameter_statistics_action():
-    """Update parameter statistics from current user data."""
+    """Update parameter statistics from current user data and recalculate group embeddings."""
     try:
         import infrastructure.config as config
 
         statistics, user_count = update_parameter_statistics()
 
-        if statistics and user_count >= 10:
+        if statistics and user_count >= 3:
             display_success(
                 f'✓ Statistics updated from {user_count} users ({config.NORMALIZATION_METHOD} method)'
             )
-        elif user_count < 10:
+            
+            # Recalculate all group embeddings with the new statistics
+            driver = get_driver(
+                os.getenv('NEO4J_URI', ''),
+                os.getenv('NEO4J_USERNAME', ''),
+                os.getenv('NEO4J_PASSWORD', ''),
+            )
+            with driver.session() as session:
+                recalculate_all_group_embeddings(
+                    session,
+                    use_weights=config.GROUP_PARAMETER_WEIGHTS is not None,
+                    weights=config.GROUP_PARAMETER_WEIGHTS
+                )
+            driver.close()
+            display_success('✓ All group embeddings recalculated with new statistics')
+        elif user_count < 3:
             display_info(
                 f'Using default statistics (only {user_count} users, need at least 10)'
             )

@@ -54,7 +54,7 @@ def update_parameter_statistics(
     statistics, user_count = update_statistics(driver, list(parameters), normalizer)
 
     # Update global config only when we have enough data
-    if statistics:
+    if statistics and user_count >= 3:
         set_parameter_statistics(statistics)
 
     if created_driver and driver is not None:
