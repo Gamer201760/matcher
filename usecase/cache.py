@@ -1,11 +1,13 @@
 from uuid import uuid4
 
+from entity.form import Form
 from entity.group import Group
 from entity.parameters import Parameters, Sex, UserType
 from entity.point import Point
 from infrastructure.logging_utils import setup_logger
 from usecase.interface import (
     CacheGroupRecomendationRepository,
+    FormRepository,
     GroupRecomendationRepository,
     GroupRepository,
 )
@@ -19,46 +21,51 @@ class CacheRecomendationUsecase:
         cache_repo: CacheGroupRecomendationRepository,
         rec_repo: GroupRecomendationRepository,
         group_repo: GroupRepository,
+        form_repo: FormRepository,
         batch_size: int = 100,
     ) -> None:
         self._cache_repo = cache_repo
         self._rec_repo = rec_repo
         self._group_repo = group_repo
         self._batch_size = batch_size
+        self._form_repo = form_repo
 
     def _make_avg_group(self):
         rooms, roommates, month, budget, geo_lat, geo_lon, age = (
             self._group_repo.get_avg_params()
         )
-        avg_group = Group(
-            owner_id=uuid4(),
-            max_users=roommates + 1,
-            parameters=Parameters(
-                geo=Point(lat=geo_lat, lon=geo_lon),
-                budget=budget,
-                room_count=rooms,
-                roommates_count=roommates,
-                age=age,
-                month=month,
-                name='AvgGroup',
-                surname='AvgGroup',
-                photos=[''],
-                address='',
-                smoking=False,
-                alko=False,
-                pet=False,
-                description='AvgGroup',
-                sex=Sex.MALE,
-                user_type=UserType.STUDENT,
-            ),
+        params = Parameters(
+            geo=Point(lat=geo_lat, lon=geo_lon),
+            budget=budget,
+            room_count=rooms,
+            roommates_count=roommates,
+            age=age,
+            month=month,
+            name='AvgGroup',
+            surname='AvgGroup',
+            photos=[''],
+            address='',
+            smoking=False,
+            alko=False,
+            pet=False,
+            description='AvgGroup',
+            sex=Sex.MALE,
+            user_type=UserType.STUDENT,
         )
+        form = Form(user_id=uuid4(), parameters=params)
+        self._form_repo.create(form)
+        avg_group = Group(owner_id=uuid4(), max_users=roommates + 1, parameters=params)
         group_id = self._group_repo.create(avg_group)
+        self._group_repo.add_user(form.user_id, group_id)
+
         logger.debug(f'Avg group {avg_group.to_dict()}')
+        self._group_repo.calculate_params(group_id)
         recomm = self._rec_repo.execute(group_id)
         logger.debug(f'Avg group recs {recomm}')
         self._cache_repo.add_default(recomm)
         self._cache_repo.commit()
         self._group_repo.delete(group_id)
+        self._form_repo.delete_by_user_id(form.user_id)
         logger.debug(f'Delete avg group {group_id}')
 
     def execute(self) -> None:

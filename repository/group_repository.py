@@ -262,7 +262,7 @@ class GroupRepository:
             RETURN collect(avgValue) AS avgVector;
             """
             results = session.run(query).single()
-            if not results or 'avgVector' not in results:
+            if not results:
                 raise NotFoundError('Не получилось посчитать ср параметры')
             return results['avgVector']
 

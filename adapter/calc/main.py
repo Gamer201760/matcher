@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from infrastructure.config import PARAMETERS
 from infrastructure.logging_utils import setup_logger
 from infrastructure.neo4j.connection import ensure_constraints_and_index, get_driver
+from repository.form_repository import FormRepository
 from repository.group_recommendation_cache import (
     CacheGroupRecommendationRepositoryRedis,
 )
@@ -36,9 +37,11 @@ def main():
 
     group_repo = GroupRepository(driver)
     recomend_repo = GroupRecommendationRepository(driver)
+    form_repo = FormRepository(driver)
+
     cache_repo = CacheGroupRecommendationRepositoryRedis(redis_client)
 
-    cache = CacheRecomendationUsecase(cache_repo, recomend_repo, group_repo)
+    cache = CacheRecomendationUsecase(cache_repo, recomend_repo, group_repo, form_repo)
     cache.execute()
 
 

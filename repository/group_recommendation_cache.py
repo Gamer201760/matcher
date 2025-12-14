@@ -4,8 +4,10 @@ from uuid import UUID
 import redis
 
 from entity.group import Group
+from infrastructure.logging_utils import setup_logger
 
 GROUP_DEFAULT_KEY = 'group_default'
+logger = setup_logger(__name__)
 
 
 class CacheGroupRecommendationRepositoryRedis:
@@ -25,6 +27,9 @@ class CacheGroupRecommendationRepositoryRedis:
         raw = self._redis.get(self._key(user_id))
         if raw is None:
             raw = self._redis.get(self._key(GROUP_DEFAULT_KEY))
+            if raw is None:
+                logger.error('Не получилось найти среднего пользователя')
+                return []
 
         data = json.loads(raw)
         result: list[tuple[Group, float]] = []
